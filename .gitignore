@@ -1,0 +1,29 @@
+# Private game files and progress never belong in the public repository.
+discs/
+gamefiles/
+saves/
+*.ti
+*.iso
+*.bin
+*.cue
+*.gog
+wineprefix*/
+.titanic-restoration/
+
+# Dependencies, builds and local evidence.
+vendor/
+node_modules/
+dist/
+**/dist/
+**/dist-public/
+*.app/
+*.dmg
+*.zip
+*.tar.gz
+*.log
+logs/
+captures/
+.DS_Store
+.env*
+__pycache__/
+*.py[cod]

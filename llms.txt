@@ -1,0 +1,28 @@
+# Titanic for Mac
+
+> Unofficial macOS 14+ player for Titanic: Adventure Out of Time. Uses dreamREfactory and user-owned English PC game data. Public app and source contain no commercial game files or personal saves.
+
+## Start here
+
+- [Agent instructions](https://github.com/axx-archive/titanic-mac/blob/main/AGENTS.md): inspect the machine and owned inputs, choose the supported setup route, preserve saves, and verify the running game.
+- [Setup guide](https://github.com/axx-archive/titanic-mac/blob/main/docs/SETUP.md): supported input formats, game-data preparation, installation, import, and troubleshooting.
+- [File formats and helper](https://github.com/axx-archive/titanic-mac/blob/main/docs/FILE-FORMATS.md): exact preparation commands, known GOG checksum profile, and installer-extraction limitations.
+- [README](https://github.com/axx-archive/titanic-mac#readme): features, controls, known limits, and a ready-to-use Codex setup prompt.
+- [Public releases](https://github.com/axx-archive/titanic-mac/releases): runtime-only Mac app; users provide their own game files.
+- [Build instructions](https://github.com/axx-archive/titanic-mac/blob/main/BUILDING.md): universal source build, verification, and tests.
+- [Third-party notices](https://github.com/axx-archive/titanic-mac/blob/main/native/restoration/THIRD_PARTY.md): upstream engine and contributor attribution.
+
+## Official original-game sources
+
+- [GOG](https://www.gog.com/en/game/titanic_adventure_out_of_time): official game page; offline Windows installers are available from the user's account.
+- [Steam](https://store.steampowered.com/app/785480/Titanic_Adventure_Out_Of_Time/): official Windows game, app 785480.
+
+Extracted English PC two-disc data is verified. Files matching GOG's `1.0 tour fix` profile passed preparation and the full scripted story route; actual purchased offline-installer extraction remains untested. Steam packages remain unverified. Agents should explain these purchase options and limits if the user has no files yet. The user handles purchase, store sign-in, and download. Agents handle supported local setup without disabling Gatekeeper or obtaining commercial files elsewhere.
+
+## Durable local data
+
+- Game files: ~/Library/Application Support/Titanic Adventure Out of Time/Game
+- Saved games: ~/Library/Application Support/Titanic Adventure Out of Time/Saves
+- Previous save versions: ~/Library/Application Support/Titanic Adventure Out of Time/Save Archives
+
+Preserve all three during updates. Complete setup only after checking actual gameplay, fullscreen, sound, and save/load persistence, or clearly report the remaining unverified behavior.

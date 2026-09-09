@@ -1,0 +1,29 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self' titanic: data: blob:; connect-src 'self' titanic:; script-src 'self' titanic:; style-src 'self' titanic: 'unsafe-inline'; img-src 'self' titanic: data: blob:; object-src 'none'; base-uri 'none'; form-action 'none'">
+  <title>Titanic: Adventure Out of Time</title>
+  <style>
+    :root { color-scheme: dark; font-family: -apple-system, BlinkMacSystemFont, sans-serif; }
+    * { box-sizing: border-box; }
+    html,body { margin: 0; width: 100%; height: 100%; overflow: hidden; background: #000; }
+    body { display: grid; place-items: center; }
+    #screen { display: block; width: min(100vw, calc(100vh * 4 / 3)); height: min(100vh, calc(100vw * 3 / 4)); background: #000; image-rendering: pixelated; touch-action: none; outline: none; }
+    #status { position: fixed; inset: 0; display: grid; place-content: center; text-align: center; color: #d5c6a8; background: #03060a; gap: 16px; }
+    #status[hidden],#paused[hidden] { display: none; }
+    #status h1 { font: 400 32px Georgia, serif; letter-spacing: .13em; margin: 0; }
+    #status p { color: #9da3ac; margin: 0; max-width: 460px; line-height: 1.5; font-size: 14px; }
+    #paused { position: fixed; inset: 0; display: grid; place-content: center; gap: 14px; text-align: center; color: #e5dac6; background: #0009; pointer-events: none; }
+    #paused strong { font: 400 28px Georgia, serif; letter-spacing: .04em; }
+    #paused span { font-size: 13px; color: #c5bdad; }
+  </style>
+</head>
+<body>
+  <canvas id="screen" width="512" height="384" tabindex="0" aria-label="Titanic game"></canvas>
+  <div id="status"><h1>TITANIC</h1><p id="statusText">Preparing your voyage…</p></div>
+  <div id="paused" hidden><strong>Paused</strong><span>Return to the game to continue.</span></div>
+  <script type="module" src="./main.ts"></script>
+</body>
+</html>
