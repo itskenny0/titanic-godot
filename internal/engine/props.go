@@ -301,13 +301,16 @@ func occlusionLevel(depth, zclip float64, occ *Occlusion) float64 {
 	return DepthLevel(depth-zclip+occ.GroundBias, occ)
 }
 func (r *PropRuntime) PropAt(x, y int, cam *WorldCamera, persistentOnly bool, occ *Occlusion) (*PropInstance, error) {
+	return r.PropAtPoint(float64(x), float64(y), cam, persistentOnly, occ)
+}
+func (r *PropRuntime) PropAtPoint(x, y float64, cam *WorldCamera, persistentOnly bool, occ *Occlusion) (*PropInstance, error) {
 	screen := r.ScreenDrawList(persistentOnly)
 	for i := len(screen) - 1; i >= 0; i-- {
 		rect, err := screen[i].ScreenRect()
 		if err != nil {
 			return nil, err
 		}
-		if rect.sample(float64(x), float64(y)) >= 0 {
+		if rect.sample(x, y) >= 0 {
 			return screen[i], nil
 		}
 	}
@@ -319,7 +322,7 @@ func (r *PropRuntime) PropAt(x, y int, cam *WorldCamera, persistentOnly bool, oc
 			if err != nil {
 				return nil, err
 			}
-			if rect.sample(float64(x), float64(y)) >= 0 && !SceneryOccludes(occ, x, y, occlusionLevel(e.Proj.Depth, e.P.Zclip, occ)) {
+			if rect.sample(x, y) >= 0 && !SceneryOccludesPoint(occ, x, y, occlusionLevel(e.Proj.Depth, e.P.Zclip, occ)) {
 				return e.P, nil
 			}
 		}

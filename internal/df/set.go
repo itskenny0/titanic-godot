@@ -51,7 +51,10 @@ type StarPath struct {
 }
 type StarPathPoint struct{ X, Y, Z, FromPrev int }
 type Set struct {
-	File                                                                                                                                    *File `json:"-"`
+	FocalLength                                                                                                                             *float64 `json:"focalLength,omitempty"`
+	SpriteZBias                                                                                                                             float64  `json:"spriteZBias,omitempty"`
+	CameraSetback                                                                                                                           float64  `json:"cameraSetback,omitempty"`
+	File                                                                                                                                    *File    `json:"-"`
 	Version, MainSceneRegister, TransitionRegister, ActorRegister                                                                           int
 	SetName, DefaultSceneName, DefaultViewName                                                                                              string
 	ViewPortWidth, ViewPortHeight, ZFarMax, ZLevelCount, MapLight, MapDark, MapWidth, MapHeight, SetDimensionsX, SetDimensionsY, MainScript int

@@ -239,6 +239,9 @@ func (r *ActorRuntime) CompositeOne(e ActorDrawEntry, rgba []byte, w, h int, pal
 	return nil
 }
 func (r *ActorRuntime) ActorAt(x, y int, cam *WorldCamera, occ *Occlusion) (*ActorInstance, error) {
+	return r.ActorAtPoint(float64(x), float64(y), cam, occ)
+}
+func (r *ActorRuntime) ActorAtPoint(x, y float64, cam *WorldCamera, occ *Occlusion) (*ActorInstance, error) {
 	screen, err := r.ScreenDrawList()
 	if err != nil {
 		return nil, err
@@ -248,7 +251,7 @@ func (r *ActorRuntime) ActorAt(x, y int, cam *WorldCamera, occ *Occlusion) (*Act
 		if err != nil {
 			return nil, err
 		}
-		if rect.sample(float64(x), float64(y)) >= 0 {
+		if rect.sample(x, y) >= 0 {
 			return screen[i], nil
 		}
 	}
@@ -262,7 +265,7 @@ func (r *ActorRuntime) ActorAt(x, y int, cam *WorldCamera, occ *Occlusion) (*Act
 		if err != nil {
 			return nil, err
 		}
-		if rect.sample(float64(x), float64(y)) >= 0 && !SceneryOccludes(occ, x, y, occlusionLevel(e.Proj.Depth, e.A.Zclip, occ)) {
+		if rect.sample(x, y) >= 0 && !SceneryOccludesPoint(occ, x, y, occlusionLevel(e.Proj.Depth, e.A.Zclip, occ)) {
 			return e.A, nil
 		}
 	}

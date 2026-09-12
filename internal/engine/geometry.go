@@ -55,11 +55,14 @@ func DepthLevel(depth float64, occ *Occlusion) float64 {
 	return math.Max(0, math.Floor(depth/math.Max(1, occ.Scale)))
 }
 func SceneryOccludes(occ *Occlusion, x, y int, level float64) bool {
-	if occ == nil || x < 0 || y < 0 || x >= occ.W || y >= occ.H {
+	return SceneryOccludesPoint(occ, float64(x), float64(y), level)
+}
+func SceneryOccludesPoint(occ *Occlusion, x, y, level float64) bool {
+	if occ == nil || x < 0 || y < 0 || x >= float64(occ.W) || y >= float64(occ.H) {
 		return false
 	}
-	i := y*occ.W + x
-	return i < len(occ.Z) && float64(occ.Z[i]) < level
+	i := y*float64(occ.W) + x
+	return i == math.Trunc(i) && i < float64(len(occ.Z)) && float64(occ.Z[int(i)]) < level
 }
 func Bearing(dx, dy float64) int {
 	return int(int32JS(jsRound(math.Atan2(dy, dx)*256/(2*math.Pi))) & 255)
