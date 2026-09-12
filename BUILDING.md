@@ -1,59 +1,29 @@
-# Building the Mac app
+# Building
 
-The public app contains the native host and the open-source engine. It contains no original game discs, saved games, manuals, box artwork, or extracted game cursors. On first launch, supply your own extracted English PC game discs. The app runs offline after import.
+Use Python 3.11+, Node.js 22, CMake, SCons 4.8.1, and a C/C++ compiler. The build scripts pin Godot and vendor the gameplay engine, QuickJS-NG, and Godot headers. Godot 3.5.2 is the desktop and PortMaster baseline. Windows ARM64 and Android use the generated Godot 4.3 frontend.
 
-## Requirements
-
-- macOS 14 or newer, on Apple silicon or Intel.
-- Xcode Command Line Tools (`xcode-select --install`), including Swift and the macOS SDK.
-- Node.js 22 or 24, npm, Python 3, and Git.
-- About 1 GB for the source and development dependencies; imported game data requires additional disk space.
-
-## Public build
-
-From the repository root:
-
-```sh
-python3 scripts/build-restored-app.py --runtime-only
-python3 scripts/verify-restored-app.py --runtime-only dist/public/Titanic.app
+```
+npm ci
+npm run build:engine
+python3 tools/fetch-patches.py
+npm test
+cmake -S native -B .build/native -DCMAKE_BUILD_TYPE=Release
+cmake --build .build/native --target titanic -j2
+cp .build/native/libtitanic.so godot/native/libtitanic.x86_64.so
 ```
 
-The builder obtains dreamREfactory at the pinned revision `b43a02668f3db36519bd5b44a5892fdefd292208`, installs its locked npm dependencies, builds the Web runtime, and compiles a universal native executable for `arm64` and `x86_64`. It rejects a different engine revision or tracked engine modifications.
+Open `godot/project.godot` with Godot 3.5.2. On Linux without a display, use `xvfb-run -a` and `--audio-driver Dummy`. The editor uses the native bridge above; packaged desktop players compile it directly into Godot.
 
-The result is `dist/public/Titanic.app`. This command does not install or replace an app in Applications. The signature is ad hoc for local integrity; it is not a Developer ID signature or Apple notarization.
-
-Open the app and select a folder containing both extracted discs (`cd1` and `cd2`, or `titanic1` and `titanic2`), or select each disc when prompted. Disc image and installer extraction is outside this app. The import copies needed runtime files into Application Support; it leaves the originals intact.
-
-## Tests without game files
-
-After the builder has prepared the pinned engine dependencies:
-
-```sh
-vendor/dreamrefactory/node_modules/.bin/vitest run --config native/restoration/Web/vitest.config.ts
-vendor/dreamrefactory/node_modules/.bin/tsc -p native/restoration/Web/tsconfig.json
+```
+python3 tools/build-runtime.py --platform linux --arch x86_64
+xvfb-run -a python3 tools/export-pack.py --godot /path/to/godot3 --output dist/titanic.pck
+python3 tools/package.py linux --arch x86_64 --binary dist/runtime-linux-x86_64
 ```
 
-These tests generate their own neutral save envelope from the documented format schema. They verify complete metadata, corrupt-file rejection, Finder/startup error recovery, and the original engine's save/load dialog recovery. They require neither commercial game data nor a personal saved game.
+Each desktop target gets its own Godot source directory. Do not build different platforms concurrently in the same Godot tree: generated headers are shared.
 
-New saves use an authored format envelope plus a validated, versioned state extension. The app can read original Windows `.ti` saves. Saves created by this Mac app are intended for this app; compatibility with the original Windows executable is not promised.
+Linux needs the Godot X11, OpenGL, ALSA, PulseAudio, and udev development packages. Windows cross builds use LLVM MinGW 20240619. macOS builds require Xcode command line tools. See `.github/workflows/build.yml` for complete commands for every package, including Android and PortMaster.
 
-## Rebuilding from the bundled corresponding source
+The `--static` Linux tarball statically links the gameplay engine, QuickJS, and C++ runtime. It still uses system C, display, graphics, and audio libraries. It is not a fully static ELF executable. macOS apps are ad hoc signed, Windows packages are unsigned, and the Android APK uses a development signing key. Distribution signing needs your own keys.
 
-Each app includes these archives under `Contents/Resources/Licenses`:
-
-- `native-restoration-source.tar.gz`: native/Web integration, authored icon, build scripts, tests, and this document.
-- `dreamREfactory-source.tar.gz`: required engine code, original package manifests and lockfile, revision marker, and per-file hashes. Commercial artwork and game-data directories are excluded.
-
-Extract the restoration archive into a new working folder. Extract the engine archive into `vendor/dreamrefactory` inside that folder. Run the public build command above. The builder validates the included source hashes when no Git checkout is present. npm may download the locked development dependencies; the resulting app does not need npm, Node, Wine, or an internet connection to play.
-
-The original icon can be regenerated with:
-
-```sh
-swift native/restoration/Resources/generate-icon.swift
-```
-
-## Optional private bundle
-
-For a personal app that embeds both discs, place your extracted discs in `discs/cd1` and `discs/cd2`, then omit `--runtime-only`. Local `.ti` files under `saves` can be included as import seeds. Private builds go to `dist/Titanic.app`. The optional `--install` flag installs a private build and archives an existing app before replacement. Never publish that private bundle or its disc/save contents.
-
-The GPL-3.0 license covers this integration and the engine. It does not grant rights to distribute the commercial game's data.
+Run the portable Godot tests by copying `tests/runtime.gd` to `godot/runtime-test.gd` and launching Godot with `--path godot -s res://runtime-test.gd`. `tests/integration.gd` additionally needs owned game files and `--game-data=/path/to/gamedata --integration-test`. Do not include game data or saves in Git. Release builds fetch the requested, checksum-pinned M3tox patch pack; those downloaded files stay outside Git.

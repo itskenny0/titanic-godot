@@ -1,0 +1,23 @@
+#!/usr/bin/env python3
+"""Check the packaged APK's architecture and native page-size compatibility."""
+from pathlib import Path
+import argparse, re, subprocess, tempfile, zipfile
+p=argparse.ArgumentParser();p.add_argument('apk');a=p.parse_args()
+with zipfile.ZipFile(a.apk) as z, tempfile.TemporaryDirectory() as temporary:
+    native=[n for n in z.namelist() if n.startswith('lib/') and n.endswith('.so')]
+    if native != ['lib/arm64-v8a/libgodot_android.so']:
+        raise SystemExit('Unexpected APK native libraries: '+str(native))
+    library=z.read(native[0])
+    if b'__indexedRGBA' not in library:raise SystemExit('Missing native palette conversion')
+    path=Path(temporary)/'libgodot_android.so';path.write_bytes(library)
+    headers=subprocess.check_output(['readelf','-lW',str(path)],text=True)
+    for line in headers.splitlines():
+        if line.strip().startswith('LOAD') and int(line.split()[-1],16)<16384:
+            raise SystemExit('Android native library is not aligned for 16 KiB pages')
+    deps=subprocess.check_output(['readelf','-d',str(path)],text=True)
+    if 'libc++_shared' in deps:raise SystemExit('Android C++ runtime must be static')
+    for name in ['assets/engine.js','assets/patches/manifest.json','assets/notices/COPYING.txt']:
+        if name not in z.namelist():raise SystemExit('Missing APK payload: '+name)
+    if len([n for n in z.namelist() if n.startswith('assets/patches/files/') and n.endswith('.SET')]) != 56:
+        raise SystemExit('Missing bundled patches')
+print('Android APK: ARM64, 16 KiB native alignment, embedded engine, patches, and notices verified.')

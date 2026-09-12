@@ -1,29 +1,282 @@
-name: Build Mac player
-
+name: Build Godot players
 on:
   push:
     branches: [main]
+    tags: ['v*']
   pull_request:
   workflow_dispatch:
-
 permissions:
   contents: read
+concurrency:
+  group: build-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  GODOT_SILENCE_ROOT_WARNING: '1'
+  LP_NUM_THREADS: '2'
 
 jobs:
-  public-runtime:
-    runs-on: macos-latest
+  pack:
+    runs-on: ubuntu-22.04
     steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - uses: actions/setup-node@v4
         with:
           node-version: '22'
-      - name: Build without game files or saved games
-        run: scripts/build-restored-app.sh --runtime-only
-      - name: Verify public bundle and corresponding source
-        run: scripts/verify-restored-app.py --runtime-only dist/public/Titanic.app
-      - name: Test authored save format and recovery
-        run: vendor/dreamrefactory/node_modules/.bin/vitest run --config native/restoration/Web/vitest.config.ts
-      - name: Typecheck the game host
-        run: vendor/dreamrefactory/node_modules/.bin/tsc -p native/restoration/Web/tsconfig.json
-      - name: Test local game-data preparation
-        run: python3 -m unittest discover -s scripts/tests -v
+          cache: npm
+      - run: npm ci && npm run build:engine && npm test
+      - name: Install Godot pack exporters
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y xvfb libasound2 libgl1
+          mkdir -p .tools
+          curl -fL https://github.com/godotengine/godot/releases/download/3.5.2-stable/Godot_v3.5.2-stable_x11.64.zip -o .tools/godot3.zip
+          unzip -q .tools/godot3.zip -d .tools
+          curl -fL https://github.com/godotengine/godot/releases/download/4.3-stable/Godot_v4.3-stable_linux.x86_64.zip -o .tools/godot4.zip
+          unzip -q .tools/godot4.zip -d .tools
+      - run: python3 tools/fetch-patches.py
+      - name: Export both frontends
+        run: |
+          xvfb-run -a python3 tools/export-pack.py --godot "$PWD/.tools/Godot_v3.5.2-stable_x11.64" --output dist/titanic.pck
+          python3 tools/prepare-godot4.py --godot "$PWD/.tools/Godot_v4.3-stable_linux.x86_64"
+          python3 tools/export-pack.py --godot "$PWD/.tools/Godot_v4.3-stable_linux.x86_64" --project .build/godot4-project --major 4 --output dist/titanic4.pck
+      - name: Check the native bridge without game data
+        run: |
+          cmake -S native -B .build/native -DCMAKE_BUILD_TYPE=Release
+          cmake --build .build/native --target titanic -j2
+          cp .build/native/libtitanic.so godot/native/libtitanic.x86_64.so
+          cp tests/runtime.gd godot/runtime-test.gd
+          timeout 60 xvfb-run -a .tools/Godot_v3.5.2-stable_x11.64 --path godot --audio-driver Dummy -s res://runtime-test.gd | tee .build/portable.log
+          grep -q 'PORTABLE TESTS PASS' .build/portable.log
+      - name: Check handheld and touch layouts
+        run: |
+          cp tests/ui.gd godot/ui-test.gd
+          cp tests/controls.gd godot/controls-test.gd
+          cp tests/controller.gd godot/controller-test.gd
+          timeout 45 xvfb-run -a .tools/Godot_v3.5.2-stable_x11.64 --path godot --audio-driver Dummy --resolution 640x480 -s res://ui-test.gd -- --ui-test
+          timeout 45 xvfb-run -a .tools/Godot_v3.5.2-stable_x11.64 --path godot --audio-driver Dummy --resolution 480x800 -s res://controls-test.gd -- --ui-test --touch-test
+          timeout 45 xvfb-run -a .tools/Godot_v3.5.2-stable_x11.64 --path godot --audio-driver Dummy --resolution 1280x960 -s res://controller-test.gd -- --ui-test
+          xvfb-run -a python3 tools/test-godot4.py --godot "$PWD/.tools/Godot_v4.3-stable_linux.x86_64" --test controller --resolution 1280x960
+          xvfb-run -a python3 tools/test-godot4.py --godot "$PWD/.tools/Godot_v4.3-stable_linux.x86_64" --test ui --resolution 480x800 --touch
+          cp tests/rotation4.gd .build/godot4-project/rotation-test.gd
+          xvfb-run -a .tools/Godot_v4.3-stable_linux.x86_64 --path .build/godot4-project --audio-driver Dummy -s res://rotation-test.gd -- --ui-test --touch-test
+          rm .build/godot4-project/rotation-test.gd
+      - run: python3 tools/source-archive.py
+      - uses: actions/upload-artifact@v4
+        with:
+          name: game-packs-and-source
+          path: dist/*
+          if-no-files-found: error
+
+  desktop:
+    needs: pack
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - {runner: ubuntu-22.04, platform: linux, arch: x86_64}
+          - {runner: ubuntu-24.04-arm, platform: linux, arch: arm64}
+          - {runner: macos-14, platform: mac, arch: x86_64}
+          - {runner: macos-14, platform: mac, arch: arm64}
+          - {runner: ubuntu-22.04, platform: windows, arch: x86_64}
+          - {runner: ubuntu-22.04, platform: windows, arch: arm64}
+    runs-on: ${{ matrix.runner }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - run: pip install scons==4.8.1
+      - uses: actions/download-artifact@v4
+        with:
+          name: game-packs-and-source
+          path: dist
+      - name: Linux build dependencies
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y build-essential pkg-config libx11-dev libxcursor-dev libxinerama-dev libxrandr-dev libxi-dev libgl1-mesa-dev libasound2-dev libpulse-dev libudev-dev xvfb
+      - name: Install LLVM MinGW cross compiler
+        if: matrix.platform == 'windows'
+        run: |
+          mkdir -p .tools
+          curl -fL https://github.com/mstorsjo/llvm-mingw/releases/download/20240619/llvm-mingw-20240619-ucrt-ubuntu-20.04-x86_64.tar.xz -o .tools/mingw.tar.xz
+          tar -xf .tools/mingw.tar.xz -C .tools
+          echo "$PWD/.tools/llvm-mingw-20240619-ucrt-ubuntu-20.04-x86_64/bin" >> "$GITHUB_PATH"
+      - name: Compile runtime with embedded QuickJS
+        shell: bash
+        run: |
+          extra=()
+          if [[ '${{ matrix.platform }}' == windows ]]; then
+            prefix=x86_64-w64-mingw32-
+            [[ '${{ matrix.arch }}' != arm64 ]] || prefix=aarch64-w64-mingw32-
+            extra=(--mingw-prefix "$prefix")
+          fi
+          python3 tools/build-runtime.py --platform '${{ matrix.platform }}' --arch '${{ matrix.arch }}' --jobs 3 "${extra[@]}"
+      - name: Check binary architecture
+        if: runner.os == 'Linux'
+        run: |
+          file dist/runtime-*
+          if [[ '${{ matrix.platform }}' == windows && '${{ matrix.arch }}' == arm64 ]]; then
+            file dist/runtime-windows-arm64.exe | grep -q 'Aarch64'
+          fi
+      - name: Package player
+        shell: bash
+        run: |
+          binary='dist/runtime-${{ matrix.platform }}-${{ matrix.arch }}'
+          pack=dist/titanic.pck
+          [[ '${{ matrix.platform }}' != windows ]] || binary="$binary.exe"
+          if [[ '${{ matrix.platform }}' == windows && '${{ matrix.arch }}' == arm64 ]]; then pack=dist/titanic4.pck; fi
+          python3 tools/package.py '${{ matrix.platform }}' --arch '${{ matrix.arch }}' --binary "$binary" --pack "$pack"
+          if [[ '${{ matrix.platform }}' == linux ]]; then
+            python3 tools/package.py linux --arch '${{ matrix.arch }}' --binary "$binary" --pack "$pack" --static
+          fi
+      - name: Linux startup test
+        if: matrix.platform == 'linux'
+        run: |
+          timeout 30 xvfb-run -a dist/runtime-linux-${{ matrix.arch }} --main-pack dist/titanic.pck --audio-driver Dummy --quit 2>&1 | tee .build/startup.log
+          if grep -E 'SCRIPT ERROR|Parse Error' .build/startup.log; then exit 1; fi
+          timeout 45 xvfb-run -a dist/runtime-linux-${{ matrix.arch }} --main-pack dist/titanic.pck --audio-driver Dummy -s "$PWD/tests/runtime.gd" | tee .build/module-test.log
+          grep -q 'PORTABLE TESTS PASS' .build/module-test.log
+      - uses: actions/upload-artifact@v4
+        with:
+          name: titanic-${{ matrix.platform }}-${{ matrix.arch }}
+          path: |
+            dist/titanic-*.zip
+            dist/titanic-linux-*.deb
+            dist/titanic-linux-*.tar.gz
+            dist/runtime-*
+          if-no-files-found: error
+
+  portmaster:
+    needs: pack
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: game-packs-and-source
+          path: dist
+      - name: Compile bridges against glibc 2.31 for handheld firmware
+        run: |
+          docker run --rm -v "$PWD:/work" -w /work ubuntu:20.04 bash -eu -c '
+            apt-get update -qq
+            DEBIAN_FRONTEND=noninteractive apt-get install -y cmake gcc-aarch64-linux-gnu gcc-arm-linux-gnueabihf make
+            for spec in aarch64:aarch64-linux-gnu-gcc armhf:arm-linux-gnueabihf-gcc; do
+              arch="${spec%%:*}"
+              cc="${spec#*:}"
+              cmake -S native -B ".build/$arch" -DCMAKE_SYSTEM_NAME=Linux -DCMAKE_C_COMPILER="$cc" -DCMAKE_BUILD_TYPE=Release
+              cmake --build ".build/$arch" --target titanic -j2
+              cp ".build/$arch/libtitanic.so" "godot/native/libtitanic.$arch.so"
+            done'
+          bash -n packaging/portmaster/Titanic.sh
+          python3 tools/package.py portmaster
+      - uses: actions/upload-artifact@v4
+        with:
+          name: titanic-portmaster
+          path: dist/titanic-portmaster.zip
+          if-no-files-found: error
+
+  linux-formats:
+    needs: [desktop, pack]
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - {runner: ubuntu-22.04, arch: x86_64, appimage_arch: x86_64}
+          - {runner: ubuntu-24.04-arm, arch: arm64, appimage_arch: aarch64}
+    runs-on: ${{ matrix.runner }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: game-packs-and-source
+          path: dist
+      - uses: actions/download-artifact@v4
+        with:
+          name: titanic-linux-${{ matrix.arch }}
+          path: dist
+      - name: Prepare shared application payload
+        run: |
+          mkdir -p .build/linux-payload
+          tar -xzf dist/titanic-linux-${{ matrix.arch }}.tar.gz -C .build/linux-payload
+          cp -r .build/linux-payload/titanic packaging/linux/flatpak-input
+          cp packaging/linux/io.github.itskenny0.Titanic.{desktop,svg,metainfo.xml} packaging/linux/flatpak-input/
+          # shellcheck disable=SC2016
+          printf '#!/bin/sh\nexec /app/lib/titanic/titanic --main-pack /app/lib/titanic/titanic.pck "$@"\n' > packaging/linux/flatpak-input/launcher
+      - name: Build offline Flatpak bundle
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y flatpak flatpak-builder
+          flatpak remote-add --user --if-not-exists flathub https://flathub.org/repo/flathub.flatpakrepo
+          flatpak-builder --user --install-deps-from=flathub --repo=.build/flatpak-repo --force-clean .build/flatpak-build packaging/linux/io.github.itskenny0.Titanic.yml
+          flatpak build-bundle .build/flatpak-repo dist/titanic-linux-${{ matrix.arch }}.flatpak io.github.itskenny0.Titanic
+      - name: Build AppImage
+        env:
+          ARCH: ${{ matrix.appimage_arch }}
+        run: |
+          mkdir -p .build/AppDir/usr/lib/titanic .build/AppDir/usr/bin
+          cp -r .build/linux-payload/titanic/. .build/AppDir/usr/lib/titanic/
+          cp packaging/linux/io.github.itskenny0.Titanic.{desktop,svg} .build/AppDir/
+          # shellcheck disable=SC2016
+          printf '#!/bin/sh\nAPPDIR=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)\nexec "$APPDIR/usr/lib/titanic/titanic" --main-pack "$APPDIR/usr/lib/titanic/titanic.pck" "$@"\n' > .build/AppDir/AppRun
+          chmod +x .build/AppDir/AppRun
+          curl -fL "https://github.com/AppImage/appimagetool/releases/download/1.9.0/appimagetool-$ARCH.AppImage" -o .build/appimagetool
+          chmod +x .build/appimagetool
+          .build/appimagetool --appimage-extract-and-run .build/AppDir dist/titanic-linux-${{ matrix.arch }}.AppImage
+      - uses: actions/upload-artifact@v4
+        with:
+          name: titanic-linux-formats-${{ matrix.arch }}
+          path: |
+            dist/*.flatpak
+            dist/*.AppImage
+          if-no-files-found: error
+
+  android:
+    needs: pack
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: android-actions/setup-android@v3
+      - run: |
+          sdkmanager 'platforms;android-34' 'build-tools;34.0.0' 'ndk;26.1.10909125'
+          pip install scons==4.8.1
+          npm ci
+          npm run build:engine
+          python3 tools/fetch-patches.py
+          python3 tools/fetch-godot.py 4 .build/godot4
+          python3 tools/install-module.py .build/godot4
+          python3 tools/prepare-android.py
+      - name: Build ARM64 Android engine and document picker
+        run: |
+          scons -C .build/godot4 platform=android target=template_debug arch=arm64 vulkan=no -j3
+          cd .build/godot4/platform/android/java
+          ./gradlew copyDebugBinaryToBin
+      - name: Export touchscreen and controller APK
+        run: |
+          mkdir -p .tools dist
+          curl -fL https://github.com/godotengine/godot/releases/download/4.3-stable/Godot_v4.3-stable_linux.x86_64.zip -o .tools/godot4.zip
+          unzip -q .tools/godot4.zip -d .tools
+          python3 tools/prepare-godot4.py --godot "$PWD/.tools/Godot_v4.3-stable_linux.x86_64"
+          XDG_CONFIG_HOME="$PWD/.build/android-editor-settings" python3 tools/export-android.py --godot "$PWD/.tools/Godot_v4.3-stable_linux.x86_64" --sdk "$ANDROID_HOME"
+          "$ANDROID_HOME/build-tools/34.0.0/apksigner" verify dist/titanic-android-arm64-debug.apk
+          python3 tools/verify-android.py dist/titanic-android-arm64-debug.apk
+      - uses: actions/upload-artifact@v4
+        with:
+          name: titanic-android-arm64
+          path: dist/titanic-android-arm64-debug.apk
+          if-no-files-found: error

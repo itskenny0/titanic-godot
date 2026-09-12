@@ -1,0 +1,21 @@
+{
+  "version": 2,
+  "name": "titanic-portmaster.zip",
+  "items": ["Titanic.sh", "titanic"],
+  "items_opt": [],
+  "attr": {
+    "title": "Titanic: Adventure Out of Time",
+    "desc": "Godot player for the original game. Supply your own prepared cd1 and cd2 game data. Optional M3tox mods are supported.",
+    "desc_md": null,
+    "inst": "Copy prepared cd1 and cd2 into ports/titanic/gamedata. See README.txt. Left stick moves; right stick controls the mouse; A clicks; L1 slows the pointer; Start opens the menu.",
+    "inst_md": null,
+    "genres": ["adventure"],
+    "porter": ["itskenny0"],
+    "image": {},
+    "rtr": false,
+    "exp": true,
+    "runtime": ["frt_3.5.2.squashfs"],
+    "reqs": [],
+    "arch": ["aarch64", "armhf"]
+  }
+}

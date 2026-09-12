@@ -1,0 +1,375 @@
+/**
+ * What state the game is in, said in a list — the second half of the pane behind X.
+ *
+ * The plot of this game lives entirely in script globals, so a snapshot of the
+ * globals table IS the game state (engine/src/runtime/trace.ts, and docs/taoot/mission-flow.md
+ * for what they mean). `snapshotState` already produces exactly that, and it is
+ * already what the playthrough goldens hold, so this file renders that snapshot
+ * rather than gathering anything of its own: what a reporter can read here and what
+ * a golden compares are the same numbers by construction.
+ *
+ * Asked for in #22 — "knowing some of the variables and what they do, I wish I
+ * knew what state the game was in".
+ */
+import { isHarnessPaced } from "@dreamfactory/engine/runtime/masks";
+import type { StateTrace } from "@dreamfactory/engine/runtime/trace";
+
+/**
+ * One variable a game says is worth naming, and what to call it.
+ *
+ * The SPINE is the handful of globals a reader wants before any others — and
+ * which handful is a fact about the game, not about this pane. Titanic's six are
+ * not even a list its port chose: TI.EXE has such a readout, as a SCRIPT on the
+ * HELP button of its save panel (house.shp, prop "help"), and shift-clicking it
+ * in the original answers `Mission=1, Phase=4, Letter=0, Necklace=0`, with `Maze`
+ * and `Level` added in the three smokestack sets. So they are the ones the game's
+ * own author reached for when he wanted to know where a player was, which is a
+ * better answer than picking six ourselves — and no answer at all for a second
+ * game, whose author reached for different ones.
+ *
+ * Hence a parameter (taoot/src/main.ts, dust/src/speedrun-page.ts). A game with
+ * nothing to name passes none and gets the full list under it, which is the
+ * larger half of this pane anyway.
+ */
+export interface SpineVar {
+  /** the global's own name, as the scripts spell it */
+  name: string;
+  /** what to show it as — the game's own word for it where it has one */
+  label: string;
+}
+
+export interface StateRow {
+  name: string;
+  value: string;
+  /** it moved recently — the panel lights these */
+  changed: boolean;
+  /** not a variable: the "156 unchanged" line, drawn dim */
+  quiet?: boolean;
+}
+
+export interface StateView {
+  /** where you are: set, scene, view, and the theme playing — for the clipboard */
+  where: string;
+  /**
+   * What the room is doing, which the pane's own readout above does not say: the
+   * theme playing, and the fade when there is one. Not globals at all — they are
+   * here because "why is the screen black" and "why is that music playing" are the
+   * two questions a state list gets asked that the globals cannot answer.
+   */
+  head: StateRow[];
+  /** the six above, always, in the game's own order and spelling */
+  spine: StateRow[];
+  /** what else there is to say — see {@link stateView} for which */
+  rest: StateRow[];
+  /** how many rows `all` would have added but this view left out */
+  hidden: number;
+}
+
+export interface StateViewOptions {
+  /** what the reader typed: one or more terms, `|` or `,` apart — see {@link filterTerms} */
+  filter?: string;
+  /** every global, not just the ones that have moved */
+  all?: boolean;
+  /** names that changed recently, from {@link ChangeWatch} */
+  changed?: ReadonlySet<string>;
+  /**
+   * The game's own named variables, in its own order — see {@link SpineVar}.
+   *
+   * Empty is a real answer and not a missing one: the rows below the spine are
+   * every global there is, and a game nobody has named a spine for still shows
+   * all of them.
+   */
+  spine?: readonly SpineVar[];
+}
+
+/**
+ * The terms a filter names — `hrs|min|sec` and `hrs,min,sec` are the same three
+ * ([#178](https://github.com/dhobi/dreamrefactory/issues/178)).
+ *
+ * One term was enough for "what is `neckphase`", and not enough for the question
+ * the panel is actually opened for: a timer is `hrs`, `min` and `sec` and it is
+ * the RELATION between them that is wrong (#126, #127), so watching one at a
+ * time is watching none of them. Same for a puzzle whose two halves are named
+ * differently. Any-of rather than all-of, because these are alternatives — a
+ * name cannot contain both `hrs` and `sec`, so all-of would answer nothing.
+ *
+ * Both separators, because both were asked for and neither can occur in a
+ * variable name: the game's own tables are `[a-z0-9]` throughout.
+ *
+ * A SPACE is not a separator, and that is deliberate — it is the one character
+ * the type prefixes below are made of. `prop bag` has to mean the prop called
+ * bag; splitting on the space would turn it into "everything of any type, or
+ * anything called bag", which is the opposite of narrowing. So spaces are
+ * trimmed at the ends of a term and literal inside it.
+ */
+export function filterTerms(filter: string): string[] {
+  return filter
+    .toLowerCase()
+    .split(/[|,]/)
+    .map((t) => t.trim())
+    .filter(Boolean);
+}
+
+const str = (v: unknown): string => (typeof v === "string" ? v : String(v));
+
+/**
+ * The snapshot as rows.
+ *
+ * The default is NOT the whole table, and the reason is a measurement: a game
+ * holds 93 globals at boot and 161 by the credits, of which 121 ever move — but
+ * between two story beats the median number that CHANGED is 5, and the most ever
+ * is 30. 161 rows is a wall to read; five is a readout. So the default answers
+ * "what just happened" and `all` answers "what is there", with the six the game
+ * itself names always on top either way.
+ *
+ * Props and actors join the list under `all` — 27 props and 8 actors have an
+ * owner by the end of the game and the unowned majority is noise, which is why
+ * the trace drops them too — and under a filter, which is the reader naming
+ * them. Their rows carry their type (`prop bag`), and the filter searches that,
+ * so the type is a term like any other (#178).
+ */
+export function stateView(trace: StateTrace, opts: StateViewOptions = {}): StateView {
+  const changed = opts.changed ?? new Set<string>();
+  const terms = filterTerms(opts.filter ?? "");
+  /**
+   * Matched against the LABEL the row will carry, not against the bare name,
+   * which is what makes the type searchable (#178): a prop's row reads `prop
+   * bag`, so `prop` finds every prop and `bag` still finds that one. Before
+   * this, `prop` was matched against the globals' names and answered with
+   * `saveprops`, `saveprops1`, `saveprops2` — the three variables that ENCODE
+   * the props, and the last thing somebody looking for the props wants.
+   */
+  const matches = (label: string): boolean =>
+    !terms.length || terms.some((t) => label.toLowerCase().includes(t));
+
+  const named = opts.spine ?? [];
+  const spine = named
+    .filter((v) => v.name in trace.globals)
+    .map((v) => ({
+      name: v.label,
+      value: str(trace.globals[v.name]),
+      changed: changed.has(v.name),
+    }));
+  const inSpine = new Set(named.map((v) => v.name));
+
+  // A filter is a question about the whole table, so it searches all of it: typing
+  // "phase" to find out what the phases are must not be answered with "none of
+  // them moved in the last two seconds".
+  const everything = opts.all || terms.length > 0;
+  const rest: StateRow[] = [];
+  let hidden = 0;
+  for (const [name, value] of Object.entries(trace.globals)) {
+    if (inSpine.has(name)) continue;
+    if (!matches(name)) continue;
+    // A counter is not news. `sec` is the pocketwatch's second hand and
+    // `clockcount` the call counter it rolls over from, so both move every second
+    // the game is up: without this the default list was permanently those two and
+    // nothing else, and the reader's actual question went unanswered under them.
+    // The list is the trace comparison's own (engine/src/runtime/masks.ts) — they are asking
+    // the same thing. Under `all` or a filter they show like anything else, because
+    // then the reader has named what they want.
+    const news = changed.has(name) && !isHarnessPaced(name);
+    if (!everything && !news) {
+      hidden++;
+      continue;
+    }
+    rest.push({ name, value: str(value), changed: changed.has(name) });
+  }
+  // Under a filter as well as under `all`, and for the same reason the globals
+  // are: the reader has named what they want, and "the props are only visible
+  // when EVERYTHING is" is the shape that made `prop` unanswerable (#178). The
+  // owned props and actors are a couple of dozen rows, so a filter that reaches
+  // them costs nothing when it does not match.
+  if (everything) {
+    for (const [name, owner] of Object.entries(trace.props)) {
+      const label = `prop ${name}`;
+      if (matches(label)) rest.push({ name: label, value: str(owner), changed: false });
+    }
+    for (const [name, owner] of Object.entries(trace.actors)) {
+      const label = `actor ${name}`;
+      if (matches(label)) rest.push({ name: label, value: str(owner), changed: false });
+    }
+  }
+  const fading = trace.fade > 0;
+  const head: StateRow[] = [{ name: "theme", value: trace.theme, changed: false }];
+  // 0 is "fully visible" and the ordinary case, so it is only worth a row while
+  // there is something to explain
+  if (fading) head.push({ name: "fade", value: trace.fade.toFixed(2), changed: true });
+  return {
+    where: `${trace.set} — ${trace.scene} / ${trace.view} · ${trace.theme}${
+      fading ? `, fade ${trace.fade.toFixed(2)}` : ""
+    }`,
+    head,
+    spine,
+    rest,
+    hidden,
+  };
+}
+
+/**
+ * Which globals have moved lately.
+ *
+ * A row is worth lighting for a moment and then not: the panel refreshes several
+ * times a second, and a change that only shows in the frame it happened in is a
+ * change nobody sees. Held by the time it was last seen at rather than by a
+ * countdown, so the caller's refresh rate and the highlight's life are
+ * independent of each other.
+ */
+export class ChangeWatch {
+  private last: Record<string, unknown> = {};
+  private at = new Map<string, number>();
+
+  /** @param lifeMs how long a change stays lit */
+  constructor(readonly lifeMs = 2500) {}
+
+  /** fold in a snapshot, and answer what is still lit at `now` */
+  update(globals: Record<string, unknown>, now: number): ReadonlySet<string> {
+    for (const [k, v] of Object.entries(globals)) {
+      // A name arriving for the first time is a set being opened, not a change:
+      // 68 globals appear over the course of a game as rooms declare their own,
+      // and lighting all of them on entry would light the panel up at every door.
+      if (k in this.last && this.last[k] !== v) this.at.set(k, now);
+    }
+    this.last = { ...globals };
+    const lit = new Set<string>();
+    for (const [k, when] of this.at) {
+      if (now - when < this.lifeMs) lit.add(k);
+      else this.at.delete(k);
+    }
+    return lit;
+  }
+
+  /** a fresh game: nothing has changed yet, and nothing is lit */
+  reset(): void {
+    this.last = {};
+    this.at.clear();
+  }
+}
+
+/** what a {@link RowView} did — nothing at all, in the case it exists for */
+export interface RowPatch {
+  added: number;
+  removed: number;
+  /** a value that moved, or a highlight that came on or went off */
+  updated: number;
+  /** a row that had to change places */
+  moved: number;
+}
+
+/**
+ * A list of rows kept in step with an element, by touching only what differs.
+ *
+ * The panel polls, because the engine has no "a global changed" event to listen
+ * for — so the list is rebuilt four times a second whether or not the game did
+ * anything. Written the obvious way (`replaceChildren` with a fresh row per
+ * variable) that discards and re-creates every one of 131 rows every 250 ms for a screen
+ * that has not changed: the browser repaints the whole rail, a text selection in it
+ * cannot survive one tick, and a reader watching one row watches it flicker.
+ *
+ * So this holds the row it made for each name and patches it. When nothing has
+ * moved, an update is a few string comparisons and NO writes at all, which is the
+ * ordinary case — the game spends most of its time being looked at.
+ *
+ * Measured in the browser with a MutationObserver over the list, 4 s a sample:
+ *
+ *  * a room standing still, 16 refresh ticks: **0 mutations**
+ *  * one global moved: **2** — its number, and its highlight coming on
+ *  * all 30 of that room's rows on screen: **20**, and every one of them the
+ *    pocketwatch. Filter the list to two rows with no clock in them and it is 0
+ *    again; filter it to `sec` and `secframe` and it is 4, one a second each.
+ *
+ * That last pair is the point: what is left is exactly the writes that a changed
+ * value asks for, and nothing else.
+ */
+export class RowView {
+  private rows = new Map<string, { row: HTMLElement; name: HTMLElement; value: HTMLElement }>();
+
+  /**
+   * @param host the element the rows live in — it owns nothing else
+   * @param tag what a row is, and what its two halves are: `div`/`b`/`span` for the
+   *   list, `span`/`span`/`span` for the one-line strip above it
+   */
+  constructor(
+    private readonly host: HTMLElement,
+    private readonly tag: { row: string; name: string; value: string } = {
+      row: "div",
+      name: "b",
+      value: "span",
+    },
+    private readonly rowClass = "row",
+  ) {}
+
+  apply(rows: readonly StateRow[]): RowPatch {
+    const patch: RowPatch = { added: 0, removed: 0, updated: 0, moved: 0 };
+    const doc = this.host.ownerDocument;
+    const wanted = new Set(rows.map((r) => r.name));
+    for (const [name, cell] of this.rows) {
+      if (wanted.has(name)) continue;
+      cell.row.remove();
+      this.rows.delete(name);
+      patch.removed++;
+    }
+    let i = 0;
+    for (const r of rows) {
+      let cell = this.rows.get(r.name);
+      if (!cell) {
+        const row = doc.createElement(this.tag.row);
+        const name = doc.createElement(this.tag.name);
+        const value = doc.createElement(this.tag.value);
+        name.textContent = r.name;
+        row.append(name, value);
+        cell = { row, name, value };
+        this.rows.set(r.name, cell);
+        patch.added++;
+      }
+      // The two writes worth guarding: a value is a string compare away from
+      // knowing it is the same string, and a class is a boolean.
+      const text = r.value ? ` ${r.value}` : "";
+      if (cell.value.textContent !== text) {
+        cell.value.textContent = text;
+        patch.updated++;
+      }
+      const want = [this.rowClass, r.changed ? "lit" : "", r.quiet ? "none" : ""]
+        .filter(Boolean)
+        .join(" ");
+      if (cell.row.className !== want) {
+        cell.row.className = want;
+        patch.updated++;
+      }
+      // …and the one that only matters when the list itself is reordered, which a
+      // filter does and a quiet game does not.
+      if (this.host.children[i] !== cell.row) {
+        this.host.insertBefore(cell.row, this.host.children[i] ?? null);
+        patch.moved++;
+      }
+      i++;
+    }
+    return patch;
+  }
+}
+
+/**
+ * The whole state, as text for the clipboard.
+ *
+ * Its shape is the goldens' (`formatTrace`), with the room and the log wrapped
+ * around it, because that makes a reporter's paste directly comparable with a
+ * recorded playthrough instead of merely readable. It is an ATTACHMENT rather than
+ * something the Report button could carry: the issue body travels as a URL under a
+ * 4000-byte ceiling, and one snapshot is 3234 bytes of state on its own (3333 at the
+ * fullest beat of the recorded route) — before the log it is pasted with, which runs
+ * to 1141 lines and 40 kB over a whole game (site/src/bug-report.ts).
+ */
+export function stateDump(trace: StateTrace, log: readonly string[], head: string[] = []): string {
+  return [
+    ...head,
+    `where: ${trace.set} — ${trace.scene} / ${trace.view}`,
+    `theme: ${trace.theme}  fade: ${trace.fade}`,
+    "",
+    "state:",
+    JSON.stringify({ globals: trace.globals, props: trace.props, actors: trace.actors }, null, 2),
+    "",
+    "log:",
+    ...log,
+    "",
+  ].join("\n");
+}

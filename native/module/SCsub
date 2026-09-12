@@ -1,0 +1,9 @@
+Import('env')
+import os
+module_env = env.Clone()
+module_env.Append(CPPPATH=[Dir('quickjs').abspath])
+module_env.Append(CPPDEFINES=['_GNU_SOURCE'])
+if not env.get('msvc', False):
+    module_env.Append(CFLAGS=['-std=gnu11', '-Wno-attributes'])
+module_env.add_source_files(env.modules_sources, ['runtime.cpp', 'register_types.cpp'])
+module_env.add_source_files(env.modules_sources, ['quickjs/' + n + '.c' for n in ['quickjs', 'cutils', 'libregexp', 'libunicode', 'xsum']])

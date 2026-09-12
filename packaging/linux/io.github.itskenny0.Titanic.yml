@@ -1,0 +1,28 @@
+app-id: io.github.itskenny0.Titanic
+runtime: org.freedesktop.Platform
+runtime-version: '24.08'
+sdk: org.freedesktop.Sdk
+command: titanic
+finish-args:
+  - --share=ipc
+  - --socket=x11
+  - --socket=pulseaudio
+  - --device=dri
+  - --device=all
+  - --filesystem=home:ro
+  - --filesystem=/media:ro
+  - --filesystem=/run/media:ro
+modules:
+  - name: titanic
+    buildsystem: simple
+    build-commands:
+      - install -Dm755 titanic /app/lib/titanic/titanic
+      - install -Dm644 titanic.pck /app/lib/titanic/titanic.pck
+      - install -Dm755 launcher /app/bin/titanic
+      - cp -r licenses /app/lib/titanic/licenses
+      - install -Dm644 io.github.itskenny0.Titanic.desktop /app/share/applications/io.github.itskenny0.Titanic.desktop
+      - install -Dm644 io.github.itskenny0.Titanic.svg /app/share/icons/hicolor/scalable/apps/io.github.itskenny0.Titanic.svg
+      - install -Dm644 io.github.itskenny0.Titanic.metainfo.xml /app/share/metainfo/io.github.itskenny0.Titanic.metainfo.xml
+    sources:
+      - type: dir
+        path: flatpak-input

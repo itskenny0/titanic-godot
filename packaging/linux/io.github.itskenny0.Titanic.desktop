@@ -1,0 +1,7 @@
+[Desktop Entry]
+Type=Application
+Name=Titanic: Adventure Out of Time
+Exec=titanic
+Icon=io.github.itskenny0.Titanic
+Categories=Game;AdventureGame;
+Terminal=false

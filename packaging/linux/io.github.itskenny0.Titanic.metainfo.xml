@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<component type="desktop-application">
+  <id>io.github.itskenny0.Titanic</id>
+  <name>Titanic: Adventure Out of Time</name>
+  <summary>Play Titanic with your original game files</summary>
+  <metadata_license>CC0-1.0</metadata_license>
+  <project_license>GPL-3.0-only</project_license>
+  <description><p>A Godot player using dreamREfactory, with mouse and controller input, archived saves, and optional M3tox mods. Original game data is required.</p></description>
+  <launchable type="desktop-id">io.github.itskenny0.Titanic.desktop</launchable>
+  <url type="homepage">https://github.com/itskenny0/titanic-godot</url>
+  <content_rating type="oars-1.1"/>
+</component>

@@ -1,0 +1,333 @@
+{
+  "version": "1.0.3",
+  "author": "M3tox",
+  "url": "https://github.com/M3tox/TAOOT/releases/download/v1.0.3/TAOOTpatch1.03.FULL.zip",
+  "sha256": "a6c780d44636f77a4ea7f141c9849e9d1726de7f7e98d894b411804c1ce9d7a1",
+  "readme": "https://github.com/M3tox/TAOOT/blob/6019b87c9f5dacf83f9257770ea54a2822cb46c7/README.md",
+  "groups": [
+    {
+      "id": "a_deck",
+      "title": "A-deck tour errors",
+      "description": "Stops repeated script errors when entering A-deck corridors in Tour mode. Also includes sharper navigation images here.",
+      "files": [
+        "HALLA.SET"
+      ]
+    },
+    {
+      "id": "jay",
+      "title": "Restore Jay",
+      "description": "Restores Jay walking in the B-deck corridors, as in the CD release. Also includes sharper navigation images here.",
+      "files": [
+        "HALLB.SET"
+      ]
+    },
+    {
+      "id": "starboard",
+      "title": "Starboard Boat Deck door",
+      "description": "Corrects the Grand Staircase door that wrongly leads to A-deck promenade. Also includes sharper navigation images here.",
+      "files": [
+        "VESTSTBD.SET"
+      ]
+    },
+    {
+      "id": "port",
+      "title": "Port Boat Deck door",
+      "description": "Corrects the matching wrong destination on the port side. Also includes sharper navigation images here.",
+      "files": [
+        "VESTPORT.SET"
+      ]
+    },
+    {
+      "id": "trask",
+      "title": "Trask on the stairs",
+      "description": "Stops Trask clipping through the Grand Staircase. Also includes sharper navigation images here.",
+      "files": [
+        "GSTAIR2.SET"
+      ]
+    },
+    {
+      "id": "sharpness",
+      "title": "Sharper navigation elsewhere",
+      "description": "Fixes blurry images when moving through other areas. The five fixes above include sharper images for their own areas.",
+      "files": [
+        "A14.SET",
+        "B59.SET",
+        "B70.SET",
+        "BEDSIT1.SET",
+        "BIND.SET",
+        "BING.SET",
+        "BINL.SET",
+        "BOIL.SET",
+        "BRIDGE.SET",
+        "C59.SET",
+        "C73.SET",
+        "C78.SET",
+        "CAFE.SET",
+        "CARGHALL.SET",
+        "CARGO.SET",
+        "CONTROL.SET",
+        "CREW.SET",
+        "DECKA.SET",
+        "DECKBD.SET",
+        "DECKBD2.SET",
+        "EBATH.SET",
+        "EHALL.SET",
+        "ENGINE.SET",
+        "FORE.SET",
+        "GSTAIR1.SET",
+        "GSTAIR3.SET",
+        "GYM.SET",
+        "HALLC.SET",
+        "HALLD.SET",
+        "HALLF2C.SET",
+        "HALLF3C.SET",
+        "LNGHALL.SET",
+        "LOUNGE1C.SET",
+        "POOP.SET",
+        "RECEPT1C.SET",
+        "SCOT1.SET",
+        "SCOT2.SET",
+        "SCOT3.SET",
+        "SMOKE.SET",
+        "SMSTACK1.SET",
+        "SMSTACK2.SET",
+        "SMSTACK3.SET",
+        "SQHALL.SET",
+        "SQUASH.SET",
+        "STAIR1C1.SET",
+        "STAIR1C2.SET",
+        "STAIR2C.SET",
+        "TURB.SET",
+        "TURK.SET",
+        "TURKSTRS.SET",
+        "WIRELESS.SET"
+      ]
+    }
+  ],
+  "files": {
+    "A14.SET": {
+      "size": 1622336,
+      "sha256": "a1f49ce9fa0d4ed70096652d606b9f2f4626148bd6e4f56cd16c2cd3fc935d32"
+    },
+    "B59.SET": {
+      "size": 1960256,
+      "sha256": "1354c0ab793b5cb3e3d1ab2f0a95fb7ae1ad5cef7a9c460c7d284f7c179c60d3"
+    },
+    "B70.SET": {
+      "size": 1958080,
+      "sha256": "9b3e9de823aa47225c6a3dd64a3a6f524105f95da666ab56732cd4ac5755db63"
+    },
+    "BEDSIT1.SET": {
+      "size": 3613312,
+      "sha256": "160cf29c5313296782856148ac84f9661f1bba01510b5467a9d6a4b38009560f"
+    },
+    "BIND.SET": {
+      "size": 935936,
+      "sha256": "c1886b1c7ada43190bdce265af63904140b7a33bdacd9376495fd993e970435b"
+    },
+    "BING.SET": {
+      "size": 3270848,
+      "sha256": "6cf819670c911ff130a253fb256bc9f251b6f58e1d32b1733726037587cdb9ba"
+    },
+    "BINL.SET": {
+      "size": 1189056,
+      "sha256": "1d30e319c668f6018709f0423bd84b6bbb1b792e519074b153468bda1df3e5a5"
+    },
+    "BOIL.SET": {
+      "size": 6582336,
+      "sha256": "979323c4723491d249124996b456326d1b513650ad80335948afd536b278ba00"
+    },
+    "BRIDGE.SET": {
+      "size": 522432,
+      "sha256": "65281dcbd59c1a3a52ef4e0e3defb92216d35d32c9ea2c279deba5a88efad605"
+    },
+    "C59.SET": {
+      "size": 1872192,
+      "sha256": "dd5330a073860adf501cffd2abeefcfc4fa259bc087f9822b3928375ce2a8fda"
+    },
+    "C73.SET": {
+      "size": 2316160,
+      "sha256": "e7c37e345944ef8df6a58c4655bf3191732bb4271962a14f029acc28812c53d5"
+    },
+    "C78.SET": {
+      "size": 2058432,
+      "sha256": "0c8e884fde61b9634545c58d207974cc5c3c2ccc97fad8a6f64b2be66d7f7051"
+    },
+    "CAFE.SET": {
+      "size": 5217344,
+      "sha256": "19ea39421055442a505df77c1ce93472cd642294c8b482c90672c761a8dd4a3d"
+    },
+    "CARGHALL.SET": {
+      "size": 1840000,
+      "sha256": "9ad7466f65185224a01744bf54141ecbb432f75a3f4cf3f53eda90ba4ac9865c"
+    },
+    "CARGO.SET": {
+      "size": 7575680,
+      "sha256": "e9c66ba4d91e4a6ea896f852d274c5c96102d131b656cb95f560f4c5773eecd6"
+    },
+    "CONTROL.SET": {
+      "size": 4679936,
+      "sha256": "75ac50fdfb622a961d40cf57de8877a82c4d36844b05858c44eca77e22bed25e"
+    },
+    "CREW.SET": {
+      "size": 1798464,
+      "sha256": "b6ce5a841b8be262d7d9873a5b96b47db04cd6ce367e593b4d79f2e7bb82d22c"
+    },
+    "DECKA.SET": {
+      "size": 17140096,
+      "sha256": "b5a1a270a3914b3ccb04f8bdd6345eab2e2a111c77b3fe15e2e608b203a541f6"
+    },
+    "DECKBD.SET": {
+      "size": 30703296,
+      "sha256": "9ef91e0762c8252419cb68b9c050119d6f52bd056ff09b825ca50a34f49376af"
+    },
+    "DECKBD2.SET": {
+      "size": 30116224,
+      "sha256": "a387647cf301ab98f4777f06328a38beba7d658cc9f997d0b965d6e5e58b573d"
+    },
+    "EBATH.SET": {
+      "size": 1181440,
+      "sha256": "b1a483b6058b9d48d25542595dd841cd37b00ea836a9d0d4d8fd3e7a0415ac1b"
+    },
+    "EHALL.SET": {
+      "size": 2188864,
+      "sha256": "b9ced8bc32c62c878f70be1755e981e854f7322707bf30631d28e228d87cd2d8"
+    },
+    "ENGINE.SET": {
+      "size": 16385472,
+      "sha256": "e2ef6e2e452d96b4fb430e0b460dcb04b1660cbeef890f5c57ce672e4f017811"
+    },
+    "FORE.SET": {
+      "size": 12336512,
+      "sha256": "495b58168239563c3c19f0b968f4924a02d7bc4cd22cec90c295dfd8ddcaf285"
+    },
+    "GSTAIR1.SET": {
+      "size": 4723136,
+      "sha256": "aea59be95ab91b6b18af4ca88b2f511ec64bcec84072dafc66af8156bd5fd177"
+    },
+    "GSTAIR2.SET": {
+      "size": 9348096,
+      "sha256": "85d7ac95ba509f63c48c89df199fc10bfc621f35a51bf48e0454326104ebc4ed"
+    },
+    "GSTAIR3.SET": {
+      "size": 9771008,
+      "sha256": "a11296c0bae2bf7a29b21f77b1ef9a4ac39a507aebcb991752c13cf63fab3c27"
+    },
+    "GYM.SET": {
+      "size": 4418816,
+      "sha256": "c424dcd6c8e57323d0b1aaaaddcbc5a1b79b9eb20525dfa760c2c51614a0a191"
+    },
+    "HALLA.SET": {
+      "size": 12129536,
+      "sha256": "5a2797353cba9f24bfaecca5fac1b9a6d3677a6e7f0bac818fad3a6ff4ced240"
+    },
+    "HALLB.SET": {
+      "size": 7886144,
+      "sha256": "e7d32a2f57de9c7c581da3bba98c2d76978420d39a51cc03d3529efaf10cb06a"
+    },
+    "HALLC.SET": {
+      "size": 9564352,
+      "sha256": "b6cf16a255764da7eaf02410605c2fb0dfe80483e4beb9821fd0464b45546ee3"
+    },
+    "HALLD.SET": {
+      "size": 11589952,
+      "sha256": "f5792b6a9eea8f0b8faac30b2d97e7c84c66939088e889e209297dc3cf54f5d2"
+    },
+    "HALLF2C.SET": {
+      "size": 6763904,
+      "sha256": "432c3689c41d0e6382e79851a8d79826e7cf154e80b0b62694d35cb779b03098"
+    },
+    "HALLF3C.SET": {
+      "size": 2743616,
+      "sha256": "b3f3872f16a255c24b2caf39bff97fb2f84ec8ff56451dac9eb7c9e594928647"
+    },
+    "LNGHALL.SET": {
+      "size": 1240320,
+      "sha256": "b58350917818572617cff56fcf5b38e798b07522b02e229a4a474e5c5c3ab211"
+    },
+    "LOUNGE1C.SET": {
+      "size": 9270656,
+      "sha256": "9366b3d230ae1c7c2414eaf323923489372f6e3947471edf3d41a1a97e579567"
+    },
+    "POOP.SET": {
+      "size": 10764288,
+      "sha256": "8285549e322546af65bcdab43458584da3bc28a3653baa2658d5ad3298165b83"
+    },
+    "RECEPT1C.SET": {
+      "size": 10228288,
+      "sha256": "b8248f6a3d1c753bbd8002ef19839433dc5cfb1875805a263622d072c859a9b3"
+    },
+    "SCOT1.SET": {
+      "size": 4904192,
+      "sha256": "9a9f892a7866d0e9b6a46e6cafd1c2c0ab608053ea314df93f20616d39e809a8"
+    },
+    "SCOT2.SET": {
+      "size": 2642688,
+      "sha256": "67eed2e273acdf881ef78bd1986de70aa51c3c5a3dc1aee35ebd475c31db7c54"
+    },
+    "SCOT3.SET": {
+      "size": 2838400,
+      "sha256": "da928dfbe7742dccdf4a1e056349b413bc4a1e80923be7a8327199ca64b883c1"
+    },
+    "SMOKE.SET": {
+      "size": 10178240,
+      "sha256": "af8c06111c7c580a0421d4f6f64bb4e22d8c3e4c167741539391fd5fe0b793db"
+    },
+    "SMSTACK1.SET": {
+      "size": 6042752,
+      "sha256": "c3b15c17bf9839876e382922442d56325eff125fcb9aad1cd9e84b37b2c87cc7"
+    },
+    "SMSTACK2.SET": {
+      "size": 10324224,
+      "sha256": "d5e46f5b4f20f4849ec1c07c7d9d0a1030bade5f6917bc9a43c1a6dbc2436305"
+    },
+    "SMSTACK3.SET": {
+      "size": 1866688,
+      "sha256": "40cdabe3d959ee556089c0e794d6f67a8f977adabc31e274c9bca05850c047a0"
+    },
+    "SQHALL.SET": {
+      "size": 4915136,
+      "sha256": "1422b7bb8efa8e31c347b667978e661b7973e610e4b12f7fbe98628c562df6fb"
+    },
+    "SQUASH.SET": {
+      "size": 247872,
+      "sha256": "3f2a23fc662a6cca59e242c238ec7582acf54aaed5ea75643c65a988f0efae6d"
+    },
+    "STAIR1C1.SET": {
+      "size": 12579264,
+      "sha256": "e6ca206ed57f46ec114cc06f204faba4171079399b012e145f41142026e073c5"
+    },
+    "STAIR1C2.SET": {
+      "size": 6117696,
+      "sha256": "2bff2c2d21d01b00eb12d59dbd94a6245ea8ac207ad028690c3612f1c0d8f1d4"
+    },
+    "STAIR2C.SET": {
+      "size": 6155840,
+      "sha256": "9130fb305ac4568673d9faeefce132c210b25b356cdda1f4982224acf4c158af"
+    },
+    "TURB.SET": {
+      "size": 10825728,
+      "sha256": "1de768c32f120c96d7bc9c2fd64cb8d0d52d9b1cd64a6b714689ee12f79b4718"
+    },
+    "TURK.SET": {
+      "size": 7188864,
+      "sha256": "14b70a6c3a28fc12d3cc23248504d1a6ddf9ba2deef4e04cc9c6f810412ff556"
+    },
+    "TURKSTRS.SET": {
+      "size": 3170176,
+      "sha256": "d0cb352a1ed1a57b23293b03087b6bba4027fbe73d0b652e3c145e3f3c8554e3"
+    },
+    "VESTPORT.SET": {
+      "size": 536896,
+      "sha256": "3e7d19b97a42ae1c17838332542795d8776c2e204c83ace3ddcb8e8c4392d20a"
+    },
+    "VESTSTBD.SET": {
+      "size": 557248,
+      "sha256": "517689e4ae167d1f40f12554cbde6f5552a93359f02c1d7f300a400140b6f5e7"
+    },
+    "WIRELESS.SET": {
+      "size": 865984,
+      "sha256": "c0346fabf848217ca159cd58b54ac7b342f09c0d3d8c0a5117d6fc5d456e31f8"
+    }
+  }
+}
