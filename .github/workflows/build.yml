@@ -65,7 +65,7 @@ jobs:
           codec_args=()
           runtime_args=()
           if [[ -f go.mod ]]; then
-            go test ./internal/df
+            go test ./internal/...
             python3 tools/build-go.py --platform linux --arch x86_64
             codec_args=(-DTITANIC_GO_LIBRARY="$PWD/.build/go/linux-x86_64/libtitanic_go.a")
             runtime_args=(-- --go-codecs)
