@@ -2,14 +2,20 @@ name: Build Godot players
 on:
   push:
     branches: [main]
-    tags: ['v*']
   pull_request:
+  release:
+    types: [published]
   workflow_dispatch:
+    inputs:
+      release_tag:
+        description: Existing release tag to build and attach downloads to (blank builds this ref only)
+        type: string
+        default: ''
 permissions:
   contents: read
 concurrency:
-  group: build-${{ github.ref }}
-  cancel-in-progress: true
+  group: build-${{ github.event_name }}-${{ inputs.release_tag || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' || github.event_name == 'push' }}
 
 env:
   GODOT_SILENCE_ROOT_WARNING: '1'
@@ -17,9 +23,16 @@ env:
 
 jobs:
   pack:
+    outputs:
+      source_sha: ${{ steps.source.outputs.sha }}
     runs-on: ubuntu-22.04
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.release_tag && format('refs/tags/{0}', inputs.release_tag) || github.sha }}
+      - name: Record source revision
+        id: source
+        run: echo "sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
       - uses: actions/setup-python@v5
         with:
           python-version: '3.11'
@@ -49,25 +62,33 @@ jobs:
           python3 tools/export-pack.py --godot "$PWD/.tools/Godot_v4.3-stable_linux.x86_64" --project .build/godot4-project --major 4 --output dist/titanic4.pck
       - name: Check the native bridge without game data
         run: |
-          go test ./internal/df
-          python3 tools/build-go.py --platform linux --arch x86_64
-          cmake -S native -B .build/native -DCMAKE_BUILD_TYPE=Release -DTITANIC_GO_LIBRARY="$PWD/.build/go/linux-x86_64/libtitanic_go.a"
+          codec_args=()
+          runtime_args=()
+          if [[ -f go.mod ]]; then
+            go test ./internal/df
+            python3 tools/build-go.py --platform linux --arch x86_64
+            codec_args=(-DTITANIC_GO_LIBRARY="$PWD/.build/go/linux-x86_64/libtitanic_go.a")
+            runtime_args=(-- --go-codecs)
+          fi
+          cmake -S native -B .build/native -DCMAKE_BUILD_TYPE=Release "${codec_args[@]}"
           cmake --build .build/native --target titanic -j2
           cp .build/native/libtitanic.so godot/native/libtitanic.x86_64.so
           cp tests/runtime.gd godot/runtime-test.gd
-          timeout 60 xvfb-run -a .tools/Godot_v3.5.2-stable_x11.64 --path godot --audio-driver Dummy -s res://runtime-test.gd -- --go-codecs | tee .build/portable.log
+          timeout 60 xvfb-run -a .tools/Godot_v3.5.2-stable_x11.64 --path godot --audio-driver Dummy -s res://runtime-test.gd "${runtime_args[@]}" | tee .build/portable.log
           grep -q 'PORTABLE TESTS PASS' .build/portable.log
       - name: Check handheld and touch layouts
         run: |
           cp tests/ui.gd godot/ui-test.gd
           cp tests/controls.gd godot/controls-test.gd
           cp tests/controller.gd godot/controller-test.gd
-          cp tests/idle.gd godot/idle-test.gd
           timeout 45 xvfb-run -a .tools/Godot_v3.5.2-stable_x11.64 --path godot --audio-driver Dummy --resolution 640x480 -s res://ui-test.gd -- --ui-test
           timeout 45 xvfb-run -a .tools/Godot_v3.5.2-stable_x11.64 --path godot --audio-driver Dummy --resolution 480x800 -s res://controls-test.gd -- --ui-test --touch-test
           timeout 45 xvfb-run -a .tools/Godot_v3.5.2-stable_x11.64 --path godot --audio-driver Dummy --resolution 1280x960 -s res://controller-test.gd -- --ui-test
-          timeout 30 xvfb-run -a .tools/Godot_v3.5.2-stable_x11.64 --path godot --audio-driver Dummy --resolution 640x480 -s res://idle-test.gd -- --ui-test
-          xvfb-run -a python3 tools/test-godot4.py --godot "$PWD/.tools/Godot_v4.3-stable_linux.x86_64" --test idle --resolution 640x480
+          if [[ -f tests/idle.gd ]]; then
+            cp tests/idle.gd godot/idle-test.gd
+            timeout 30 xvfb-run -a .tools/Godot_v3.5.2-stable_x11.64 --path godot --audio-driver Dummy --resolution 640x480 -s res://idle-test.gd -- --ui-test
+            xvfb-run -a python3 tools/test-godot4.py --godot "$PWD/.tools/Godot_v4.3-stable_linux.x86_64" --test idle --resolution 640x480
+          fi
           xvfb-run -a python3 tools/test-godot4.py --godot "$PWD/.tools/Godot_v4.3-stable_linux.x86_64" --test controller --resolution 1280x960
           xvfb-run -a python3 tools/test-godot4.py --godot "$PWD/.tools/Godot_v4.3-stable_linux.x86_64" --test ui --resolution 480x800 --touch
           cp tests/rotation4.gd .build/godot4-project/rotation-test.gd
@@ -95,6 +116,8 @@ jobs:
     runs-on: ${{ matrix.runner }}
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.release_tag && format('refs/tags/{0}', inputs.release_tag) || github.sha }}
       - uses: actions/setup-go@v5
         with:
           go-version: '1.26.4'
@@ -119,7 +142,7 @@ jobs:
           curl -fL https://github.com/mstorsjo/llvm-mingw/releases/download/20240619/llvm-mingw-20240619-ucrt-ubuntu-20.04-x86_64.tar.xz -o .tools/mingw.tar.xz
           tar -xf .tools/mingw.tar.xz -C .tools
           echo "$PWD/.tools/llvm-mingw-20240619-ucrt-ubuntu-20.04-x86_64/bin" >> "$GITHUB_PATH"
-      - name: Compile runtime with Go media codecs
+      - name: Compile runtime
         shell: bash
         run: |
           extra=()
@@ -127,6 +150,11 @@ jobs:
             prefix=x86_64-w64-mingw32-
             [[ '${{ matrix.arch }}' != arm64 ]] || prefix=aarch64-w64-mingw32-
             extra=(--mingw-prefix "$prefix")
+            # Older tags did not select LLVM and looked for a nonexistent gcc-ar.
+            mkdir -p .tools/llvm-scons
+            printf '#!/bin/sh\nexec "%s" "$@" use_llvm=yes\n' "$(command -v scons)" > .tools/llvm-scons/scons
+            chmod +x .tools/llvm-scons/scons
+            export PATH="$PWD/.tools/llvm-scons:$PATH"
           fi
           python3 tools/build-runtime.py --platform '${{ matrix.platform }}' --arch '${{ matrix.arch }}' --jobs 3 "${extra[@]}"
       - name: Check binary architecture
@@ -169,6 +197,8 @@ jobs:
     runs-on: ubuntu-22.04
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.release_tag && format('refs/tags/{0}', inputs.release_tag) || github.sha }}
       - uses: actions/setup-go@v5
         with:
           go-version: '1.26.4'
@@ -188,8 +218,12 @@ jobs:
               cc="${spec#*:}"
               goarch="$arch"
               [[ "$arch" != aarch64 ]] || goarch=arm64
-              python3 tools/build-go.py --platform linux --arch "$goarch" --cc "$cc"
-              cmake -S native -B ".build/$arch" -DCMAKE_SYSTEM_NAME=Linux -DCMAKE_C_COMPILER="$cc" -DCMAKE_BUILD_TYPE=Release -DTITANIC_GO_LIBRARY="/work/.build/go/linux-$goarch/libtitanic_go.a"
+              codec_args=()
+              if [[ -f go.mod ]]; then
+                python3 tools/build-go.py --platform linux --arch "$goarch" --cc "$cc"
+                codec_args=(-DTITANIC_GO_LIBRARY="/work/.build/go/linux-$goarch/libtitanic_go.a")
+              fi
+              cmake -S native -B ".build/$arch" -DCMAKE_SYSTEM_NAME=Linux -DCMAKE_C_COMPILER="$cc" -DCMAKE_BUILD_TYPE=Release "${codec_args[@]}"
               cmake --build ".build/$arch" --target titanic -j2
               cp ".build/$arch/libtitanic.so" "godot/native/libtitanic.$arch.so"
             done'
@@ -212,6 +246,8 @@ jobs:
     runs-on: ${{ matrix.runner }}
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.release_tag && format('refs/tags/{0}', inputs.release_tag) || github.sha }}
       - uses: actions/download-artifact@v4
         with:
           name: game-packs-and-source
@@ -261,6 +297,8 @@ jobs:
     runs-on: ubuntu-22.04
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.release_tag && format('refs/tags/{0}', inputs.release_tag) || github.sha }}
       - uses: actions/setup-go@v5
         with:
           go-version: '1.26.4'
@@ -284,8 +322,12 @@ jobs:
           npm run build:engine
           python3 tools/fetch-patches.py
           python3 tools/fetch-godot.py 4 .build/godot4
-          python3 tools/build-go.py --platform android --arch arm64
-          python3 tools/install-module.py .build/godot4 --go-library .build/go/android-arm64/libtitanic_go.so
+          codec_args=()
+          if [[ -f go.mod ]]; then
+            python3 tools/build-go.py --platform android --arch arm64
+            codec_args=(--go-library .build/go/android-arm64/libtitanic_go.so)
+          fi
+          python3 tools/install-module.py .build/godot4 "${codec_args[@]}"
           python3 tools/prepare-android.py
       - name: Build ARM64 Android engine and document picker
         run: |
@@ -306,3 +348,25 @@ jobs:
           name: titanic-android-arm64
           path: dist/titanic-android-arm64-debug.apk
           if-no-files-found: error
+
+  release:
+    needs: [pack, desktop, portmaster, linux-formats, android]
+    if: github.event_name == 'release' || (github.event_name == 'workflow_dispatch' && inputs.release_tag != '')
+    runs-on: ubuntu-22.04
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.workflow_sha }}
+      - uses: actions/download-artifact@v4
+        with:
+          path: .build/release-artifacts
+      - run: python3 tests/release-assets.py
+      - name: Attach verified packages and checksums to the existing release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          RELEASE_TAG: ${{ inputs.release_tag || github.event.release.tag_name }}
+          SOURCE_SHA: ${{ needs.pack.outputs.source_sha }}
+        run: python3 tools/release-assets.py .build/release-artifacts --tag "$RELEASE_TAG" --source-sha "$SOURCE_SHA"

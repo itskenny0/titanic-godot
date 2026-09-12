@@ -26,6 +26,8 @@ Each desktop target gets its own Godot source directory. Do not build different 
 
 Linux needs the Godot X11, OpenGL, ALSA, PulseAudio, and udev development packages. Windows cross builds use LLVM MinGW 20240619. macOS builds require Xcode command line tools; the player requires macOS 12 or later. See `.github/workflows/build.yml` for complete commands for every package, including Android and PortMaster.
 
+Publishing a GitHub release builds its tagged source and attaches all packages, SHA-256 checksums, and build details after every target succeeds. To fill in downloads for an existing release, run **Build Godot players** from Actions on `main` and enter its tag in `release_tag`. Leave that field blank for a build without publishing. Reruns replace the downloads for the same tag.
+
 The `--static` Linux tarball statically links the gameplay engine, Go media library, QuickJS, and C++ runtime. It still uses system C, display, graphics, and audio libraries. It is not a fully static ELF executable. macOS apps are ad hoc signed and Windows packages are unsigned. Android uses the committed `packaging/android/debug.keystore` with alias `androiddebugkey` and password `android`, matching the test-device installs. Production signing needs your own private keys.
 
 Run the portable Godot tests by copying `tests/runtime.gd` to `godot/runtime-test.gd` and launching Godot with `--path godot -s res://runtime-test.gd`. `tests/integration.gd` additionally needs owned game files and `--game-data=/path/to/gamedata --integration-test`. Do not include game data or saves in Git. Release builds fetch the requested, checksum-pinned M3tox patch pack; those downloaded files stay outside Git.
