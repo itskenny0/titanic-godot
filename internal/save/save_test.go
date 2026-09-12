@@ -241,3 +241,19 @@ func TestLegacyVariablesAndPlacement(t *testing.T) {
 		t.Fatal("overlapping variable name lost its value")
 	}
 }
+
+func TestRestorationPreservesGlobalInsertionOrder(t *testing.T) {
+	m := sampleMetadata()
+	m.Globals = []Global{{Name: "ztext", Value: "first"}, {Name: "znum", Value: 17.}, {Name: "atext", Value: "second"}, {Name: "anum", Value: 23.}}
+	b, err := AppendMetadata(NeutralTemplate(), m)
+	if err != nil {
+		t.Fatal(err)
+	}
+	g, err := Parse(b)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !reflect.DeepEqual(g.NumGlobalOrder, []string{"znum", "anum"}) || !reflect.DeepEqual(g.StrGlobalOrder, []string{"ztext", "atext"}) {
+		t.Fatal("restored variables lost their original order", g.NumGlobalOrder, g.StrGlobalOrder)
+	}
+}

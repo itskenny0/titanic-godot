@@ -102,6 +102,7 @@ type Game struct {
 	Vars                                    []SavedVar
 	NumGlobals                              map[string]float64
 	StrGlobals                              map[string]string
+	NumGlobalOrder, StrGlobalOrder          []string `json:"-"`
 	Raw                                     *RawFile
 	Index                                   Index
 }

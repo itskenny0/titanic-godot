@@ -246,10 +246,12 @@ func ParseLegacy(b []byte) (*Game, error) {
 		if v.Type == 3 {
 			if _, ok := g.StrGlobals[v.Name]; !ok && v.Str != nil {
 				g.StrGlobals[v.Name] = *v.Str
+				g.StrGlobalOrder = append(g.StrGlobalOrder, v.Name)
 			}
 		} else {
 			if _, ok := g.NumGlobals[v.Name]; !ok {
 				g.NumGlobals[v.Name] = v.Num
+				g.NumGlobalOrder = append(g.NumGlobalOrder, v.Name)
 			}
 		}
 	}

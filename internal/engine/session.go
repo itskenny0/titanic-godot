@@ -24,6 +24,9 @@ type XRayReveal struct {
 	Aimed                     bool
 }
 type Session struct {
+	Photos       PhotoAlbum
+	PhotoOverlay *PhotoOverlay
+	GrabPhoto    func(float64, float64) *RGBAFrame
 	*ScriptDispatch
 	Executor                                                                        *Executor
 	Read                                                                            func(string) ([]byte, error)
@@ -124,6 +127,7 @@ func NewSession(read func(string) ([]byte, error), audio AudioSink) *Session {
 	interp.OnGlobalChange = func(name string, from, to script.Value) {
 		s.Log(fmt.Sprintf("glob: %s = %s (was %s)", name, to.String(), from.String()))
 	}
+	s.Photos.Log = func(line string) { s.Log(line) }
 	registerSessionBuiltins(s)
 	return s
 }
@@ -250,7 +254,7 @@ func (s *Session) VolumeForTrack(track string) (float64, bool) {
 	v, ok := s.trackVolume[strings.ToLower(track)]
 	return v, ok
 }
-func (s *Session) ClearTextOverlay() { s.TextOverlay = nil }
+func (s *Session) ClearTextOverlay() { s.TextOverlay = nil; s.PhotoOverlay = nil }
 func (s *Session) TextWidth(text string, size float64) float64 {
 	if s.MeasureText != nil {
 		return jsRound(s.MeasureText(text, size))

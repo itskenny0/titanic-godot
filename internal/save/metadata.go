@@ -256,12 +256,15 @@ func Parse(b []byte) (*Game, error) {
 	g.State = m.State
 	g.NumGlobals = map[string]float64{}
 	g.StrGlobals = map[string]string{}
+	g.NumGlobalOrder, g.StrGlobalOrder = nil, nil
 	for _, v := range m.Globals {
 		switch value := v.Value.(type) {
 		case string:
 			g.StrGlobals[v.Name] = value
+			g.StrGlobalOrder = append(g.StrGlobalOrder, v.Name)
 		case float64:
 			g.NumGlobals[v.Name] = value
+			g.NumGlobalOrder = append(g.NumGlobalOrder, v.Name)
 		}
 	}
 	g.Hallside = g.StrGlobals["hallside"]

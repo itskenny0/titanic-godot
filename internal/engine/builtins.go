@@ -90,6 +90,8 @@ func registerSessionBuiltins(s *Session) {
 	registerPropBuiltins(c)
 	registerSceneBuiltins(c)
 	registerActorBuiltins(c)
+	registerSaveBuiltins(c)
+	registerPluginBuiltins(c)
 }
 func registerCoreBuiltins(c builtinContext) {
 	c.v("random", func(a []script.Value, _ *script.Frame) script.Value {
