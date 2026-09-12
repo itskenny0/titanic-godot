@@ -5,14 +5,17 @@
 #include <stdint.h>
 #include <string.h>
 typedef struct { JSValue buffer; uint8_t *data; size_t length; } TitanicPixels;
-static int titanic_pixel_view(JSContext *ctx, JSValueConst value, TitanicPixels *view) {
+static int titanic_typed_view(JSContext *ctx, JSValueConst value, TitanicPixels *view, size_t required_element) {
  size_t offset=0, element=0, total=0;
  view->buffer=JS_GetTypedArrayBuffer(ctx,value,&offset,&view->length,&element);
  if(JS_IsException(view->buffer))return 0;
- if(element!=1){JS_ThrowTypeError(ctx,"Pixel data must use byte arrays");return 0;}
+ if(element!=required_element){JS_ThrowTypeError(ctx,"Unexpected typed array element size");return 0;}
  uint8_t *data=JS_GetArrayBuffer(ctx,&total,view->buffer);
  if(!data||offset>total||view->length>total-offset){JS_ThrowTypeError(ctx,"Invalid pixel buffer");return 0;}
  view->data=data+offset;return 1;
+}
+static int titanic_pixel_view(JSContext *ctx, JSValueConst value, TitanicPixels *view) {
+ return titanic_typed_view(ctx,value,view,1);
 }
 static JSValue titanic_indexed_rgba(JSContext *ctx, JSValueConst self, int argc, JSValueConst *argv) {
  (void)self;

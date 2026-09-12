@@ -87,6 +87,8 @@ func step():
 					if player.runtime.query("titanicTesting.host.session.interp.globals.get('retanic_roundtrip')") != "saved correctly":
 						failure = true
 					print("RESTORED AFTER TICK FAILURE")
+					if player.runtime.query("typeof __runtimeMemory") == "function":
+						print("ENGINE MEMORY: ", player.runtime.query("JSON.stringify(__runtimeMemory())"))
 					print("INTEGRATION ", "FAIL" if failure else "PASS")
 					quit(1 if failure else 0)
 					return

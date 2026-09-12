@@ -21,6 +21,8 @@ var pointer = Vector2(256, 192)
 var pointer_name = "arrow"
 var pointer_pressed = false
 var cursor_layer
+var drawn_pointer = Vector2(-1000, -1000)
+var drawn_pointer_name = ""
 var modal
 var menu
 var status
@@ -52,6 +54,7 @@ var perf_peak_us = 0
 
 func _ready():
 	Engine.target_fps = 30 if not OS.get_environment("RETANIC_ARCH").empty() else 60
+	OS.low_processor_usage_mode = true
 	get_tree().set_auto_accept_quit(false)
 	get_tree().set_quit_on_go_back(false)
 	get_tree().connect("files_dropped", self, "files_dropped")
@@ -265,7 +268,6 @@ func _draw():
 					draw_rect(Rect2(command.x, command.y, command.w, command.h), ink(command.color), false, command.get("line", 1.0))
 
 func draw_cursor():
-	cursor_layer.position = game_origin
 	if touch_enabled and modal != null:
 		return
 	if pointer_name == "none" and modal == null:
@@ -290,7 +292,7 @@ func send(command):
 func _process(delta):
 	process_touch(delta)
 	process_controller(delta)
-	cursor_layer.update()
+	refresh_cursor()
 	if runtime != null:
 		var tick_started = OS.get_ticks_usec()
 		var error = runtime.execute("void 0" if runtime_failed else "titanicTick(%s)" % str(min(delta, 0.25) * 1000.0))
@@ -344,6 +346,15 @@ func _process(delta):
 				print("SMOKE STATE: ", runtime.query("titanicState()"))
 				frame_image.save_png("user://smoke.png")
 				get_tree().quit(0 if ready and has_frame else 1)
+
+func refresh_cursor():
+	cursor_layer.visible = not ((touch_enabled and modal != null) or (pointer_name == "none" and modal == null))
+	if cursor_layer.position != game_origin:
+		cursor_layer.position = game_origin
+	if drawn_pointer != pointer or drawn_pointer_name != pointer_name:
+		drawn_pointer = pointer
+		drawn_pointer_name = pointer_name
+		cursor_layer.update()
 
 func handle_event(event):
 	match event.type:

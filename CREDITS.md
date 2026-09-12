@@ -14,6 +14,7 @@ Thank you to everyone whose work made this player possible.
 - **Kris Henriksen, Emanem, Nikolai Wuttke, Shanti Gilbert, Robin Duxfield, and contributors**, [gptokeyb](https://github.com/PortsMaster/gptokeyb), for controller-to-keyboard and mouse mapping. Its documentation credits Minimuino's thumbstick-deadzone work.
 - **Red Hat, Google, Steve Matteson, Ascender, and the Liberation Fonts contributors**, [Liberation Fonts](https://github.com/liberationfonts/liberation-fonts), under the license reproduced in `godot/fonts/LICENSE.txt`.
 - **Evan Wallace and contributors**, [esbuild](https://github.com/evanw/esbuild), MIT, for the build-time TypeScript bundler.
+- **The Go authors and contributors**, [Go](https://go.dev), BSD-3-Clause, for the native media runtime. Its decoders are ported from the credited dreamREfactory and DFET work.
 - **The Node.js, Python, CMake, SCons, GCC, LLVM, MinGW-w64, Android, OpenJDK, Gradle, Ubuntu, Flatpak, AppImage, and GitHub Actions contributors**, for build and packaging tools. These tools retain their own licenses.
 
 The new integration is GPL-3.0. License files ship with packages. Corresponding authored and vendored source is built as a separate CI artifact; Godot source revisions are pinned by `tools/fetch-godot.py`. PortMaster supplies FRT, SDL, and gptokeyb separately.

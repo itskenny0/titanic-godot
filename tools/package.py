@@ -38,7 +38,7 @@ elif a.kind=='mac':
  app=stage/'Titanic.app/Contents';(app/'MacOS').mkdir(parents=True);(app/'Resources').mkdir()
  shutil.copy2(a.binary,app/'MacOS/titanic');(app/'MacOS/titanic').chmod(0o755)
  shutil.copy2(a.pack,app/'Resources/titanic.pck');licenses(app/'Resources/licenses')
- (app/'Info.plist').write_bytes(plistlib.dumps({'CFBundleExecutable':'titanic','CFBundleIdentifier':'io.github.itskenny0.Titanic','CFBundleName':'Titanic','CFBundlePackageType':'APPL','CFBundleShortVersionString':a.version,'NSHighResolutionCapable':True}))
+ (app/'Info.plist').write_bytes(plistlib.dumps({'CFBundleExecutable':'titanic','CFBundleIdentifier':'io.github.itskenny0.Titanic','CFBundleName':'Titanic','CFBundlePackageType':'APPL','CFBundleShortVersionString':a.version,'NSHighResolutionCapable':True,'LSMinimumSystemVersion':'12.0'}))
  subprocess.run(['codesign','--force','--deep','--sign','-',str(app.parent)],check=True)
  zipped(dist/f'{name}.zip')
 else:

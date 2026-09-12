@@ -1,5 +1,6 @@
 #include "runtime.h"
 #include "pixels.h"
+#include "codecs.h"
 #include "memory.h"
 #include <cstring>
 #if VERSION_MAJOR >= 4
@@ -17,6 +18,8 @@ DreamRuntime::DreamRuntime() {
  rt=JS_NewRuntime(); JS_SetMemoryLimit(rt,TITANIC_HEAP_LIMIT); JS_SetMaxStackSize(rt,2*1024*1024);
  ctx=JS_NewContext(rt); JS_SetContextOpaque(ctx,this);
  JSValue global=JS_GetGlobalObject(ctx);
+ titanic_install_codecs(ctx,global);
+ JS_SetPropertyStr(ctx,global,"__runtimeMemory",JS_NewCFunction(ctx,titanic_memory_stats,"__runtimeMemory",0));
  JS_SetPropertyStr(ctx,global,"__indexedRGBA",JS_NewCFunction(ctx,titanic_indexed_rgba,"__indexedRGBA",4));
  JS_SetPropertyStr(ctx,global,"__native",JS_NewCFunction(ctx,native_call,"__native",3)); JS_FreeValue(ctx,global);
 }

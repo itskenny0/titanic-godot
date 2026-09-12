@@ -7,8 +7,12 @@ major='4' if a.platform=='windows' and a.arch=='arm64' else '3'
 # Godot generates shared headers; each platform/architecture needs its own tree.
 source=root/'.build'/f'godot{major}-{a.platform}-{a.arch}'
 subprocess.run(['python3',str(root/'tools/fetch-godot.py'),major,str(source)],check=True)
-subprocess.run(['python3',str(root/'tools/install-module.py'),str(source)],check=True)
-cmd=['scons','-C',str(source),'-j'+a.jobs]
+go_library=root/'.build/go'/f'{a.platform}-{a.arch}'/'libtitanic_go.a'
+go_cmd=['python3',str(root/'tools/build-go.py'),'--platform',a.platform,'--arch',a.arch,'--output',str(go_library)]
+if a.mingw_prefix:go_cmd+=['--cc',a.mingw_prefix+'clang']
+subprocess.run(go_cmd,check=True)
+subprocess.run(['python3',str(root/'tools/install-module.py'),str(source),'--go-library',str(go_library)],check=True)
+cmd=['scons','-C',str(source),'-j'+a.jobs,'disable_3d=yes']
 if major=='4':
  cmd+=['platform=windows','target=template_release','arch=arm64','use_mingw=yes','use_static_cpp=yes','vulkan=no','d3d12=no']
  if a.mingw_prefix:cmd+=['mingw_prefix='+a.mingw_prefix.removesuffix('aarch64-w64-mingw32-')]
@@ -17,7 +21,7 @@ else:
  cmd+=['platform='+{'linux':'x11','mac':'osx','windows':'windows'}[a.platform],'tools=no','target=release','debug_symbols=no','module_bullet_enabled=no','module_mono_enabled=no','use_static_cpp=yes']
  if a.platform=='mac':cmd+=['arch='+a.arch]
  elif a.platform=='windows':
-  cmd+=['bits=64','use_mingw=yes']
+  cmd+=['bits=64','use_mingw=yes','use_llvm=yes']
   if a.mingw_prefix:cmd+=['mingw_prefix_64='+a.mingw_prefix]
  else:
   cmd+=['bits=64']

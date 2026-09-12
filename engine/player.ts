@@ -35,7 +35,8 @@ class Audio implements AudioSink {
   const pcm=new ArrayBuffer(audio.samples.length*4),dv=new DataView(pcm);
   const gain=Math.max(0,Math.min(1,opts.volume??1));
   const l=gain*Math.cos((pan+1)*Math.PI/4),r=gain*Math.sin((pan+1)*Math.PI/4);
-  for(let i=0;i<audio.samples.length;i++){const s=Math.max(-1,Math.min(1,audio.samples[i]))*32767;dv.setInt16(i*4,Math.round(s*l),true);dv.setInt16(i*4+2,Math.round(s*r),true);}
+  if(typeof (globalThis as any).__stereoPCM==='function')(globalThis as any).__stereoPCM(audio.samples,new Uint8Array(pcm),gain,pan);
+  else for(let i=0;i<audio.samples.length;i++){const s=Math.max(-1,Math.min(1,audio.samples[i]))*32767;dv.setInt16(i*4,Math.round(s*l),true);dv.setInt16(i*4+2,Math.round(s*r),true);}
   audioBuffers.set(id,pcm);emit('audio_play',{id,channel,rate:audio.sampleRate,loop:!!opts.loop,samples:audio.samples.length});
   return {get done(){return entry.done;},stop:()=>{entry.done=true;this.entries.delete(id);emit('audio_stop',{id});}};
  }

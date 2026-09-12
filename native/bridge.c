@@ -2,6 +2,7 @@
 #include <gdnative_api_struct.gen.h>
 #include "quickjs.h"
 #include "module/pixels.h"
+#include "module/codecs.h"
 #include "module/memory.h"
 #include <stdlib.h>
 #include <string.h>
@@ -66,7 +67,9 @@ static void *create(godot_object *obj,void *data) {
  r->rt=JS_NewRuntime(); JS_SetMemoryLimit(r->rt,TITANIC_HEAP_LIMIT); JS_SetMaxStackSize(r->rt,2*1024*1024);
  r->ctx=JS_NewContext(r->rt); JS_SetContextOpaque(r->ctx,r);
  JSValue glob=JS_GetGlobalObject(r->ctx); JS_SetPropertyStr(r->ctx,glob,"__native",JS_NewCFunction(r->ctx,native_call,"__native",3));
- JS_SetPropertyStr(r->ctx,glob,"__indexedRGBA",JS_NewCFunction(r->ctx,titanic_indexed_rgba,"__indexedRGBA",4)); JS_FreeValue(r->ctx,glob);
+ JS_SetPropertyStr(r->ctx,glob,"__indexedRGBA",JS_NewCFunction(r->ctx,titanic_indexed_rgba,"__indexedRGBA",4));
+ titanic_install_codecs(r->ctx,glob);
+ JS_SetPropertyStr(r->ctx,glob,"__runtimeMemory",JS_NewCFunction(r->ctx,titanic_memory_stats,"__runtimeMemory",0));JS_FreeValue(r->ctx,glob);
  return r;
 }
 static void destroy(godot_object *obj,void *data,void *user) {

@@ -50,7 +50,7 @@ func begin():
 				button = Rect2(child.position - Vector2.ONE * child.radius, Vector2.ONE * child.radius * 2)
 			check(not picture.intersects(button), "touch button stays outside game image: " + child.name)
 			check(button.end.x <= player.layout_size.x and button.end.y <= player.layout_size.y, "touch button fits: " + child.name)
-	yield(VisualServer, "frame_post_draw")
+	VisualServer.force_draw()
 	var image = get_root().get_texture().get_data()
 	image.flip_y()
 	var variant = "portrait" if OS.window_size.y > OS.window_size.x else "landscape"

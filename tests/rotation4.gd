@@ -15,7 +15,7 @@ func check_rotation():
 	for dimensions in [Vector2i(480, 800), Vector2i(800, 480), Vector2i(480, 800)]:
 		root.size = dimensions
 		await create_timer(0.3).timeout
-		await RenderingServer.frame_post_draw
+		RenderingServer.force_draw()
 		var screenshot = root.get_texture().get_image()
 		var low = Vector2i(screenshot.get_width(), screenshot.get_height())
 		var high = Vector2i.ZERO

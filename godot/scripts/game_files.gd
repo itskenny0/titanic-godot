@@ -20,10 +20,16 @@ func scan(path):
 	dir.list_dir_end()
 	return result
 
-func resolve_case(root, relative):
+func resolve_case(root, relative, directories = null):
 	var path = root
 	for part in relative.split("/"):
-		var names = scan(path)
+		var names
+		if directories == null:
+			names = scan(path)
+		else:
+			if not directories.has(path):
+				directories[path] = scan(path)
+			names = directories[path]
 		if not names.has(part.to_lower()):
 			return ""
 		path = path.plus_file(names[part.to_lower()])
@@ -38,10 +44,13 @@ func validate(disc1, disc2):
 		return false
 	var required = JSON.parse(file.get_as_text()).result
 	file.close()
+	# Reuse listings only within this validation, so changed folders are checked
+	# again next time. Slow SD cards otherwise read each directory for every file.
+	var directories = {}
 	for disc in [1, 2]:
 		var root = disc1 if disc == 1 else disc2
 		for relative in required[str(disc)]:
-			var path = resolve_case(root, relative)
+			var path = resolve_case(root, relative, directories)
 			if path.empty() or file.open(path, File.READ) != OK:
 				error = "Disc %d is missing %s. Select prepared cd1 and cd2 folders." % [disc, relative]
 				return false

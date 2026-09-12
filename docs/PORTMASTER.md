@@ -18,6 +18,6 @@ FRT's PortMaster build disables native joypad input. `titanic.gptk` therefore ma
 
 Saves stay in the port's `saves/Retanic` directory. Keep that directory when upgrading. To use mods, extract them into a directory on the handheld and select it from Game files / mods. Prepare clean game data before adding mods.
 
-ARM64 (aarch64) is the main handheld target. An optional armhf bridge is included for older devices. Both are built against an older system library baseline. The embedded JavaScript heap is limited to 384 MiB, in addition to Godot, decoded audio, and graphics memory. Start with a device with at least 1 GiB RAM. Handheld performance and sound still need device testing.
+ARM64 (aarch64) is the main handheld target. An optional armhf bridge is included for older devices. Both are built against an older system library baseline. Handheld performance and sound still need device testing.
 
 PortMaster's [porting](https://portmaster.games/porting.html), [packaging](https://portmaster.games/packaging.html), and [gptokeyb](https://portmaster.games/gptokeyb-documentation.html) guides define the launcher and mapping conventions. This package has not been submitted to PortMaster.

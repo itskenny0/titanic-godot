@@ -23,6 +23,10 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: '3.11'
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.26.4'
+          cache: false
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
@@ -45,20 +49,25 @@ jobs:
           python3 tools/export-pack.py --godot "$PWD/.tools/Godot_v4.3-stable_linux.x86_64" --project .build/godot4-project --major 4 --output dist/titanic4.pck
       - name: Check the native bridge without game data
         run: |
-          cmake -S native -B .build/native -DCMAKE_BUILD_TYPE=Release
+          go test ./internal/df
+          python3 tools/build-go.py --platform linux --arch x86_64
+          cmake -S native -B .build/native -DCMAKE_BUILD_TYPE=Release -DTITANIC_GO_LIBRARY="$PWD/.build/go/linux-x86_64/libtitanic_go.a"
           cmake --build .build/native --target titanic -j2
           cp .build/native/libtitanic.so godot/native/libtitanic.x86_64.so
           cp tests/runtime.gd godot/runtime-test.gd
-          timeout 60 xvfb-run -a .tools/Godot_v3.5.2-stable_x11.64 --path godot --audio-driver Dummy -s res://runtime-test.gd | tee .build/portable.log
+          timeout 60 xvfb-run -a .tools/Godot_v3.5.2-stable_x11.64 --path godot --audio-driver Dummy -s res://runtime-test.gd -- --go-codecs | tee .build/portable.log
           grep -q 'PORTABLE TESTS PASS' .build/portable.log
       - name: Check handheld and touch layouts
         run: |
           cp tests/ui.gd godot/ui-test.gd
           cp tests/controls.gd godot/controls-test.gd
           cp tests/controller.gd godot/controller-test.gd
+          cp tests/idle.gd godot/idle-test.gd
           timeout 45 xvfb-run -a .tools/Godot_v3.5.2-stable_x11.64 --path godot --audio-driver Dummy --resolution 640x480 -s res://ui-test.gd -- --ui-test
           timeout 45 xvfb-run -a .tools/Godot_v3.5.2-stable_x11.64 --path godot --audio-driver Dummy --resolution 480x800 -s res://controls-test.gd -- --ui-test --touch-test
           timeout 45 xvfb-run -a .tools/Godot_v3.5.2-stable_x11.64 --path godot --audio-driver Dummy --resolution 1280x960 -s res://controller-test.gd -- --ui-test
+          timeout 30 xvfb-run -a .tools/Godot_v3.5.2-stable_x11.64 --path godot --audio-driver Dummy --resolution 640x480 -s res://idle-test.gd -- --ui-test
+          xvfb-run -a python3 tools/test-godot4.py --godot "$PWD/.tools/Godot_v4.3-stable_linux.x86_64" --test idle --resolution 640x480
           xvfb-run -a python3 tools/test-godot4.py --godot "$PWD/.tools/Godot_v4.3-stable_linux.x86_64" --test controller --resolution 1280x960
           xvfb-run -a python3 tools/test-godot4.py --godot "$PWD/.tools/Godot_v4.3-stable_linux.x86_64" --test ui --resolution 480x800 --touch
           cp tests/rotation4.gd .build/godot4-project/rotation-test.gd
@@ -86,6 +95,10 @@ jobs:
     runs-on: ${{ matrix.runner }}
     steps:
       - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.26.4'
+          cache: false
       - uses: actions/setup-python@v5
         with:
           python-version: '3.11'
@@ -106,7 +119,7 @@ jobs:
           curl -fL https://github.com/mstorsjo/llvm-mingw/releases/download/20240619/llvm-mingw-20240619-ucrt-ubuntu-20.04-x86_64.tar.xz -o .tools/mingw.tar.xz
           tar -xf .tools/mingw.tar.xz -C .tools
           echo "$PWD/.tools/llvm-mingw-20240619-ucrt-ubuntu-20.04-x86_64/bin" >> "$GITHUB_PATH"
-      - name: Compile runtime with embedded QuickJS
+      - name: Compile runtime with Go media codecs
         shell: bash
         run: |
           extra=()
@@ -156,19 +169,27 @@ jobs:
     runs-on: ubuntu-22.04
     steps:
       - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.26.4'
+          cache: false
       - uses: actions/download-artifact@v4
         with:
           name: game-packs-and-source
           path: dist
       - name: Compile bridges against glibc 2.31 for handheld firmware
         run: |
-          docker run --rm -v "$PWD:/work" -w /work ubuntu:20.04 bash -eu -c '
+          mkdir -p .build
+          docker run --rm -v "$PWD:/work" -v "$(go env GOROOT):/opt/go:ro" -e GOROOT=/opt/go -e PATH=/opt/go/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin -w /work ubuntu:20.04 bash -eu -c '
             apt-get update -qq
-            DEBIAN_FRONTEND=noninteractive apt-get install -y cmake gcc-aarch64-linux-gnu gcc-arm-linux-gnueabihf make
+            DEBIAN_FRONTEND=noninteractive apt-get install -y cmake gcc-aarch64-linux-gnu gcc-arm-linux-gnueabihf make python3
             for spec in aarch64:aarch64-linux-gnu-gcc armhf:arm-linux-gnueabihf-gcc; do
               arch="${spec%%:*}"
               cc="${spec#*:}"
-              cmake -S native -B ".build/$arch" -DCMAKE_SYSTEM_NAME=Linux -DCMAKE_C_COMPILER="$cc" -DCMAKE_BUILD_TYPE=Release
+              goarch="$arch"
+              [[ "$arch" != aarch64 ]] || goarch=arm64
+              python3 tools/build-go.py --platform linux --arch "$goarch" --cc "$cc"
+              cmake -S native -B ".build/$arch" -DCMAKE_SYSTEM_NAME=Linux -DCMAKE_C_COMPILER="$cc" -DCMAKE_BUILD_TYPE=Release -DTITANIC_GO_LIBRARY="/work/.build/go/linux-$goarch/libtitanic_go.a"
               cmake --build ".build/$arch" --target titanic -j2
               cp ".build/$arch/libtitanic.so" "godot/native/libtitanic.$arch.so"
             done'
@@ -240,6 +261,10 @@ jobs:
     runs-on: ubuntu-22.04
     steps:
       - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.26.4'
+          cache: false
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
@@ -259,11 +284,12 @@ jobs:
           npm run build:engine
           python3 tools/fetch-patches.py
           python3 tools/fetch-godot.py 4 .build/godot4
-          python3 tools/install-module.py .build/godot4
+          python3 tools/build-go.py --platform android --arch arm64
+          python3 tools/install-module.py .build/godot4 --go-library .build/go/android-arm64/libtitanic_go.so
           python3 tools/prepare-android.py
       - name: Build ARM64 Android engine and document picker
         run: |
-          scons -C .build/godot4 platform=android target=template_debug arch=arm64 vulkan=no -j3
+          scons -C .build/godot4 platform=android target=template_debug arch=arm64 vulkan=no disable_3d=yes -j3
           cd .build/godot4/platform/android/java
           ./gradlew copyDebugBinaryToBin
       - name: Export touchscreen and controller APK

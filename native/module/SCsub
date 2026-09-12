@@ -3,6 +3,17 @@ import os
 module_env = env.Clone()
 module_env.Append(CPPPATH=[Dir('quickjs').abspath])
 module_env.Append(CPPDEFINES=['_GNU_SOURCE'])
+go_dir = Dir('go').abspath
+go_archive = os.path.join(go_dir, 'libtitanic_go.a')
+go_shared = os.path.join(go_dir, 'libtitanic_go.so')
+if os.path.isfile(go_archive) or os.path.isfile(go_shared):
+    module_env.Append(CPPDEFINES=['TITANIC_GO_CODECS'])
+    if os.path.isfile(go_archive):
+        env.Append(LIBS=[File(go_archive)])
+        if env['platform'] in ['x11', 'linuxbsd']:
+            env.Append(LIBS=['pthread', 'dl'])
+    else:
+        env.Append(LIBPATH=[go_dir], LIBS=['titanic_go'])
 if not env.get('msvc', False):
     module_env.Append(CFLAGS=['-std=gnu11', '-Wno-attributes'])
 module_env.add_source_files(env.modules_sources, ['runtime.cpp', 'register_types.cpp'])
