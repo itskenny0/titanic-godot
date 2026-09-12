@@ -9,7 +9,7 @@ function canonical(v:any):any {
  return v;
 }
 const hash=(v:any)=>createHash('sha256').update(JSON.stringify(canonical(v))).digest('hex');
-const corpus=JSON.parse(readFileSync(process.argv[2],'utf8')),results=[];
+const corpus=[...JSON.parse(readFileSync(process.argv[2],'utf8')),...process.argv.slice(4).map(path=>({path}))],results=[];
 let scripts=0,parsed=0;
 for(const {path} of corpus){
  const file=readContainerFile(new Uint8Array(readFileSync(path))),entry:any={path,scripts:[]};
