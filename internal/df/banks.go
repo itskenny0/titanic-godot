@@ -71,6 +71,11 @@ func ReadAudioBank(data []byte) (*AudioBank, error) {
 	if err != nil {
 		return nil, err
 	}
+	return ReadAudioBankFrom(d.file)
+}
+
+func ReadAudioBankFrom(file *File) (*AudioBank, error) {
+	d := &assetDecoder{file: file}
 	r := d.reader(0, d.file.Order)
 	if Version(r.Data, d.file.Order) == 1 {
 		return nil, fmt.Errorf("unsupported v1 SND bank")
