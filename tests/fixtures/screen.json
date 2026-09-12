@@ -1,0 +1,562 @@
+{
+  "pixels": "3aa45632333ab45f2de3609d65984e91c08b3e41e2b5dbf042f748e4c63db657",
+  "repaint": [
+    true,
+    false,
+    false,
+    false,
+    false,
+    false,
+    false,
+    false,
+    false,
+    false,
+    false,
+    false,
+    false,
+    false,
+    false,
+    false,
+    false,
+    false,
+    false,
+    false,
+    false,
+    false,
+    false,
+    false,
+    false,
+    false,
+    false,
+    false,
+    false,
+    false,
+    false,
+    false,
+    false,
+    false,
+    false,
+    false,
+    false,
+    false,
+    false,
+    false,
+    false,
+    false,
+    false,
+    false,
+    false,
+    false,
+    false,
+    false,
+    false,
+    false,
+    false,
+    false,
+    false,
+    false,
+    false,
+    false,
+    false,
+    false,
+    false,
+    false,
+    true,
+    false,
+    false,
+    false,
+    false,
+    false,
+    false,
+    false,
+    false,
+    false,
+    false,
+    false,
+    false,
+    false,
+    false,
+    false,
+    false,
+    false,
+    false,
+    false,
+    false,
+    false,
+    false,
+    false,
+    false,
+    false,
+    false,
+    false,
+    false,
+    false,
+    false,
+    false,
+    false,
+    false,
+    false,
+    false,
+    false,
+    false,
+    false,
+    false,
+    false,
+    false,
+    false,
+    false,
+    false,
+    false,
+    false,
+    false,
+    false,
+    false,
+    false,
+    false,
+    false,
+    false,
+    false,
+    false,
+    false,
+    false,
+    false,
+    false,
+    true,
+    false,
+    false,
+    false,
+    false
+  ],
+  "fades": [
+    {
+      "level": 0.5,
+      "commands": [
+        {
+          "op": "text",
+          "text": "Test",
+          "x": 1,
+          "y": 3,
+          "w": 0,
+          "h": 0,
+          "font": "12px \"Courier New\", \"MS PGothic\", \"Hiragino Kaku Gothic ProN\", \"Yu Gothic\", \"Noto Sans CJK JP\", \"Noto Sans JP\", monospace",
+          "color": "#000"
+        },
+        {
+          "op": "text",
+          "text": "Café",
+          "x": 2,
+          "y": 4,
+          "w": 0,
+          "h": 0,
+          "font": "16px \"Courier New\", \"MS PGothic\", \"Hiragino Kaku Gothic ProN\", \"Yu Gothic\", \"Noto Sans CJK JP\", \"Noto Sans JP\", monospace",
+          "color": "#e8e8e8"
+        },
+        {
+          "op": "rect",
+          "x": 0,
+          "y": 0,
+          "w": 8,
+          "h": 1,
+          "color": "rgba(0,0,0,0.500)"
+        },
+        {
+          "op": "rect",
+          "x": 0,
+          "y": 4,
+          "w": 8,
+          "h": 2,
+          "color": "rgba(0,0,0,0.500)"
+        },
+        {
+          "op": "rect",
+          "x": 0,
+          "y": 1,
+          "w": 2,
+          "h": 3,
+          "color": "rgba(0,0,0,0.500)"
+        },
+        {
+          "op": "rect",
+          "x": 6,
+          "y": 1,
+          "w": 2,
+          "h": 3,
+          "color": "rgba(0,0,0,0.500)"
+        }
+      ]
+    },
+    {
+      "level": 0.0625,
+      "commands": [
+        {
+          "op": "text",
+          "text": "Test",
+          "x": 1,
+          "y": 3,
+          "w": 0,
+          "h": 0,
+          "font": "12px \"Courier New\", \"MS PGothic\", \"Hiragino Kaku Gothic ProN\", \"Yu Gothic\", \"Noto Sans CJK JP\", \"Noto Sans JP\", monospace",
+          "color": "#000"
+        },
+        {
+          "op": "text",
+          "text": "Café",
+          "x": 2,
+          "y": 4,
+          "w": 0,
+          "h": 0,
+          "font": "16px \"Courier New\", \"MS PGothic\", \"Hiragino Kaku Gothic ProN\", \"Yu Gothic\", \"Noto Sans CJK JP\", \"Noto Sans JP\", monospace",
+          "color": "#e8e8e8"
+        },
+        {
+          "op": "rect",
+          "x": 0,
+          "y": 0,
+          "w": 8,
+          "h": 1,
+          "color": "rgba(0,0,0,0.063)"
+        },
+        {
+          "op": "rect",
+          "x": 0,
+          "y": 4,
+          "w": 8,
+          "h": 2,
+          "color": "rgba(0,0,0,0.063)"
+        },
+        {
+          "op": "rect",
+          "x": 0,
+          "y": 1,
+          "w": 2,
+          "h": 3,
+          "color": "rgba(0,0,0,0.063)"
+        },
+        {
+          "op": "rect",
+          "x": 6,
+          "y": 1,
+          "w": 2,
+          "h": 3,
+          "color": "rgba(0,0,0,0.063)"
+        }
+      ]
+    },
+    {
+      "level": 0.0005,
+      "commands": [
+        {
+          "op": "text",
+          "text": "Test",
+          "x": 1,
+          "y": 3,
+          "w": 0,
+          "h": 0,
+          "font": "12px \"Courier New\", \"MS PGothic\", \"Hiragino Kaku Gothic ProN\", \"Yu Gothic\", \"Noto Sans CJK JP\", \"Noto Sans JP\", monospace",
+          "color": "#000"
+        },
+        {
+          "op": "text",
+          "text": "Café",
+          "x": 2,
+          "y": 4,
+          "w": 0,
+          "h": 0,
+          "font": "16px \"Courier New\", \"MS PGothic\", \"Hiragino Kaku Gothic ProN\", \"Yu Gothic\", \"Noto Sans CJK JP\", \"Noto Sans JP\", monospace",
+          "color": "#e8e8e8"
+        },
+        {
+          "op": "rect",
+          "x": 0,
+          "y": 0,
+          "w": 8,
+          "h": 1,
+          "color": "rgba(0,0,0,0.001)"
+        },
+        {
+          "op": "rect",
+          "x": 0,
+          "y": 4,
+          "w": 8,
+          "h": 2,
+          "color": "rgba(0,0,0,0.001)"
+        },
+        {
+          "op": "rect",
+          "x": 0,
+          "y": 1,
+          "w": 2,
+          "h": 3,
+          "color": "rgba(0,0,0,0.001)"
+        },
+        {
+          "op": "rect",
+          "x": 6,
+          "y": 1,
+          "w": 2,
+          "h": 3,
+          "color": "rgba(0,0,0,0.001)"
+        }
+      ]
+    },
+    {
+      "level": 0.1005,
+      "commands": [
+        {
+          "op": "text",
+          "text": "Test",
+          "x": 1,
+          "y": 3,
+          "w": 0,
+          "h": 0,
+          "font": "12px \"Courier New\", \"MS PGothic\", \"Hiragino Kaku Gothic ProN\", \"Yu Gothic\", \"Noto Sans CJK JP\", \"Noto Sans JP\", monospace",
+          "color": "#000"
+        },
+        {
+          "op": "text",
+          "text": "Café",
+          "x": 2,
+          "y": 4,
+          "w": 0,
+          "h": 0,
+          "font": "16px \"Courier New\", \"MS PGothic\", \"Hiragino Kaku Gothic ProN\", \"Yu Gothic\", \"Noto Sans CJK JP\", \"Noto Sans JP\", monospace",
+          "color": "#e8e8e8"
+        },
+        {
+          "op": "rect",
+          "x": 0,
+          "y": 0,
+          "w": 8,
+          "h": 1,
+          "color": "rgba(0,0,0,0.101)"
+        },
+        {
+          "op": "rect",
+          "x": 0,
+          "y": 4,
+          "w": 8,
+          "h": 2,
+          "color": "rgba(0,0,0,0.101)"
+        },
+        {
+          "op": "rect",
+          "x": 0,
+          "y": 1,
+          "w": 2,
+          "h": 3,
+          "color": "rgba(0,0,0,0.101)"
+        },
+        {
+          "op": "rect",
+          "x": 6,
+          "y": 1,
+          "w": 2,
+          "h": 3,
+          "color": "rgba(0,0,0,0.101)"
+        }
+      ]
+    },
+    {
+      "level": 1.1,
+      "commands": [
+        {
+          "op": "text",
+          "text": "Test",
+          "x": 1,
+          "y": 3,
+          "w": 0,
+          "h": 0,
+          "font": "12px \"Courier New\", \"MS PGothic\", \"Hiragino Kaku Gothic ProN\", \"Yu Gothic\", \"Noto Sans CJK JP\", \"Noto Sans JP\", monospace",
+          "color": "#000"
+        },
+        {
+          "op": "text",
+          "text": "Café",
+          "x": 2,
+          "y": 4,
+          "w": 0,
+          "h": 0,
+          "font": "16px \"Courier New\", \"MS PGothic\", \"Hiragino Kaku Gothic ProN\", \"Yu Gothic\", \"Noto Sans CJK JP\", \"Noto Sans JP\", monospace",
+          "color": "#e8e8e8"
+        },
+        {
+          "op": "rect",
+          "x": 0,
+          "y": 0,
+          "w": 8,
+          "h": 1,
+          "color": "rgba(0,0,0,1.000)"
+        },
+        {
+          "op": "rect",
+          "x": 0,
+          "y": 4,
+          "w": 8,
+          "h": 2,
+          "color": "rgba(0,0,0,1.000)"
+        },
+        {
+          "op": "rect",
+          "x": 0,
+          "y": 1,
+          "w": 2,
+          "h": 3,
+          "color": "rgba(0,0,0,1.000)"
+        },
+        {
+          "op": "rect",
+          "x": 6,
+          "y": 1,
+          "w": 2,
+          "h": 3,
+          "color": "rgba(0,0,0,1.000)"
+        }
+      ]
+    },
+    {
+      "level": -1,
+      "commands": [
+        {
+          "op": "text",
+          "text": "Test",
+          "x": 1,
+          "y": 3,
+          "w": 0,
+          "h": 0,
+          "font": "12px \"Courier New\", \"MS PGothic\", \"Hiragino Kaku Gothic ProN\", \"Yu Gothic\", \"Noto Sans CJK JP\", \"Noto Sans JP\", monospace",
+          "color": "#000"
+        },
+        {
+          "op": "text",
+          "text": "Café",
+          "x": 2,
+          "y": 4,
+          "w": 0,
+          "h": 0,
+          "font": "16px \"Courier New\", \"MS PGothic\", \"Hiragino Kaku Gothic ProN\", \"Yu Gothic\", \"Noto Sans CJK JP\", \"Noto Sans JP\", monospace",
+          "color": "#e8e8e8"
+        }
+      ]
+    },
+    {
+      "level": 0,
+      "commands": [
+        {
+          "op": "text",
+          "text": "Test",
+          "x": 1,
+          "y": 3,
+          "w": 0,
+          "h": 0,
+          "font": "12px \"Courier New\", \"MS PGothic\", \"Hiragino Kaku Gothic ProN\", \"Yu Gothic\", \"Noto Sans CJK JP\", \"Noto Sans JP\", monospace",
+          "color": "#000"
+        },
+        {
+          "op": "text",
+          "text": "Café",
+          "x": 2,
+          "y": 4,
+          "w": 0,
+          "h": 0,
+          "font": "16px \"Courier New\", \"MS PGothic\", \"Hiragino Kaku Gothic ProN\", \"Yu Gothic\", \"Noto Sans CJK JP\", \"Noto Sans JP\", monospace",
+          "color": "#e8e8e8"
+        }
+      ]
+    },
+    {
+      "level": 0.666666,
+      "commands": [
+        {
+          "op": "text",
+          "text": "Test",
+          "x": 1,
+          "y": 3,
+          "w": 0,
+          "h": 0,
+          "font": "12px \"Courier New\", \"MS PGothic\", \"Hiragino Kaku Gothic ProN\", \"Yu Gothic\", \"Noto Sans CJK JP\", \"Noto Sans JP\", monospace",
+          "color": "#000"
+        },
+        {
+          "op": "text",
+          "text": "Café",
+          "x": 2,
+          "y": 4,
+          "w": 0,
+          "h": 0,
+          "font": "16px \"Courier New\", \"MS PGothic\", \"Hiragino Kaku Gothic ProN\", \"Yu Gothic\", \"Noto Sans CJK JP\", \"Noto Sans JP\", monospace",
+          "color": "#e8e8e8"
+        },
+        {
+          "op": "rect",
+          "x": 0,
+          "y": 0,
+          "w": 8,
+          "h": 1,
+          "color": "rgba(0,0,0,0.667)"
+        },
+        {
+          "op": "rect",
+          "x": 0,
+          "y": 4,
+          "w": 8,
+          "h": 2,
+          "color": "rgba(0,0,0,0.667)"
+        },
+        {
+          "op": "rect",
+          "x": 0,
+          "y": 1,
+          "w": 2,
+          "h": 3,
+          "color": "rgba(0,0,0,0.667)"
+        },
+        {
+          "op": "rect",
+          "x": 6,
+          "y": 1,
+          "w": 2,
+          "h": 3,
+          "color": "rgba(0,0,0,0.667)"
+        }
+      ]
+    }
+  ],
+  "wraps": [
+    {
+      "text": "A short line",
+      "lines": [
+        "A short",
+        "line"
+      ]
+    },
+    {
+      "text": "one two three four",
+      "lines": [
+        "one two",
+        "three",
+        "four"
+      ]
+    },
+    {
+      "text": "  leading   spaces ",
+      "lines": [
+        "leading",
+        "spaces"
+      ]
+    },
+    {
+      "text": "日本語の字幕、正しく改行。",
+      "lines": [
+        "日本語の字幕、",
+        "正しく改行。"
+      ]
+    },
+    {
+      "text": "word 😀 next",
+      "lines": [
+        "word 😀",
+        "next"
+      ]
+    }
+  ]
+}
