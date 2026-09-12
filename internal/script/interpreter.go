@@ -44,6 +44,7 @@ type Interpreter struct {
 	OnGlobalChange  func(string, Value, Value)
 	OnUnknown       func(string, []Value)
 	RealYieldSeq    func() uint64
+	CurrentEvent    uint64
 	epoch, sequence uint64
 	live            map[*Instance]map[string]int
 	unknown         map[string]bool
@@ -87,6 +88,9 @@ func (i *Interpreter) Run(inst *Instance, handler string, args []Value, ctx Call
 	}
 	i.sequence++
 	f.Event = i.sequence
+	previousEvent := i.CurrentEvent
+	i.CurrentEvent = f.Event
+	defer func() { i.CurrentEvent = previousEvent }()
 	key := strings.ToLower(handler)
 	if i.live[inst] == nil {
 		i.live[inst] = make(map[string]int)

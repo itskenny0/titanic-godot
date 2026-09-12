@@ -56,7 +56,14 @@ type Completion struct {
 func NewExecutor() *Executor {
 	return &Executor{requests: make(chan taskRequest), tasks: map[*Task]bool{}}
 }
-func (e *Executor) Now() float64   { return e.now }
+func (e *Executor) Now() float64 { return e.now }
+
+// AdvanceClock updates deadlines without running continuations during a host tick.
+func (e *Executor) AdvanceClock(now float64) {
+	if now > e.now {
+		e.now = now
+	}
+}
 func (e *Executor) Frame() uint64  { return e.frame }
 func (e *Executor) Current() *Task { return e.current }
 func (e *Executor) Pending() int   { return len(e.tasks) }
@@ -155,9 +162,7 @@ func (e *Executor) Pump(now float64, advanceFrame bool, budget int) []Completion
 	if e.closed {
 		return nil
 	}
-	if now > e.now {
-		e.now = now
-	}
+	e.AdvanceClock(now)
 	if advanceFrame {
 		e.frame++
 	}

@@ -16,3 +16,27 @@ func DecodeMacRoman(raw string) string {
 	}
 	return out.String()
 }
+
+// EncodeMacRoman converts host input back to the game's single-byte encoding.
+// Unsupported characters occupy one byte, as in the reference text dialog.
+func EncodeMacRoman(text string, maxBytes int) []byte {
+	out := make([]byte, 0, min(len(text), max(0, maxBytes)))
+	for _, c := range text {
+		if len(out) >= maxBytes {
+			break
+		}
+		b := byte('?')
+		if c < 128 {
+			b = byte(c)
+		} else {
+			for i, r := range macRomanHigh {
+				if c == r {
+					b = byte(i + 128)
+					break
+				}
+			}
+		}
+		out = append(out, b)
+	}
+	return out
+}
