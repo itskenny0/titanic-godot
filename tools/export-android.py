@@ -24,7 +24,7 @@ package/name="Titanic"
 version/code=1
 version/name="0.1.0"
 screen/immersive_mode=true
-keystore/debug="{root}/.tools/android-debug.keystore"
+keystore/debug="{root}/packaging/android/debug.keystore"
 keystore/debug_user="androiddebugkey"
 keystore/debug_password="android"
 '''
@@ -44,7 +44,7 @@ for key,value in {'export/android/android_sdk_path':a.sdk,'export/android/java_s
 text=re.sub(r'^export/android/shutdown_adb_on_exit\s*=.*\n', '', text, flags=re.M)
 text+='export/android/shutdown_adb_on_exit = false\n'
 settings.write_text(text)
-key=root/'.tools/android-debug.keystore';key.parent.mkdir(exist_ok=True)
-if not key.exists():subprocess.run(['keytool','-genkeypair','-keystore',str(key),'-storepass','android','-alias','androiddebugkey','-keypass','android','-keyalg','RSA','-keysize','2048','-validity','10000','-dname','CN=Titanic Development'],check=True)
+key=root/'packaging/android/debug.keystore'
+if not key.is_file():raise SystemExit('Missing shared Android debug keystore: '+str(key))
 subprocess.run([a.godot,'--headless','--path',str(project),'--editor','--import'],check=True)
 subprocess.run([a.godot,'--headless','--path',str(project),'--export-debug','Android',str(root/'dist/titanic-android-arm64-debug.apk')],check=True)
