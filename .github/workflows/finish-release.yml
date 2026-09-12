@@ -1,0 +1,66 @@
+name: Finish release packaging
+on:
+  workflow_dispatch:
+    inputs:
+      release_tag:
+        description: Published release tag
+        required: true
+        type: string
+      artifact_run:
+        description: Build run with successful desktop, Android and PortMaster packages
+        required: true
+        type: string
+permissions:
+  contents: read
+  actions: read
+concurrency:
+  group: finish-release-${{ inputs.release_tag }}
+  cancel-in-progress: false
+jobs:
+  linux-formats:
+    uses: ./.github/workflows/linux-formats.yml
+    with:
+      source_ref: refs/tags/${{ inputs.release_tag }}
+      artifact_run: ${{ inputs.artifact_run }}
+  release:
+    needs: linux-formats
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    permissions:
+      contents: write
+      actions: read
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Wait for the source build to finish
+        env:
+          GH_TOKEN: ${{ github.token }}
+          ARTIFACT_RUN: ${{ inputs.artifact_run }}
+        run: gh run watch "$ARTIFACT_RUN" --interval 30
+      - uses: actions/download-artifact@v4
+        with:
+          run-id: ${{ inputs.artifact_run }}
+          github-token: ${{ github.token }}
+          path: .build/release-artifacts
+      - name: Remove superseded Linux format packages
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import shutil
+          for path in Path('.build/release-artifacts').glob('titanic-linux-formats-*'):
+              shutil.rmtree(path)
+          PY
+      - uses: actions/download-artifact@v4
+        with:
+          path: .build/release-artifacts
+      - name: Verify tagged source and attach complete release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          RELEASE_TAG: ${{ inputs.release_tag }}
+          ARTIFACT_RUN: ${{ inputs.artifact_run }}
+        run: |
+          source_sha=$(git rev-parse "refs/tags/$RELEASE_TAG^{commit}")
+          python3 tools/verify-source-archive.py .build/release-artifacts/game-packs-and-source/titanic-source.tar.gz --ref "$source_sha"
+          python3 tools/release-assets.py .build/release-artifacts --tag "$RELEASE_TAG" --source-sha "$source_sha"

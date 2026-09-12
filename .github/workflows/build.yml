@@ -237,60 +237,12 @@ jobs:
 
   linux-formats:
     needs: [desktop, pack]
-    strategy:
-      fail-fast: false
-      matrix:
-        include:
-          - {runner: ubuntu-22.04, arch: x86_64, appimage_arch: x86_64}
-          - {runner: ubuntu-24.04-arm, arch: arm64, appimage_arch: aarch64}
-    runs-on: ${{ matrix.runner }}
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          ref: ${{ inputs.release_tag && format('refs/tags/{0}', inputs.release_tag) || github.sha }}
-      - uses: actions/download-artifact@v4
-        with:
-          name: game-packs-and-source
-          path: dist
-      - uses: actions/download-artifact@v4
-        with:
-          name: titanic-linux-${{ matrix.arch }}
-          path: dist
-      - name: Prepare shared application payload
-        run: |
-          mkdir -p .build/linux-payload
-          tar -xzf dist/titanic-linux-${{ matrix.arch }}.tar.gz -C .build/linux-payload
-          cp -r .build/linux-payload/titanic packaging/linux/flatpak-input
-          cp packaging/linux/io.github.itskenny0.Titanic.{desktop,svg,metainfo.xml} packaging/linux/flatpak-input/
-          # shellcheck disable=SC2016
-          printf '#!/bin/sh\nexec /app/lib/titanic/titanic --main-pack /app/lib/titanic/titanic.pck "$@"\n' > packaging/linux/flatpak-input/launcher
-      - name: Build offline Flatpak bundle
-        run: |
-          sudo apt-get update -qq
-          sudo apt-get install -y flatpak flatpak-builder
-          flatpak remote-add --user --if-not-exists flathub https://flathub.org/repo/flathub.flatpakrepo
-          flatpak-builder --user --install-deps-from=flathub --repo=.build/flatpak-repo --force-clean .build/flatpak-build packaging/linux/io.github.itskenny0.Titanic.yml
-          flatpak build-bundle .build/flatpak-repo dist/titanic-linux-${{ matrix.arch }}.flatpak io.github.itskenny0.Titanic
-      - name: Build AppImage
-        env:
-          ARCH: ${{ matrix.appimage_arch }}
-        run: |
-          mkdir -p .build/AppDir/usr/lib/titanic .build/AppDir/usr/bin
-          cp -r .build/linux-payload/titanic/. .build/AppDir/usr/lib/titanic/
-          cp packaging/linux/io.github.itskenny0.Titanic.{desktop,svg} .build/AppDir/
-          # shellcheck disable=SC2016
-          printf '#!/bin/sh\nAPPDIR=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)\nexec "$APPDIR/usr/lib/titanic/titanic" --main-pack "$APPDIR/usr/lib/titanic/titanic.pck" "$@"\n' > .build/AppDir/AppRun
-          chmod +x .build/AppDir/AppRun
-          curl -fL "https://github.com/AppImage/appimagetool/releases/download/1.9.0/appimagetool-$ARCH.AppImage" -o .build/appimagetool
-          chmod +x .build/appimagetool
-          .build/appimagetool --appimage-extract-and-run .build/AppDir dist/titanic-linux-${{ matrix.arch }}.AppImage
-      - uses: actions/upload-artifact@v4
-        with:
-          name: titanic-linux-formats-${{ matrix.arch }}
-          path: |
-            dist/*.flatpak
-            dist/*.AppImage
-          if-no-files-found: error
+    uses: ./.github/workflows/linux-formats.yml
+    permissions:
+      contents: read
+      actions: read
+    with:
+      source_ref: ${{ needs.pack.outputs.source_sha }}
 
   android:
     needs: pack

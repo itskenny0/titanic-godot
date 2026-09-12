@@ -79,6 +79,7 @@ def main():
             "source_commit": args.source_sha,
             "workflow_commit": os.environ.get("GITHUB_WORKFLOW_SHA"),
             "workflow_run": f"https://github.com/{repo}/actions/runs/{os.environ['GITHUB_RUN_ID']}",
+            "artifact_run": os.environ.get("ARTIFACT_RUN", os.environ["GITHUB_RUN_ID"]),
         }
         (stage / "BUILD-INFO.json").write_text(json.dumps(info, indent=2) + "\n")
         assets = sorted(stage.iterdir())
