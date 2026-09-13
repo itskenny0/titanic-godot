@@ -57,7 +57,8 @@ a=s.index('func dispatch_pointer(event):');b=s.index('func process_controller(de
 s=s[:a]+'func dispatch_pointer(event):\n\tget_viewport().push_input(event, true)\n\n'+s[b:]
 p.write_text(s)
 for path in (out/'scripts').glob('*.gd'):
- text=path.read_text().replace('.plus_file(', '.path_join(').replace('.bind(args)', '.bindv(args)').replace('event.control', 'event.ctrl_pressed').replace('event.meta', 'event.meta_pressed').replace('OS.get_cmdline_args()', '(OS.get_cmdline_args() + OS.get_cmdline_user_args())')
+ text=path.read_text().replace('.plus_file(', '.path_join(').replace('.bind(args)', '.bindv(args)').replace('OS.get_cmdline_args()', '(OS.get_cmdline_args() + OS.get_cmdline_user_args())')
+ text=re.sub(r'\bevent\.(control|meta|alt|shift)\b', lambda m: 'event.' + {'control':'ctrl_pressed','meta':'meta_pressed','alt':'alt_pressed','shift':'shift_pressed'}[m[1]], text)
  text=re.sub(r'(?<![a-z_])update\(\)', 'queue_redraw()', text)
  path.write_text(text)
 for source in (root/'tools/godot4').glob('*.gd'):shutil.copy2(source,out/'scripts'/source.name)

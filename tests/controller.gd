@@ -55,6 +55,16 @@ func begin():
 		check(command.action != "key", "dialogue directions never leak into room movement")
 	player.controller_direction("downarrow")
 	check(player.controller_selection == 0, "dialogue wraps at last reply")
+	# Modifier shortcuts must bypass controller mapping on both engine versions.
+	for modifier in ["alt", "control", "meta"]:
+		var shortcut = InputEventKey.new()
+		shortcut.scancode = KEY_DOWN
+		shortcut.pressed = true
+		var property = modifier
+		if Engine.get_version_info().major >= 4:
+			property = {"alt": "alt_pressed", "control": "ctrl_pressed", "meta": "meta_pressed"}[modifier]
+		shortcut.set(property, true)
+		check(not player.controller_binding_input(shortcut), modifier + " shortcut bypasses controller mapping")
 	# PortMaster sends keys through gptokeyb instead of native joypad events.
 	var previous_arch = OS.get_environment("RETANIC_ARCH")
 	OS.set_environment("RETANIC_ARCH", "aarch64")
