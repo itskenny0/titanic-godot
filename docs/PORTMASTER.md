@@ -21,6 +21,8 @@ Dialogue replies get a visible selection border. Use directions and A to answer 
 
 Saves stay in the port's `saves/Retanic` directory. Keep that directory when upgrading. To use mods, extract them into a directory on the handheld and select it from Game files / mods. Prepare clean game data before adding mods.
 
+The launcher uses the screen resolution reported by PortMaster, with a 640x480 fallback. The original game picture is 512x384 and scales to fit. Game images are not recompressed for handhelds. Personal packages include the M3tox patches, but you still choose which ones to enable in Game files / mods. Select All to apply sharper navigation in every patched area. Patch choices are saved separately on each device.
+
 ARM64 (aarch64) is the main handheld target. An optional armhf bridge is included for older devices. Both are built against an older system library baseline. Handheld performance and sound still need device testing.
 
 PortMaster's [porting](https://portmaster.games/porting.html), [packaging](https://portmaster.games/packaging.html), and [gptokeyb](https://portmaster.games/gptokeyb-documentation.html) guides define the launcher and mapping conventions. This package has not been submitted to PortMaster.

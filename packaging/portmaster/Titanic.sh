@@ -55,4 +55,13 @@ mapper_pid=$!
 if declare -F pm_platform_helper >/dev/null; then
   pm_platform_helper "$godot_dir/$runtime"
 fi
-"$godot_dir/$runtime" $GODOT_OPTS --main-pack "$GAMEDIR/titanic.pck" -- --game-data="$GAMEDIR/gamedata"
+# Override the project's desktop window size before SDL creates its surface.
+# device_info.txt reports the display dimensions, including firmware rotation.
+display_width=${DISPLAY_WIDTH:-640}
+display_height=${DISPLAY_HEIGHT:-480}
+if [[ ! "$display_width" =~ ^[1-9][0-9]{1,3}$ || ! "$display_height" =~ ^[1-9][0-9]{1,3}$ ]]; then
+  display_width=640
+  display_height=480
+fi
+echo "Titanic display: ${display_width}x${display_height}; game frame: 512x384"
+"$godot_dir/$runtime" $GODOT_OPTS --resolution "${display_width}x${display_height}" --main-pack "$GAMEDIR/titanic.pck" -- --game-data="$GAMEDIR/gamedata"
