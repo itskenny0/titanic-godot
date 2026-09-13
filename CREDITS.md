@@ -15,6 +15,6 @@ Thank you to everyone whose work made this player possible.
 - **Red Hat, Google, Steve Matteson, Ascender, and the Liberation Fonts contributors**, [Liberation Fonts](https://github.com/liberationfonts/liberation-fonts), under the license reproduced in `godot/fonts/LICENSE.txt`.
 - **Evan Wallace and contributors**, [esbuild](https://github.com/evanw/esbuild), MIT, for the TypeScript bundler used during development of the earlier version.
 - **The Go authors and contributors**, [Go](https://go.dev), BSD-3-Clause, for the native gameplay runtime. The interpreter and decoders are ported from the credited dreamREfactory and DFET work.
-- **The Python, CMake, SCons, GCC, LLVM, MinGW-w64, Android, R8, Kotlin, OpenJDK, Gradle, Ubuntu, Flatpak, AppImage, and GitHub Actions contributors**, for build and packaging tools. Node.js was also used by the earlier version. These tools retain their own licenses.
+- **The Python, Pillow, AppStream, CMake, SCons, GCC, LLVM, MinGW-w64, Android, R8, Kotlin, OpenJDK, Gradle, Ubuntu, Flatpak, AppImage, and GitHub Actions contributors**, for build and packaging tools. Node.js was also used by the earlier version. These tools retain their own licenses.
 
 The new integration is GPL-3.0. License files ship with packages. Corresponding authored and vendored source is built as a separate CI artifact; Godot source revisions are pinned by `tools/fetch-godot.py`. PortMaster supplies FRT, SDL, and gptokeyb separately.
