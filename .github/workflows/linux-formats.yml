@@ -47,9 +47,21 @@ jobs:
       - name: Build offline Flatpak bundle
         run: |
           sudo apt-get update -qq
-          sudo apt-get install -y flatpak flatpak-builder
+          sudo apt-get install -y flatpak flatpak-builder python3-pil
           flatpak remote-add --user --if-not-exists flathub https://flathub.org/repo/flathub.flatpakrepo
-          flatpak-builder --user --install-deps-from=flathub --repo=.build/flatpak-repo --force-clean .build/flatpak-build packaging/linux/io.github.itskenny0.Titanic.yml
+          flatpak-builder --user --install-deps-from=flathub --build-only --force-clean .build/flatpak-build packaging/linux/io.github.itskenny0.Titanic.yml
+          # AppStream searches standard icon sizes; retain the full-size original too.
+          python3 - <<'PYICON'
+          from pathlib import Path
+          from PIL import Image
+          icon = Image.open('packaging/linux/io.github.itskenny0.Titanic.png')
+          root = Path('.build/flatpak-build/files/share/icons/hicolor')
+          for size in (64, 128, 256):
+              dest = root / f'{size}x{size}' / 'apps/io.github.itskenny0.Titanic.png'
+              dest.parent.mkdir(parents=True, exist_ok=True)
+              icon.resize((size, size), Image.Resampling.LANCZOS).save(dest)
+          PYICON
+          flatpak-builder --user --finish-only --repo=.build/flatpak-repo .build/flatpak-build packaging/linux/io.github.itskenny0.Titanic.yml
           flatpak build-bundle .build/flatpak-repo dist/titanic-linux-${{ matrix.arch }}.flatpak io.github.itskenny0.Titanic
       - name: Build AppImage
         env:
