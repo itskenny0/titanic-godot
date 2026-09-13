@@ -10,7 +10,7 @@ name="Android"
 platform="Android"
 runnable=true
 export_filter="all_resources"
-include_filter="engine.js,required_files.json,fonts/LICENSE.txt,patches/*,patches/files/*,notices/*"
+include_filter="required_files.json,fonts/LICENSE.txt,patches/*,patches/files/*,notices/*"
 exclude_filter="native/*,integration.gd,*-test.gd"
 export_path=""
 [preset.0.options]

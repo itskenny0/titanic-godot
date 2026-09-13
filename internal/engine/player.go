@@ -50,6 +50,7 @@ type Player struct {
 	events                     []any
 	nextDialog                 uint64
 	dialogs                    map[uint64]*playerDialog
+	testFailTick               bool
 	profiling                  bool
 	profileTick, profileRender time.Duration
 }
@@ -171,6 +172,10 @@ func (p *Player) pump(frame bool) {
 	}
 }
 func (p *Player) Tick(dt float64) error {
+	if p.testFailTick {
+		p.testFailTick = false
+		return fmt.Errorf("expected tick failure test")
+	}
 	if p.Host == nil || p.Paused {
 		return nil
 	}

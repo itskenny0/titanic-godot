@@ -20,13 +20,13 @@ func begin():
 	step()
 
 func state():
-	return JSON.parse(player.runtime.query("titanicState()")).result
+	return JSON.parse(player.runtime.query("state")).result
 
-func js(code):
-	var error = player.runtime.execute(code)
+func test_command(command):
+	var error = player.runtime.execute("test", JSON.print(command))
 	if not error.empty():
 		failure = true
-		print("FAIL JS: ", error)
+		print("FAIL runtime: ", error)
 
 func step():
 	for _i in range(10):
@@ -47,8 +47,8 @@ func step():
 					player.send({"action": "key", "key": ".", "special": true})
 				else:
 					print("EXPLORING: ", JSON.print(s))
-					js("titanicTesting.host.session.interp.globals.set('retanic_roundtrip', 'saved correctly'); globalThis.testSnapshot=titanicTesting.host.session.snapshotSave();")
-					var bytes = player.runtime.buffer("testSnapshot.buffer")
+					test_command({"op": "set_global", "name": "retanic_roundtrip", "value": "saved correctly"})
+					var bytes = player.runtime.buffer("test", JSON.print({"op": "snapshot"}))
 					if bytes.size() < 1536 or not player.saves.write("retanic-integration", bytes):
 						failure = true
 					saved_state = s
@@ -70,12 +70,12 @@ func step():
 				phase = 4
 			elif phase == 4:
 				if s.ready and s.view == saved_state.view:
-					var value = player.runtime.query("titanicTesting.host.session.interp.globals.get('retanic_roundtrip')")
+					var value = JSON.parse(player.runtime.query("test", JSON.print({"op": "get_global", "name": "retanic_roundtrip"}))).result
 					if value != "saved correctly":
 						failure = true
 					print("RESTORED: ", JSON.print(s), " sentinel=", value)
 					player.frame_image.save_png("user://integration.png")
-					js("globalThis.titanicTick = () => { throw Error('expected tick failure test'); };")
+					test_command({"op": "fail_tick"})
 					player._process(0.05)
 					if not player.runtime_failed or player.modal == null:
 						failure = true
@@ -84,11 +84,10 @@ func step():
 					phase = 5
 			elif phase == 5:
 				if s.ready and not player.runtime_failed and s.view == saved_state.view:
-					if player.runtime.query("titanicTesting.host.session.interp.globals.get('retanic_roundtrip')") != "saved correctly":
+					if JSON.parse(player.runtime.query("test", JSON.print({"op": "get_global", "name": "retanic_roundtrip"}))).result != "saved correctly":
 						failure = true
 					print("RESTORED AFTER TICK FAILURE")
-					if player.runtime.query("typeof __runtimeMemory") == "function":
-						print("ENGINE MEMORY: ", player.runtime.query("JSON.stringify(__runtimeMemory())"))
+					print("ENGINE MEMORY: ", player.runtime.query("memory"))
 					print("INTEGRATION ", "FAIL" if failure else "PASS")
 					quit(1 if failure else 0)
 					return

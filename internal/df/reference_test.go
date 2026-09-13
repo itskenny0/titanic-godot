@@ -15,7 +15,7 @@ func digest(b []byte) string { h := sha256.Sum256(b); return hex.EncodeToString(
 func TestReferenceCorpus(t *testing.T) {
 	path := os.Getenv("TAOOT_CODEC_REFERENCE")
 	if path == "" {
-		t.Skip("set TAOOT_CODEC_REFERENCE to hashes from tests/go-codec-reference.ts")
+		t.Skip("set TAOOT_CODEC_REFERENCE to local pinned-reference hashes")
 	}
 	data, err := os.ReadFile(path)
 	if err != nil {

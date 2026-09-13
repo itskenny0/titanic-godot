@@ -1,7 +1,5 @@
 #include "runtime.h"
-#include "pixels.h"
-#include "codecs.h"
-#include "memory.h"
+#include <cstdlib>
 #include <cstring>
 #if VERSION_MAJOR >= 4
 #include "core/variant/array.h"
@@ -9,78 +7,57 @@
 #include "core/array.h"
 #endif
 void DreamRuntime::_bind_methods() {
- ClassDB::bind_method(D_METHOD("initialize", "owner", "code"), &DreamRuntime::initialize);
- ClassDB::bind_method(D_METHOD("execute", "code"), &DreamRuntime::execute);
- ClassDB::bind_method(D_METHOD("query", "code"), &DreamRuntime::query);
- ClassDB::bind_method(D_METHOD("buffer", "code"), &DreamRuntime::buffer);
+ ClassDB::bind_method(D_METHOD("initialize","owner"),&DreamRuntime::initialize);
+ ClassDB::bind_method(D_METHOD("execute","method","args"),&DreamRuntime::execute,DEFVAL("{}"));
+ ClassDB::bind_method(D_METHOD("query","method","args"),&DreamRuntime::query,DEFVAL("{}"));
+ ClassDB::bind_method(D_METHOD("buffer","method","args"),&DreamRuntime::buffer,DEFVAL("{}"));
 }
-DreamRuntime::DreamRuntime() {
- rt=JS_NewRuntime(); JS_SetMemoryLimit(rt,TITANIC_HEAP_LIMIT); JS_SetMaxStackSize(rt,2*1024*1024);
- ctx=JS_NewContext(rt); JS_SetContextOpaque(ctx,this);
- JSValue global=JS_GetGlobalObject(ctx);
- titanic_install_codecs(ctx,global);
- JS_SetPropertyStr(ctx,global,"__runtimeMemory",JS_NewCFunction(ctx,titanic_memory_stats,"__runtimeMemory",0));
- JS_SetPropertyStr(ctx,global,"__indexedRGBA",JS_NewCFunction(ctx,titanic_indexed_rgba,"__indexedRGBA",4));
- JS_SetPropertyStr(ctx,global,"__native",JS_NewCFunction(ctx,native_call,"__native",3)); JS_FreeValue(ctx,global);
+DreamRuntime::~DreamRuntime(){if(handle)taoot_player_close(handle);}
+String DreamRuntime::initialize(Object *owner) {
+ if(handle)taoot_player_close(handle);host=owner;handle=taoot_player_new((uintptr_t)this,(void*)platform_call);
+ return handle?String():String("Could not initialize Go runtime");
 }
-DreamRuntime::~DreamRuntime() { JS_FreeContext(ctx); JS_FreeRuntime(rt); }
-void DreamRuntime::exception() {
- JSValue value=JS_GetException(ctx), stack=JS_GetPropertyStr(ctx,value,"stack");
- const char *text=JS_ToCString(ctx,value), *trace=JS_IsUndefined(stack)?nullptr:JS_ToCString(ctx,stack);
- last_error=String::utf8(text?text:"JavaScript error")+"\n"+String::utf8(trace?trace:"");
- ERR_PRINT(last_error); JS_FreeCString(ctx,text); JS_FreeCString(ctx,trace); JS_FreeValue(ctx,value); JS_FreeValue(ctx,stack);
+TaootResult DreamRuntime::call(const String &method,const String &args) {
+ TaootResult out={};CharString m=method.utf8(),a=args.utf8();
+ taoot_player_call(handle,(char*)m.get_data(),(char*)a.get_data(),&out);return out;
 }
-JSValue DreamRuntime::eval(const String &code) {
- last_error=String(); titanic_prepare_memory(rt);
- CharString text=code.utf8(); JSValue v=JS_Eval(ctx,text.get_data(),text.length(),"engine.js",JS_EVAL_TYPE_GLOBAL);
- if(JS_IsException(v))exception();return v;
+String DreamRuntime::execute(const String &method,const String &args) {
+ TaootResult out=call(method,args);String error=out.kind<0?String::utf8((char*)out.data,(int)out.size):String();free(out.data);return error;
 }
-void DreamRuntime::pump() { JSContext *pending;for(int i=0;i<4096&&JS_IsJobPending(rt);i++) if(JS_ExecutePendingJob(rt,&pending)<0){exception();break;} }
-String DreamRuntime::initialize(Object *owner,const String &code) {host=owner;return execute(code);}
-String DreamRuntime::execute(const String &code) { JSValue v=eval(code);JS_FreeValue(ctx,v);pump();return last_error; }
-String DreamRuntime::query(const String &code) {
- JSValue v=eval(code); const char *text=JS_IsException(v)?nullptr:JS_ToCString(ctx,v);
- String out=String::utf8(text?text:"");JS_FreeCString(ctx,text);JS_FreeValue(ctx,v);return out;
+String DreamRuntime::query(const String &method,const String &args) {
+ TaootResult out=call(method,args);String result=out.kind==1?String::utf8((char*)out.data,(int)out.size):String("null");free(out.data);return result;
 }
-Bytes DreamRuntime::buffer(const String &code) {
- JSValue v=eval(code);Bytes out;
- if(!JS_IsException(v)&&!JS_IsNull(v)&&!JS_IsUndefined(v)) {
-  size_t size=0;uint8_t *data=JS_GetArrayBuffer(ctx,&size,v);
-  if(data){out.resize(size);
+Bytes DreamRuntime::buffer(const String &method,const String &args) {
+ TaootResult result=call(method,args);Bytes out;
+ if(result.kind==2 && result.size>0){out.resize((int)result.size);
 #if VERSION_MAJOR >= 4
-   memcpy(out.ptrw(),data,size);
+  memcpy(out.ptrw(),result.data,(size_t)result.size);
 #else
-   auto w=out.write();memcpy(w.ptr(),data,size);
+  auto w=out.write();memcpy(w.ptr(),result.data,(size_t)result.size);
 #endif
-  }else exception();
- }JS_FreeValue(ctx,v);return out;
+ }
+ free(result.data);return out;
 }
-JSValue DreamRuntime::native_call(JSContext *ctx,JSValueConst self,int argc,JSValueConst *argv) {
- DreamRuntime *r=static_cast<DreamRuntime*>(JS_GetContextOpaque(ctx));
- if(!r->host||argc<2)return JS_ThrowTypeError(ctx,"Invalid native call");
- const char *method=JS_ToCString(ctx,argv[0]), *json=JS_ToCString(ctx,argv[1]);
- if(!method||!json){JS_FreeCString(ctx,method);JS_FreeCString(ctx,json);return JS_EXCEPTION;}
- String m=String::utf8(method),j=String::utf8(json);JS_FreeCString(ctx,method);JS_FreeCString(ctx,json);
+static void copy_result(TaootResult *out,const void *data,int64_t size,int kind) {
+ out->data=size?(uint8_t*)malloc((size_t)size):nullptr;out->size=size;out->kind=kind;if(size)memcpy(out->data,data,(size_t)size);
+}
+void DreamRuntime::platform_call(uintptr_t owner,const char *method,const char *json,const uint8_t *data,int64_t size,TaootResult *out) {
+ auto r=(DreamRuntime*)owner;if(!r->host){const char *e="Missing platform owner";copy_result(out,e,strlen(e),-1);return;}
  Variant binary;
- if(argc>2&&!JS_IsUndefined(argv[2])) {
-  size_t size=0;uint8_t *data=JS_GetArrayBuffer(ctx,&size,argv[2]);if(!data)return JS_EXCEPTION;
-  Bytes b;b.resize(size);
+ if(data){Bytes b;b.resize((int)size);
 #if VERSION_MAJOR >= 4
-  memcpy(b.ptrw(),data,size);
+  memcpy(b.ptrw(),data,(size_t)size);
 #else
-  {auto w=b.write();memcpy(w.ptr(),data,size);}
+  {auto w=b.write();memcpy(w.ptr(),data,(size_t)size);}
 #endif
   binary=b;
  }
- // Godot 3 variadic call treats a nil argument as the end of the list.
- // callv retains the required third argument even when there is no payload.
- Array arguments;arguments.append(m);arguments.append(j);arguments.append(binary);
+ Array arguments;arguments.append(String::utf8(method));arguments.append(String::utf8(json));arguments.append(binary);
  Variant result=r->host->callv("bridge_call",arguments);
 #if VERSION_MAJOR >= 4
- if(result.get_type()==Variant::PACKED_BYTE_ARRAY){Bytes b=result;return JS_NewArrayBufferCopy(ctx,b.ptr(),b.size());}
+ if(result.get_type()==Variant::PACKED_BYTE_ARRAY){Bytes b=result;copy_result(out,b.ptr(),b.size(),2);}
 #else
- if(result.get_type()==Variant::POOL_BYTE_ARRAY){Bytes b=result;auto rd=b.read();return JS_NewArrayBufferCopy(ctx,rd.ptr(),b.size());}
+ if(result.get_type()==Variant::POOL_BYTE_ARRAY){Bytes b=result;auto rd=b.read();copy_result(out,rd.ptr(),b.size(),2);}
 #endif
- if(result.get_type()==Variant::STRING){CharString s=String(result).utf8();return JS_NewStringLen(ctx,s.get_data(),s.length());}
- return JS_NULL;
+ else if(result.get_type()==Variant::STRING){CharString s=String(result).utf8();copy_result(out,s.get_data(),s.length(),1);}
 }

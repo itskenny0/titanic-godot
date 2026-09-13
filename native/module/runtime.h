@@ -2,6 +2,7 @@
 #ifndef TITANIC_RUNTIME_H
 #define TITANIC_RUNTIME_H
 #include "core/version.h"
+#include "player_api.h"
 #if VERSION_MAJOR >= 4
 #include "core/object/ref_counted.h"
 using RuntimeBase = RefCounted;
@@ -11,27 +12,19 @@ using Bytes = PackedByteArray;
 using RuntimeBase = Reference;
 using Bytes = PoolByteArray;
 #endif
-extern "C" {
-#include "quickjs.h"
-}
 class DreamRuntime : public RuntimeBase {
  GDCLASS(DreamRuntime, RuntimeBase);
- JSRuntime *rt = nullptr;
- JSContext *ctx = nullptr;
+ uintptr_t handle = 0;
  Object *host = nullptr;
- String last_error;
- JSValue eval(const String &code);
- void pump();
- void exception();
- static JSValue native_call(JSContext *, JSValueConst, int, JSValueConst *);
+ TaootResult call(const String &method,const String &args);
+ static void platform_call(uintptr_t,const char *,const char *,const uint8_t *,int64_t,TaootResult *);
 protected:
  static void _bind_methods();
 public:
- DreamRuntime();
  ~DreamRuntime();
- String initialize(Object *owner, const String &code);
- String execute(const String &code);
- String query(const String &code);
- Bytes buffer(const String &code);
+ String initialize(Object *owner);
+ String execute(const String &method,const String &args = "{}");
+ String query(const String &method,const String &args = "{}");
+ Bytes buffer(const String &method,const String &args = "{}");
 };
 #endif

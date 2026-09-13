@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Build the Go media library for a Godot or PortMaster target."""
+"""Build the Go gameplay library for a Godot or PortMaster target."""
 from pathlib import Path
 import argparse, os, platform, subprocess
 

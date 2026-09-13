@@ -2,9 +2,9 @@ extends SceneTree
 class Recorder:
 	extends Reference
 	var commands = []
-	func execute(code):
-		if code.begins_with("titanicCommand("):
-			commands.append(JSON.parse(code.substr(15, code.length()-16)).result)
+	func execute(method, args = "{}"):
+		if method == "command":
+			commands.append(JSON.parse(args).result)
 		return ""
 var player
 var recorder = Recorder.new()

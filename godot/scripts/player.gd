@@ -199,18 +199,15 @@ func start_runtime(save_path = ""):
 	if runtime == null:
 		show_note("The engine library could not be loaded for this architecture.")
 		return
-	var f = File.new()
-	if f.open("res://engine.js", File.READ) != OK:
-		show_note("Missing engine.js. Run npm run build:engine.")
-		return
-	var code = f.get_as_text()
-	f.close()
-	var error = runtime.initialize(self, code)
+	var error = runtime.initialize(self)
 	if not error.empty():
 		show_note(error)
 		return
-	runtime.execute("titanicProfile(%s)" % ("true" if OS.is_debug_build() else "false"))
-	runtime.execute("titanicBoot(%s)" % JSON.print({"index": game_index, "save": save_path, "testing": "--integration-test" in OS.get_cmdline_args()}))
+	runtime.execute("profile", JSON.print({"on": OS.is_debug_build()}))
+	error = runtime.execute("boot", JSON.print({"index": game_index, "save": save_path, "testing": "--integration-test" in OS.get_cmdline_args()}))
+	if not error.empty():
+		show_note(error)
+		return
 	status.show()
 	status.text = "Preparing your voyage…"
 
@@ -284,7 +281,7 @@ func send(command):
 		return
 	if runtime != null:
 		var started = OS.get_ticks_usec()
-		runtime.execute("titanicCommand(%s)" % JSON.print(command))
+		runtime.execute("command", JSON.print(command))
 		var elapsed = OS.get_ticks_usec() - started
 		if OS.is_debug_build() and elapsed > 50000:
 			print("PERF command ", command.get("action", ""), " ", elapsed / 1000.0, " ms")
@@ -295,7 +292,7 @@ func _process(delta):
 	refresh_cursor()
 	if runtime != null:
 		var tick_started = OS.get_ticks_usec()
-		var error = runtime.execute("void 0" if runtime_failed else "titanicTick(%s)" % str(min(delta, 0.25) * 1000.0))
+		var error = "" if runtime_failed else runtime.execute("tick", JSON.print({"dt": min(delta, 0.25) * 1000.0}))
 		var tick_finished = OS.get_ticks_usec()
 		if not error.empty():
 			if smoke:
@@ -307,7 +304,7 @@ func _process(delta):
 				send({"action": "pause", "on": true})
 				show_note("The game stopped. Open Menu to load a saved game.\n\n" + error.split("\n")[0])
 			return
-		var bytes = runtime.buffer("titanicFrame()")
+		var bytes = runtime.buffer("frame")
 		if bytes.size() == 512 * 384 * 4:
 			frame_image.create_from_data(512, 384, false, Image.FORMAT_RGBA8, bytes)
 			if not has_frame:
@@ -315,10 +312,10 @@ func _process(delta):
 				has_frame = true
 			else:
 				frame_texture.set_data(frame_image)
-			overlays = JSON.parse(runtime.query("titanicOverlay()")).result
+			overlays = JSON.parse(runtime.query("overlay")).result
 			update()
 		var present_finished = OS.get_ticks_usec()
-		var events = JSON.parse(runtime.query("titanicEvents()")).result
+		var events = JSON.parse(runtime.query("events")).result
 		for event in events:
 			handle_event(event)
 		if pending_restart != null:
@@ -333,7 +330,7 @@ func _process(delta):
 			perf_peak_us = max(perf_peak_us, finished - tick_started)
 			if perf_elapsed >= 5.0:
 				print("PERF fps=", perf_frames / perf_elapsed, " tick_ms=", perf_tick_us / (1000.0 * perf_frames), " present_ms=", perf_present_us / (1000.0 * perf_frames), " events_ms=", perf_events_us / (1000.0 * perf_frames), " peak_ms=", perf_peak_us / 1000.0)
-				print("PERF engine totals ", runtime.query("titanicTimings()"))
+				print("PERF engine totals ", runtime.query("timings"))
 				perf_elapsed = 0.0
 				perf_frames = 0
 				perf_tick_us = 0
@@ -343,7 +340,7 @@ func _process(delta):
 		if smoke:
 			smoke_time += delta
 			if smoke_time > 12.0:
-				print("SMOKE STATE: ", runtime.query("titanicState()"))
+				print("SMOKE STATE: ", runtime.query("state"))
 				frame_image.save_png("user://smoke.png")
 				get_tree().quit(0 if ready and has_frame else 1)
 
@@ -398,7 +395,7 @@ func handle_event(event):
 			print("Saved: ", event.name)
 
 func play_sound(event):
-	var bytes = runtime.buffer("titanicAudio(%d)" % event.id)
+	var bytes = runtime.buffer("audio", JSON.print({"id": event.id}))
 	if bytes.empty():
 		return
 	var stream = AudioStreamSample.new()

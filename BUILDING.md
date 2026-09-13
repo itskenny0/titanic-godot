@@ -1,13 +1,11 @@
 # Building
 
-Use Go 1.26.4, Python 3.11+, Node.js 22, CMake, SCons 4.8.1, and a C/C++ compiler. Go decodes game media; the remaining gameplay code still uses QuickJS-NG. The build scripts pin Godot and vendor the reference gameplay engine, QuickJS-NG, and Godot headers. Godot 3.5.2 is the desktop and PortMaster baseline. Windows ARM64 and Android use the generated Godot 4.3 frontend.
+Use Go 1.26.4, Python 3.11+, CMake, SCons 4.8.1, and a C/C++ compiler. Go handles gameplay, scripts, media decoding, and frame composition. Godot handles display, input, dialogs, and audio output. The port follows the pinned dreamREfactory revision recorded in `vendor/REVISIONS.json`. Godot 3.5.2 is the desktop and PortMaster baseline. Windows ARM64 and Android use the generated Godot 4.3 frontend.
 
 ```
-npm ci
-npm run build:engine
+python3 tools/prepare-notices.py
 python3 tools/fetch-patches.py
-npm test
-go test ./internal/df
+go test -race ./internal/... ./cmd/native-codecs
 python3 tools/build-go.py --platform linux --arch x86_64
 cmake -S native -B .build/native -DCMAKE_BUILD_TYPE=Release -DTITANIC_GO_LIBRARY="$PWD/.build/go/linux-x86_64/libtitanic_go.a"
 cmake --build .build/native --target titanic -j2
@@ -30,6 +28,8 @@ Publishing a GitHub release builds its tagged source and attaches all packages, 
 
 If only Linux packaging failed, **Finish release packaging** can reuse the compiled packages from that build run. Enter the release tag and Actions run ID. It checks the archived source against the tag before attaching the downloads.
 
-The `--static` Linux tarball statically links the gameplay engine, Go media library, QuickJS, and C++ runtime. It still uses system C, display, graphics, and audio libraries. It is not a fully static ELF executable. macOS apps are ad hoc signed and Windows packages are unsigned. Android uses the committed `packaging/android/debug.keystore` with alias `androiddebugkey` and password `android`, matching the test-device installs. Production signing needs your own private keys.
+The `--static` Linux tarball statically links the Go gameplay library and C++ runtime. It still uses system C, display, graphics, and audio libraries. It is not a fully static ELF executable. macOS apps are ad hoc signed and Windows packages are unsigned. Android uses the committed `packaging/android/debug.keystore` with alias `androiddebugkey` and password `android`, matching the test-device installs. Production signing needs your own private keys.
 
 Run the portable Godot tests by copying `tests/runtime.gd` to `godot/runtime-test.gd` and launching Godot with `--path godot -s res://runtime-test.gd`. `tests/integration.gd` additionally needs owned game files and `--game-data=/path/to/gamedata --integration-test`. Do not include game data or saves in Git. Release builds fetch the requested, checksum-pinned M3tox patch pack; those downloaded files stay outside Git.
+
+The Go tests include synthetic fixtures captured from the pinned reference engine. With owned game files, run `TAOOT_GAME_DATA=/path/to/gamedata go test ./internal/...` for startup, navigation, and save/load integration. Set `TAOOT_MOD_DATA` to the extracted Extended Mod directory to check its startup too. The Godot integration test uses actual game data and the UI bridge; `Dummy` audio checks do not verify sound on a device.

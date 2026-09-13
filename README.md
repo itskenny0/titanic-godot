@@ -1,6 +1,6 @@
 # Titanic for Godot
 
-A Godot player for *Titanic: Adventure Out of Time* (1996), based on [titanic-mac](https://github.com/axx-archive/titanic-mac) and [dreamREfactory](https://github.com/dhobi/dreamrefactory). Bring your own game files.
+A Godot player with a native Go engine for *Titanic: Adventure Out of Time* (1996), based on [titanic-mac](https://github.com/axx-archive/titanic-mac) and [dreamREfactory](https://github.com/dhobi/dreamrefactory). Bring your own game files.
 
 Build with the commands in [BUILDING.md](BUILDING.md), then choose your prepared `cd1` and `cd2` folders. [Setup and mods](docs/SETUP.md) covers digital installs and M3tox's fixes, lounge unlock, and extended-content mod. The bundled M3tox 1.0.3 FULL patches have a first-start chooser. Saves live outside the app; replaced saves are archived.
 

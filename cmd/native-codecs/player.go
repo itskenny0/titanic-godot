@@ -183,6 +183,17 @@ func taoot_player_call(handle C.uintptr_t, method, args *C.char, out *C.TaootRes
 		value = p.Overlay()
 	case "timings":
 		value = p.Timings()
+	case "test":
+		var c engine.PlayerTestCommand
+		err = json.Unmarshal(raw, &c)
+		if err == nil {
+			var binary bool
+			value, binary, err = p.TestOperation(c)
+			if err == nil && binary {
+				playerResult(out, value.([]byte), 2)
+				return
+			}
+		}
 	case "memory":
 		var m runtime.MemStats
 		runtime.ReadMemStats(&m)

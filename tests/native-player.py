@@ -5,6 +5,8 @@ import ctypes as C
 import json
 from pathlib import Path
 import threading
+import sys
+import time
 
 parser = argparse.ArgumentParser()
 parser.add_argument('library', type=Path)
@@ -87,6 +89,7 @@ try:
     assert call('frame', expected=2) == b''
     assert call('audio', {'id': 9999}, expected=2) == b''
     assert call('memory')['runtime'] == 'go'
+    assert b'testing is disabled' in call('test', {'op': 'snapshot'}, expected=-1)
     assert b'unknown player operation' in call('unsupported', expected=-1)
     assert call('state')['ready'], 'recoverable error damaged runtime'
     assert not errors, errors
@@ -94,4 +97,10 @@ finally:
     lib.taoot_player_close(handle)
 # Stale handles are rejected without dereferencing freed memory.
 assert call('state', expected=-1)
+# A GDNative library can be closed while Go's process-wide runtime threads still
+# exist. The Linux adapter must carry NODELETE, just like Go's c-shared output.
+if sys.platform.startswith('linux'):
+    import _ctypes
+    _ctypes.dlclose(lib._handle)
+    time.sleep(0.1)
 print('Native C ABI tests passed')

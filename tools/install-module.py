@@ -5,7 +5,9 @@ p=argparse.ArgumentParser();p.add_argument('source',type=Path);p.add_argument('-
 root=Path(__file__).resolve().parents[1]
 target=a.source/'modules/titanic'
 shutil.copytree(root/'native/module',target,dirs_exist_ok=True)
-shutil.copytree(root/'vendor/quickjs',target/'quickjs',ignore=shutil.ignore_patterns('.git'),dirs_exist_ok=True)
+shutil.rmtree(target/'quickjs', ignore_errors=True)
+for obsolete in ['pixels.h', 'codecs.h', 'memory.h']:
+ (target/obsolete).unlink(missing_ok=True)
 if a.go_library:
  (target/'go').mkdir(exist_ok=True)
  for old in (target/'go').glob('libtitanic_go.*'):old.unlink()

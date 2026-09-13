@@ -1,10 +1,9 @@
 #!/usr/bin/env python3
 """Copy the pinned DreamFactory command table into the Go decoder."""
 from pathlib import Path
-import json, re, subprocess
+import json, subprocess
 root=Path(__file__).resolve().parents[1]
-source=(root/'vendor/dreamrefactory/engine/src/df/opcodes.ts').read_text().split('export const OPCODES:',1)[1]
-entries=re.findall(r'\[(\d+), "([^"]*)"\]',source)
+entries=json.loads((root/'vendor/dreamrefactory/opcodes.json').read_text()).items()
 if len(entries)!=351 or len({n for n,_ in entries})!=351 or len({s for _,s in entries})!=351:
     raise SystemExit('Pinned opcode table changed')
 out=root/'internal/df/opcodes.go'

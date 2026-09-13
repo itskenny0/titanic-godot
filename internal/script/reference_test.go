@@ -148,7 +148,7 @@ func tokensJSON(tokens []df.Token) any {
 func TestReferenceScripts(t *testing.T) {
 	path := os.Getenv("TAOOT_SCRIPT_REFERENCE")
 	if path == "" {
-		t.Skip("set TAOOT_SCRIPT_REFERENCE to hashes from tests/script-reference.ts")
+		t.Skip("set TAOOT_SCRIPT_REFERENCE to local pinned-reference hashes")
 	}
 	data, err := os.ReadFile(path)
 	if err != nil {

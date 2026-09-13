@@ -40,11 +40,7 @@ jobs:
         with:
           go-version: '1.26.4'
           cache: false
-      - uses: actions/setup-node@v4
-        with:
-          node-version: '22'
-          cache: npm
-      - run: npm ci && npm run build:engine && npm test
+      - run: python3 tools/prepare-notices.py
       - name: Install Godot pack exporters
         run: |
           sudo apt-get update -qq
@@ -62,19 +58,14 @@ jobs:
           python3 tools/export-pack.py --godot "$PWD/.tools/Godot_v4.3-stable_linux.x86_64" --project .build/godot4-project --major 4 --output dist/titanic4.pck
       - name: Check the native bridge without game data
         run: |
-          codec_args=()
-          runtime_args=()
-          if [[ -f go.mod ]]; then
-            go test ./internal/...
-            python3 tools/build-go.py --platform linux --arch x86_64
-            codec_args=(-DTITANIC_GO_LIBRARY="$PWD/.build/go/linux-x86_64/libtitanic_go.a")
-            runtime_args=(-- --go-codecs)
-          fi
-          cmake -S native -B .build/native -DCMAKE_BUILD_TYPE=Release "${codec_args[@]}"
+          go test -race ./internal/... ./cmd/native-codecs
+          python3 tools/build-go.py --platform linux --arch x86_64
+          cmake -S native -B .build/native -DCMAKE_BUILD_TYPE=Release -DTITANIC_GO_LIBRARY="$PWD/.build/go/linux-x86_64/libtitanic_go.a"
           cmake --build .build/native --target titanic -j2
           cp .build/native/libtitanic.so godot/native/libtitanic.x86_64.so
+          python3 tests/native-player.py .build/native/libtitanic.so
           cp tests/runtime.gd godot/runtime-test.gd
-          timeout 60 xvfb-run -a .tools/Godot_v3.5.2-stable_x11.64 --path godot --audio-driver Dummy -s res://runtime-test.gd "${runtime_args[@]}" | tee .build/portable.log
+          timeout 60 xvfb-run -a .tools/Godot_v3.5.2-stable_x11.64 --path godot --audio-driver Dummy -s res://runtime-test.gd | tee .build/portable.log
           grep -q 'PORTABLE TESTS PASS' .build/portable.log
       - name: Check handheld and touch layouts
         run: |
@@ -126,6 +117,9 @@ jobs:
         with:
           python-version: '3.11'
       - run: pip install scons==4.8.1
+      - name: Check ARM64 gameplay and reference rounding
+        if: matrix.platform == 'linux' && matrix.arch == 'arm64'
+        run: go test ./internal/... ./cmd/native-codecs
       - uses: actions/download-artifact@v4
         with:
           name: game-packs-and-source
@@ -218,12 +212,8 @@ jobs:
               cc="${spec#*:}"
               goarch="$arch"
               [[ "$arch" != aarch64 ]] || goarch=arm64
-              codec_args=()
-              if [[ -f go.mod ]]; then
-                python3 tools/build-go.py --platform linux --arch "$goarch" --cc "$cc"
-                codec_args=(-DTITANIC_GO_LIBRARY="/work/.build/go/linux-$goarch/libtitanic_go.a")
-              fi
-              cmake -S native -B ".build/$arch" -DCMAKE_SYSTEM_NAME=Linux -DCMAKE_C_COMPILER="$cc" -DCMAKE_BUILD_TYPE=Release "${codec_args[@]}"
+              python3 tools/build-go.py --platform linux --arch "$goarch" --cc "$cc"
+              cmake -S native -B ".build/$arch" -DCMAKE_SYSTEM_NAME=Linux -DCMAKE_C_COMPILER="$cc" -DCMAKE_BUILD_TYPE=Release -DTITANIC_GO_LIBRARY="/work/.build/go/linux-$goarch/libtitanic_go.a"
               cmake --build ".build/$arch" --target titanic -j2
               cp ".build/$arch/libtitanic.so" "godot/native/libtitanic.$arch.so"
             done'
@@ -255,10 +245,6 @@ jobs:
         with:
           go-version: '1.26.4'
           cache: false
-      - uses: actions/setup-node@v4
-        with:
-          node-version: '22'
-          cache: npm
       - uses: actions/setup-python@v5
         with:
           python-version: '3.11'
@@ -270,16 +256,11 @@ jobs:
       - run: |
           sdkmanager 'platforms;android-34' 'build-tools;34.0.0' 'ndk;26.1.10909125'
           pip install scons==4.8.1
-          npm ci
-          npm run build:engine
+          python3 tools/prepare-notices.py
           python3 tools/fetch-patches.py
           python3 tools/fetch-godot.py 4 .build/godot4
-          codec_args=()
-          if [[ -f go.mod ]]; then
-            python3 tools/build-go.py --platform android --arch arm64
-            codec_args=(--go-library .build/go/android-arm64/libtitanic_go.so)
-          fi
-          python3 tools/install-module.py .build/godot4 "${codec_args[@]}"
+          python3 tools/build-go.py --platform android --arch arm64
+          python3 tools/install-module.py .build/godot4 --go-library .build/go/android-arm64/libtitanic_go.so
           python3 tools/prepare-android.py
       - name: Build ARM64 Android engine and document picker
         run: |

@@ -5,6 +5,7 @@ import argparse,shutil,subprocess,re
 p=argparse.ArgumentParser();p.add_argument('--godot',required=True);p.add_argument('--output',default='.build/godot4-project');args=p.parse_args()
 root=Path(__file__).resolve().parents[1];out=Path(args.output).resolve()
 shutil.copytree(root/'godot',out,ignore=shutil.ignore_patterns('.import','native','.godot','integration.gd','*-test.gd'),dirs_exist_ok=True)
+(out/'engine.js').unlink(missing_ok=True)
 (out/'integration.gd').unlink(missing_ok=True)
 (out/'runtime-test.gd').unlink(missing_ok=True)
 (out/'ui-test.gd').unlink(missing_ok=True)
