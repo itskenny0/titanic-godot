@@ -66,6 +66,8 @@ jobs:
           cp tests/runtime.gd godot/runtime-test.gd
           timeout 60 xvfb-run -a .tools/Godot_v3.5.2-stable_x11.64 --path godot --audio-driver Dummy -s res://runtime-test.gd | tee .build/portable.log
           grep -q 'PORTABLE TESTS PASS' .build/portable.log
+      - name: Check PortMaster launcher
+        run: python3 tests/portmaster-launcher.py
       - name: Check handheld and touch layouts
         run: |
           cp tests/ui.gd godot/ui-test.gd

@@ -65,5 +65,5 @@ for source in (root/'tools/godot4').glob('*.gd'):shutil.copy2(source,out/'script
 p=out/'project.godot';s=p.read_text();s+='\nrendering/renderer/rendering_method="gl_compatibility"\n' if False else ''
 # Put renderer settings in the rendering section.
 s=s.replace('window/stretch/mode="2d"', 'window/stretch/mode="canvas_items"')
-s=s.replace('[rendering]', '[rendering]\ntextures/vram_compression/import_etc2_astc=true\nrenderer/rendering_method="gl_compatibility"\nrenderer/rendering_method.mobile="gl_compatibility"')
+s=s.replace('[rendering]', '[rendering]\ntextures/lossless_compression/force_png=true\ntextures/vram_compression/import_etc2_astc=true\nrenderer/rendering_method="gl_compatibility"\nrenderer/rendering_method.mobile="gl_compatibility"')
 p.write_text(s)

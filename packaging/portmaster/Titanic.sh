@@ -1,5 +1,14 @@
 #!/bin/bash
 # PortMaster launcher. Native joypads are disabled in FRT; gptokeyb supplies both sticks.
+# Resolve the adjacent game folder before loading firmware helpers, so even
+# early startup failures reach the log. PortMaster has no get_ports_location().
+launcher_dir="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)" || exit 1
+GAMEDIR="$launcher_dir/titanic"
+if [[ ! -d "$GAMEDIR" ]]; then
+  echo "Missing Titanic game folder beside the launcher: $GAMEDIR" >&2
+  exit 1
+fi
+exec > >(tee "$GAMEDIR/log.txt") 2>&1
 XDG_DATA_HOME=${XDG_DATA_HOME:-$HOME/.local/share}
 if [[ -d /opt/system/Tools/PortMaster ]]; then
   controlfolder=/opt/system/Tools/PortMaster
@@ -10,17 +19,20 @@ elif [[ -d "$XDG_DATA_HOME/PortMaster" ]]; then
 else
   controlfolder=/roms/ports/PortMaster
 fi
-source "$controlfolder/control.txt"
+if [[ ! -f "$controlfolder/control.txt" ]]; then
+  echo "PortMaster control.txt was not found in $controlfolder"
+  exit 1
+fi
+source "$controlfolder/control.txt" || exit 1
+[[ ! -f "$controlfolder/mod_${CFW_NAME}.txt" ]] || source "$controlfolder/mod_${CFW_NAME}.txt"
 get_controls
-GAMEDIR="/$(get_ports_location)/titanic"
 cd "$GAMEDIR" || exit 1
-exec > >(tee -a "$GAMEDIR/log.txt") 2>&1
 runtime=frt_3.5.2
 godot_file="$controlfolder/libs/$runtime.squashfs"
 if [[ ! -f "$godot_file" ]]; then
   $ESUDO "$controlfolder/harbourmaster" --quiet --no-check runtime_check "$runtime.squashfs"
 fi
-[[ -f "$godot_file" ]] || exit 1
+[[ -f "$godot_file" ]] || { echo "Missing PortMaster runtime: $godot_file"; exit 1; }
 godot_dir="$GAMEDIR/.runtime"
 $ESUDO mkdir -p "$godot_dir"
 $ESUDO mount -o loop,ro "$godot_file" "$godot_dir" || exit 1
@@ -40,5 +52,7 @@ export PATH="$godot_dir:$PATH"
 $ESUDO chmod 666 /dev/uinput
 $GPTOKEYB "$runtime" -c "$GAMEDIR/titanic.gptk" &
 mapper_pid=$!
-pm_platform_helper "$runtime"
+if declare -F pm_platform_helper >/dev/null; then
+  pm_platform_helper "$godot_dir/$runtime"
+fi
 "$godot_dir/$runtime" $GODOT_OPTS --main-pack "$GAMEDIR/titanic.pck" -- --game-data="$GAMEDIR/gamedata"

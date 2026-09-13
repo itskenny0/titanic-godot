@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Check the packaged APK's architecture and native page-size compatibility."""
 from pathlib import Path
-import argparse, re, subprocess, tempfile, zipfile
+import argparse, re, struct, subprocess, tempfile, zipfile
 p=argparse.ArgumentParser();p.add_argument('apk');p.add_argument('--require-bundled-patches',action='store_true');a=p.parse_args()
 with zipfile.ZipFile(a.apk) as z, tempfile.TemporaryDirectory() as temporary:
     native=[n for n in z.namelist() if n.startswith('lib/') and n.endswith('.so')]
@@ -21,6 +21,13 @@ with zipfile.ZipFile(a.apk) as z, tempfile.TemporaryDirectory() as temporary:
     if 'assets/engine.js' in z.namelist():raise SystemExit('Obsolete JavaScript engine in APK')
     for name in ['assets/required_files.json','assets/patches/manifest.json','assets/notices/COPYING.txt','assets/notices/Go.txt']:
         if name not in z.namelist():raise SystemExit('Missing APK payload: '+name)
+    # The small Android runtime omits WebP and Basis Universal decoders.
+    # A texture preload failure prevents the entire player script from loading.
+    for name in z.namelist():
+        if name.startswith('assets/') and name.endswith('.ctex'):
+            texture = z.read(name)
+            if len(texture) < 40 or texture[:4] != b'GST2' or struct.unpack_from('<I', texture, 36)[0] not in (0, 1):
+                raise SystemExit('Unsupported texture encoding in stripped Android runtime: '+name+'. Export PNG or uncompressed textures.')
     patches = len([n for n in z.namelist() if n.startswith('assets/patches/files/') and n.endswith('.SET')])
     if patches not in (0, 56) or (a.require_bundled_patches and patches != 56):
         raise SystemExit('Missing or incomplete bundled patches')
