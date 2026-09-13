@@ -7,6 +7,10 @@ major='4' if a.platform=='windows' and a.arch=='arm64' else '3'
 # Godot generates shared headers; each platform/architecture needs its own tree.
 source=root/'.build'/f'godot{major}-{a.platform}-{a.arch}'
 subprocess.run(['python3',str(root/'tools/fetch-godot.py'),major,str(source)],check=True)
+if a.platform=='mac':
+ # The Go engine and app metadata require macOS 12; match the runtime link target.
+ detect=source/'platform/osx/detect.py'
+ detect.write_text(detect.read_text().replace('-mmacosx-version-min=10.12','-mmacosx-version-min=12.0').replace('-mmacosx-version-min=10.15','-mmacosx-version-min=12.0'))
 go_library=root/'.build/go'/f'{a.platform}-{a.arch}'/'libtitanic_go.a'
 go_cmd=['python3',str(root/'tools/build-go.py'),'--platform',a.platform,'--arch',a.arch,'--output',str(go_library)]
 if a.mingw_prefix:go_cmd+=['--cc',a.mingw_prefix+'clang']
