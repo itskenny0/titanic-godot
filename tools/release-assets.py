@@ -12,7 +12,7 @@ from urllib.parse import quote
 
 
 def package_names():
-    names = {"titanic-source.tar.gz", "titanic-portmaster.zip", "titanic-android-arm64-debug.apk"}
+    names = {"titanic-source.tar.gz", "titanic-portmaster.zip", "titanic-android-arm64-release.apk"}
     for arch in ("x86_64", "arm64"):
         names.add(f"titanic-windows-{arch}-portable.zip")
         names.add(f"titanic-mac-{arch}.zip")

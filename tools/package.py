@@ -3,7 +3,7 @@
 from pathlib import Path
 import argparse,shutil,subprocess,tarfile,zipfile,plistlib,os
 ROOT=Path(__file__).resolve().parents[1]
-p=argparse.ArgumentParser();p.add_argument('kind',choices=['linux','mac','windows','portmaster']);p.add_argument('--binary');p.add_argument('--arch',default='x86_64');p.add_argument('--pack',default='dist/titanic.pck');p.add_argument('--version',default='0.1.0');p.add_argument('--static',action='store_true');a=p.parse_args()
+p=argparse.ArgumentParser();p.add_argument('kind',choices=['linux','mac','windows','portmaster']);p.add_argument('--binary');p.add_argument('--arch',default='x86_64');p.add_argument('--pack',default='dist/titanic.pck');p.add_argument('--version',default='0.3.0');p.add_argument('--static',action='store_true');a=p.parse_args()
 name=f'titanic-{a.kind}-{a.arch}'+('-static' if a.static else '')
 stage=ROOT/'.build/packages'/name
 if stage.exists():shutil.rmtree(stage)
@@ -27,6 +27,7 @@ if a.kind=='portmaster':
  shutil.copy2(a.pack,game/'titanic.pck')
  shutil.copy2(ROOT/'packaging/portmaster/Titanic.sh',stage/'Titanic.sh');(stage/'Titanic.sh').chmod(0o755)
  shutil.copy2(ROOT/'packaging/portmaster/titanic.gptk',game/'titanic.gptk')
+ shutil.copy2(ROOT/'packaging/icons/titanic.png',game/'icon.png')
  shutil.copy2(ROOT/'packaging/portmaster/port.json',game/'port.json')
  (game/'native').mkdir();(game/'gamedata').mkdir();(game/'mods').mkdir()
  for arch in ['aarch64','armhf']:shutil.copy2(ROOT/f'godot/native/libtitanic.{arch}.so',game/'native'/f'libtitanic.{arch}.so')
@@ -38,12 +39,14 @@ elif a.kind=='mac':
  app=stage/'Titanic.app/Contents';(app/'MacOS').mkdir(parents=True);(app/'Resources').mkdir()
  shutil.copy2(a.binary,app/'MacOS/titanic');(app/'MacOS/titanic').chmod(0o755)
  shutil.copy2(a.pack,app/'Resources/titanic.pck');licenses(app/'Resources/licenses')
- (app/'Info.plist').write_bytes(plistlib.dumps({'CFBundleExecutable':'titanic','CFBundleIdentifier':'io.github.itskenny0.Titanic','CFBundleName':'Titanic','CFBundlePackageType':'APPL','CFBundleShortVersionString':a.version,'NSHighResolutionCapable':True,'LSMinimumSystemVersion':'12.0'}))
+ shutil.copy2(ROOT/'packaging/icons/titanic.icns',app/'Resources/Titanic.icns')
+ (app/'Info.plist').write_bytes(plistlib.dumps({'CFBundleExecutable':'titanic','CFBundleIdentifier':'io.github.itskenny0.Titanic','CFBundleName':'Titanic','CFBundleIconFile':'Titanic.icns','CFBundlePackageType':'APPL','CFBundleShortVersionString':a.version,'NSHighResolutionCapable':True,'LSMinimumSystemVersion':'12.0'}))
  subprocess.run(['codesign','--force','--deep','--sign','-',str(app.parent)],check=True)
  zipped(dist/f'{name}.zip')
 else:
  exe=stage/('titanic.exe' if a.kind=='windows' else 'titanic');shutil.copy2(a.binary,exe);exe.chmod(0o755)
  shutil.copy2(a.pack,stage/'titanic.pck');licenses(stage/'licenses')
+ shutil.copy2(ROOT/'packaging/icons/titanic.png',stage/'titanic.png')
  if a.kind=='windows':zipped(dist/f'{name}-portable.zip')
  else:
   if a.static:
@@ -57,7 +60,7 @@ else:
    bindir=deb/'usr/bin';bindir.mkdir();launcher=bindir/'titanic';launcher.write_text('#!/bin/sh\nexec /usr/lib/titanic/titanic --main-pack /usr/lib/titanic/titanic.pck "$@"\n');launcher.chmod(0o755)
    debarch={'x86_64':'amd64','arm64':'arm64'}[a.arch];(deb/'DEBIAN').mkdir()
    (deb/'DEBIAN/control').write_text(f'Package: titanic-godot\nVersion: {a.version}\nArchitecture: {debarch}\nMaintainer: itskenny0\nDepends: libc6, libx11-6, libxcursor1, libxinerama1, libxrandr2, libxi6, libgl1, libasound2\nSection: games\nPriority: optional\nDescription: Godot player for Titanic Adventure Out of Time\n Original game files required.\n')
-   for src,dest in [('io.github.itskenny0.Titanic.desktop','usr/share/applications'),('io.github.itskenny0.Titanic.svg','usr/share/icons/hicolor/scalable/apps'),('io.github.itskenny0.Titanic.metainfo.xml','usr/share/metainfo')]:
+   for src,dest in [('io.github.itskenny0.Titanic.desktop','usr/share/applications'),('io.github.itskenny0.Titanic.png','usr/share/icons/hicolor/1024x1024/apps'),('io.github.itskenny0.Titanic.metainfo.xml','usr/share/metainfo')]:
     d=deb/dest;d.mkdir(parents=True,exist_ok=True);shutil.copy2(ROOT/'packaging/linux'/src,d/src)
    subprocess.run(['dpkg-deb','--root-owner-group','--build',str(deb),str(dist/f'{name}.deb')],check=True)
 print(stage)

@@ -2,7 +2,7 @@
 """Check the packaged APK's architecture and native page-size compatibility."""
 from pathlib import Path
 import argparse, re, subprocess, tempfile, zipfile
-p=argparse.ArgumentParser();p.add_argument('apk');a=p.parse_args()
+p=argparse.ArgumentParser();p.add_argument('apk');p.add_argument('--require-bundled-patches',action='store_true');a=p.parse_args()
 with zipfile.ZipFile(a.apk) as z, tempfile.TemporaryDirectory() as temporary:
     native=[n for n in z.namelist() if n.startswith('lib/') and n.endswith('.so')]
     if set(native) != {'lib/arm64-v8a/libgodot_android.so','lib/arm64-v8a/libtitanic_go.so'}:
@@ -21,6 +21,7 @@ with zipfile.ZipFile(a.apk) as z, tempfile.TemporaryDirectory() as temporary:
     if 'assets/engine.js' in z.namelist():raise SystemExit('Obsolete JavaScript engine in APK')
     for name in ['assets/required_files.json','assets/patches/manifest.json','assets/notices/COPYING.txt','assets/notices/Go.txt']:
         if name not in z.namelist():raise SystemExit('Missing APK payload: '+name)
-    if len([n for n in z.namelist() if n.startswith('assets/patches/files/') and n.endswith('.SET')]) != 56:
-        raise SystemExit('Missing bundled patches')
+    patches = len([n for n in z.namelist() if n.startswith('assets/patches/files/') and n.endswith('.SET')])
+    if patches not in (0, 56) or (a.require_bundled_patches and patches != 56):
+        raise SystemExit('Missing or incomplete bundled patches')
 print('Android APK: ARM64, 16 KiB native alignment, embedded engine, patches, and notices verified.')

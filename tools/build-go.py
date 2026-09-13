@@ -35,5 +35,5 @@ elif a.platform == 'linux':
     elif a.arch == 'armhf' and host not in ['armv7l','arm']: env['CC'] = 'arm-linux-gnueabihf-gcc'
 if shared:
     env['CGO_LDFLAGS'] = env.get('CGO_LDFLAGS','')+' -Wl,-z,max-page-size=16384 -Wl,-soname,libtitanic_go.so'
-subprocess.run(['go','build','-trimpath','-buildmode='+('c-shared' if shared else 'c-archive'),'-o',str(out),'./cmd/native-codecs'],cwd=root,env=env,check=True)
+subprocess.run(['go','build','-trimpath','-ldflags=-s -w','-buildmode='+('c-shared' if shared else 'c-archive'),'-o',str(out),'./cmd/native-codecs'],cwd=root,env=env,check=True)
 print(out)

@@ -116,3 +116,28 @@ func TestViewerHotspotsAndFractionalPointer(t *testing.T) {
 		t.Fatal("depth mask indexing no longer matches typed-array addressing")
 	}
 }
+
+func TestScriptedTurnReportsMovementBeforeReturning(t *testing.T) {
+	v, s := viewerFixture(t)
+	s.HasRealFrames = true
+	s.NavFromScript = true
+	reported := ""
+	s.Track("scripted pan", false, func(*Task) error {
+		v.Navigate("right")
+		reported = s.CurrentViewName()
+		return nil
+	})
+	s.Pump(0, true, 100)
+	if reported != "moving" || !v.Animating() || v.animationPace != EngineStepMS {
+		t.Fatal("script cannot observe its turn before polling currentview", reported, v.Animating(), v.animationPace)
+	}
+	// A subsequent scripted movement waits for this one to settle.
+	v.Navigate("left")
+	for i := 1; i <= 20; i++ {
+		v.AdvanceRoom(float64(i * 50))
+		s.Pump(float64(i*50), true, 100)
+	}
+	if v.Animating() || v.ViewIdx != 0 || len(s.Pending()) != 0 {
+		t.Fatal("queued script turn did not settle", v.ViewIdx, s.Pending())
+	}
+}

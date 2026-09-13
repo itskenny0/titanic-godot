@@ -71,6 +71,8 @@ def call(method, payload=None, expected=1):
 
 try:
     assert call('state') == {}
+    assert b'absolute path' in call('patch_start', {'target': 'relative'}, expected=-1)
+    call('patch_cancel')
     call('boot', {'index': {'1/bootfile': 'owned/bootfile'}})
     assert any(method == 'read' for method, _ in calls), calls
     assert call('state')['ready'] is True

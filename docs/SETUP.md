@@ -26,9 +26,9 @@ The original life-preserver menu remains available. Save while exploring, after 
 
 Saves use Godot's `user://Saves` under the custom `Retanic` user directory. `Save Archives` sits beside it. The menu can import and export `.ti` files and open the save folder. Original Windows saves and Mac restoration saves are accepted. New saves retain the Mac restoration's complete-state trailer; compatibility with the 1996 Windows executable is not promised.
 
-## Bundled patches
+## Patches
 
-The first launch lists M3tox's v1.0.3 FULL patches. Choose any combination, then Continue. They are intended for the Steam/GOG data, as the upstream README specifies. Nothing is applied until you choose. Reopen the chooser under Game files / mods to change your selection; save before applying changes because the player restarts.
+The first launch lists M3tox's v1.0.3 FULL patches. Download the FULL ZIP from GitHub or choose a copy from your device, select any combination, then Continue. You can also select None and play without patches. They are intended for the Steam/GOG data, as the upstream README specifies. Nothing is applied until you choose. Reopen the chooser under Game files / mods to change your selection; save before applying changes because the player restarts.
 
 - A-deck: stops repeated Tour-mode script errors.
 - B-deck: restores Jay walking in the corridors.
@@ -39,4 +39,4 @@ The first launch lists M3tox's v1.0.3 FULL patches. Choose any combination, then
 
 Each of the first five files also includes sharper navigation images for its location. Those changes cannot be split without editing the patch itself. The other-locations choice does not enable the separate lounge-unlock mod. Descriptions follow [M3tox's README](https://github.com/M3tox/TAOOT/blob/6019b87c9f5dacf83f9257770ea54a2822cb46c7/README.md).
 
-Selected patches are read from the application package, leaving your game files intact. An explicitly selected external mod folder takes precedence over bundled patches when filenames overlap. Deselect bundled patches to play the unpatched data. Builds verify the archive SHA-256 and all 56 files before packaging; the game works offline afterward.
+The player verifies the archive SHA-256 and all 56 files before installing them in its private cache. Your original game files stay intact, and patches work offline afterward. An external mod folder takes precedence when filenames overlap. Personal builds include the patches and need no download.

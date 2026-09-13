@@ -127,7 +127,7 @@ func TestSaveReference(t *testing.T) {
 		Neutral string
 		Saves   []struct {
 			Path, Rewrite string
-			State         Game
+			State         json.RawMessage
 		}
 	}
 	if err = json.Unmarshal(data, &corpus); err != nil {
@@ -139,6 +139,38 @@ func TestSaveReference(t *testing.T) {
 	}
 	for _, e := range corpus.Saves {
 		t.Run(e.Path, func(t *testing.T) {
+			var expected Game
+			if err := json.Unmarshal(e.State, &expected); err != nil {
+				t.Fatal(err)
+			}
+			// The reference serializes JavaScript Maps as objects. Retain their
+			// insertion order rather than losing it in Go's JSON map decoder.
+			var fields map[string]json.RawMessage
+			if err := json.Unmarshal(e.State, &fields); err != nil {
+				t.Fatal(err)
+			}
+			keys := func(raw json.RawMessage) []string {
+				t.Helper()
+				decoder := json.NewDecoder(bytes.NewReader(raw))
+				if token, err := decoder.Token(); err != nil || token != json.Delim('{') {
+					t.Fatal("reference globals must be an object", err)
+				}
+				var result []string
+				for decoder.More() {
+					key, err := decoder.Token()
+					if err != nil {
+						t.Fatal(err)
+					}
+					result = append(result, key.(string))
+					var value json.RawMessage
+					if err := decoder.Decode(&value); err != nil {
+						t.Fatal(err)
+					}
+				}
+				return result
+			}
+			expected.NumGlobalOrder = keys(fields["numGlobals"])
+			expected.StrGlobalOrder = keys(fields["strGlobals"])
 			b, err := os.ReadFile(e.Path)
 			if err != nil {
 				t.Fatal(err)
@@ -150,7 +182,7 @@ func TestSaveReference(t *testing.T) {
 			raw := g.Raw
 			g.Raw = nil
 			g.Index = Index{}
-			if !reflect.DeepEqual(*g, e.State) {
+			if !reflect.DeepEqual(*g, expected) {
 				t.Fatal("decoded save state differs from the reference")
 			}
 			out, err := WriteRaw(raw)

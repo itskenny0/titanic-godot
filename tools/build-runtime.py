@@ -12,6 +12,8 @@ go_cmd=['python3',str(root/'tools/build-go.py'),'--platform',a.platform,'--arch'
 if a.mingw_prefix:go_cmd+=['--cc',a.mingw_prefix+'clang']
 subprocess.run(go_cmd,check=True)
 subprocess.run(['python3',str(root/'tools/install-module.py'),str(source),'--go-library',str(go_library)],check=True)
+if a.platform=='windows':
+ shutil.copy2(root/'packaging/icons/titanic.ico',source/'platform/windows/godot.ico')
 cmd=['scons','-C',str(source),'-j'+a.jobs,'disable_3d=yes']
 if major=='4':
  cmd+=['platform=windows','target=template_release','arch=arm64','use_mingw=yes','use_static_cpp=yes','vulkan=no','d3d12=no']

@@ -14,7 +14,7 @@ import java.io.*;
 import java.util.*;
 
 public final class TitanicFiles extends GodotPlugin {
- private static final int PICK_GAME=1912,PICK_MODS=1913,PICK_SAVE=1914,EXPORT_SAVE=1915;
+ private static final int PICK_GAME=1912,PICK_MODS=1913,PICK_SAVE=1914,EXPORT_SAVE=1915,PICK_PATCH=1916;
  private String destination,exportSource;
  private volatile boolean busy=false;
  public TitanicFiles(Godot godot){super(godot);}
@@ -22,14 +22,15 @@ public final class TitanicFiles extends GodotPlugin {
  @Override public Set<SignalInfo> getPluginSignals(){return new HashSet<>(Arrays.asList(
   new SignalInfo("import_finished",String.class,String.class),
   new SignalInfo("mod_import_finished",String.class,String.class),
+  new SignalInfo("patch_import_finished",String.class,String.class),
   new SignalInfo("save_import_finished",String.class,String.class),
   new SignalInfo("export_finished",String.class,String.class)));}
- private String signal(int code){return code==PICK_MODS?"mod_import_finished":code==PICK_SAVE?"save_import_finished":code==EXPORT_SAVE?"export_finished":"import_finished";}
+ private String signal(int code){return code==PICK_PATCH?"patch_import_finished":code==PICK_MODS?"mod_import_finished":code==PICK_SAVE?"save_import_finished":code==EXPORT_SAVE?"export_finished":"import_finished";}
  private void pick(int code,String target){
   if(busy)return;busy=true;destination=target;
   runOnUiThread(()->{
-   Intent intent=new Intent(code==PICK_SAVE?Intent.ACTION_OPEN_DOCUMENT:Intent.ACTION_OPEN_DOCUMENT_TREE);
-   if(code==PICK_SAVE){intent.setType("*/*");intent.addCategory(Intent.CATEGORY_OPENABLE);}
+   Intent intent=new Intent((code==PICK_SAVE||code==PICK_PATCH)?Intent.ACTION_OPEN_DOCUMENT:Intent.ACTION_OPEN_DOCUMENT_TREE);
+   if(code==PICK_SAVE||code==PICK_PATCH){intent.setType("*/*");intent.addCategory(Intent.CATEGORY_OPENABLE);}
    intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
    try{getActivity().startActivityForResult(intent,code);}catch(Exception e){busy=false;emitSignal(signal(code),"",e.toString());}
   });
@@ -37,13 +38,14 @@ public final class TitanicFiles extends GodotPlugin {
  @UsedByGodot public void import_game(String target){pick(PICK_GAME,target);}
  @UsedByGodot public void import_mods(String target){pick(PICK_MODS,target);}
  @UsedByGodot public void import_save(String target){pick(PICK_SAVE,target);}
+ @UsedByGodot public void import_patches(String target){pick(PICK_PATCH,target);}
  @UsedByGodot public void export_save(String source){
   if(busy)return;busy=true;exportSource=source;
   runOnUiThread(()->{Intent i=new Intent(Intent.ACTION_CREATE_DOCUMENT);i.setType("application/octet-stream");i.addCategory(Intent.CATEGORY_OPENABLE);i.putExtra(Intent.EXTRA_TITLE,new File(source).getName());
    try{getActivity().startActivityForResult(i,EXPORT_SAVE);}catch(Exception e){busy=false;emitSignal("export_finished","",e.toString());}});
  }
  @Override public void onMainActivityResult(int code,int result,Intent intent){
-  if(code<PICK_GAME||code>EXPORT_SAVE)return;
+  if(code<PICK_GAME||code>PICK_PATCH)return;
   if(result!=Activity.RESULT_OK||intent==null||intent.getData()==null){busy=false;emitSignal(signal(code),"","");return;}
   final Uri uri=intent.getData();
   new Thread(()->{
@@ -54,7 +56,7 @@ public final class TitanicFiles extends GodotPlugin {
      // A unique import directory keeps previous data and saves intact on failure.
      File parent=new File(destination,"Imports");if(!parent.exists()&&!parent.mkdirs())throw new IOException("Cannot create import folder");
      staging=new File(parent,UUID.randomUUID().toString());if(!staging.mkdir())throw new IOException("Cannot create import staging folder");
-     if(code==PICK_SAVE){File save=new File(staging,"imported.ti");try(InputStream in=getActivity().getContentResolver().openInputStream(uri);OutputStream out=new FileOutputStream(save)){transfer(in,out);}emitSignal(signal(code),save.getAbsolutePath(),"");}
+     if(code==PICK_SAVE||code==PICK_PATCH){File save=new File(staging,code==PICK_PATCH?"patches.zip":"imported.ti");try(InputStream in=getActivity().getContentResolver().openInputStream(uri);OutputStream out=new FileOutputStream(save)){transfer(in,out);}emitSignal(signal(code),save.getAbsolutePath(),"");}
      else {copyTree(uri,DocumentsContract.getTreeDocumentId(uri),staging,0,new long[]{0,0});android.util.Log.i("TitanicFiles","Folder import completed");emitSignal(signal(code),staging.getAbsolutePath(),"");}
     }
    }catch(Exception e){if(staging!=null)removeTree(staging);emitSignal(signal(code),"",e.getMessage()==null?e.toString():e.getMessage());}

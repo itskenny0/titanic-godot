@@ -17,7 +17,13 @@ import (
 	"unsafe"
 
 	"github.com/itskenny0/titanic-godot/internal/engine"
+	"github.com/itskenny0/titanic-godot/internal/patches"
 )
+
+type nativePlayer struct {
+	*engine.Player
+	patches patches.Manager
+}
 
 type nativePlayerBridge struct {
 	host     C.uintptr_t
@@ -104,7 +110,7 @@ func taoot_player_new(host C.uintptr_t, callback unsafe.Pointer) (handle C.uintp
 	if callback == nil {
 		return 0
 	}
-	return C.uintptr_t(cgo.NewHandle(engine.NewPlayer(&nativePlayerBridge{host: host, callback: callback})))
+	return C.uintptr_t(cgo.NewHandle(&nativePlayer{Player: engine.NewPlayer(&nativePlayerBridge{host: host, callback: callback})}))
 }
 
 //export taoot_player_close
@@ -113,8 +119,9 @@ func taoot_player_close(handle C.uintptr_t) {
 	defer runtime.UnlockOSThread()
 	defer func() { _ = recover() }()
 	h := cgo.Handle(handle)
-	p := h.Value().(*engine.Player)
+	p := h.Value().(*nativePlayer)
 	defer h.Delete()
+	p.patches.Cancel()
 	p.Close()
 }
 func playerResult(out *C.TaootResult, data []byte, kind int) {
@@ -139,7 +146,7 @@ func taoot_player_call(handle C.uintptr_t, method, args *C.char, out *C.TaootRes
 			playerResult(out, []byte(fmt.Sprint(err)), -1)
 		}
 	}()
-	p := cgo.Handle(handle).Value().(*engine.Player)
+	p := cgo.Handle(handle).Value().(*nativePlayer)
 	name, raw := C.GoString(method), []byte(C.GoString(args))
 	if len(raw) == 0 {
 		raw = []byte("{}")
@@ -147,6 +154,17 @@ func taoot_player_call(handle C.uintptr_t, method, args *C.char, out *C.TaootRes
 	var value any
 	var err error
 	switch name {
+	case "patch_start":
+		var request patches.Request
+		err = json.Unmarshal(raw, &request)
+		if err == nil {
+			err = p.patches.Start(request)
+		}
+	case "patch_status":
+		value = p.patches.Status()
+	case "patch_cancel":
+		p.patches.Cancel()
+
 	case "boot":
 		var config engine.PlayerConfig
 		err = json.Unmarshal(raw, &config)
@@ -177,6 +195,10 @@ func taoot_player_call(handle C.uintptr_t, method, args *C.char, out *C.TaootRes
 		}
 	case "state":
 		value = p.State()
+	case "controls":
+		value = p.ControllerSurface(false)
+	case "targets":
+		value = p.ControllerSurface(true)
 	case "events":
 		value = p.Events()
 	case "overlay":

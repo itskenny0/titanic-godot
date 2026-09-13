@@ -4,17 +4,20 @@ Extract `titanic-portmaster.zip` into your ports folder. Put prepared `cd1` and 
 
 | Control | Action |
 | --- | --- |
-| Left stick / D-pad | Move and turn |
+| Left stick / D-pad | Move and turn, or select dialogue replies and menus |
 | Right stick | Move the mouse pointer |
-| A / R3 | Click, hold to drag |
-| B | Skip animation |
+| A / R1 | Confirm selected reply or menu button; otherwise click, hold to drag |
+| R3 | Click at the pointer, hold to drag |
+| B | Back in menus; skip speech or animation in the game |
 | X | Open door / Space |
 | Y | On-screen keyboard |
 | L1 | Slow pointer |
-| R1 | Enter / confirm focused control |
+| L2 / R2 | Previous / next clickable target |
 | Start | Player menu |
 
 FRT's PortMaster build disables native joypad input. `titanic.gptk` therefore maps both sticks through gptokeyb. Desktop Godot uses native controller input with the same layout.
+
+Dialogue replies get a visible selection border. Use directions and A to answer without aiming the pointer. The same controls work in the game menus, save lists and on-screen keyboard. In rooms, L2 and R2 select visible targets; the right stick remains available for puzzles and dragging. The pointer hides during button navigation and returns when you move the right stick or a mouse. Open Controller controls from the voyage menu for a reminder. The UI fits a 640x480 handheld screen, including devices such as the R36S.
 
 Saves stay in the port's `saves/Retanic` directory. Keep that directory when upgrading. To use mods, extract them into a directory on the handheld and select it from Game files / mods. Prepare clean game data before adding mods.
 

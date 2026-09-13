@@ -8,7 +8,10 @@ import (
 func (v *SetViewer) Navigate(direction string) {
 	s := v.Session
 	s.NavHappened = true
-	if s.NavFromScript {
+	// A scripted turn must become visible to currentview() before the call
+	// returns. The reference async driver runs immediately up to its first
+	// wait; queuing an idle camera left gotowin spinning and scheduling turns.
+	if s.NavFromScript && v.Busy() {
 		s.Track("navigate:"+direction, false, func(task *Task) error {
 			for i := 0; i < maxFadeWaitTicks && v.Busy(); i++ {
 				s.NextFrame(task)
@@ -20,7 +23,11 @@ func (v *SetViewer) Navigate(direction string) {
 		})
 		return
 	}
-	v.report(v.navigateNow(direction, v.PlayerPace()))
+	pace := v.PlayerPace()
+	if s.NavFromScript {
+		pace = EngineStepMS
+	}
+	v.report(v.navigateNow(direction, pace))
 }
 func (v *SetViewer) navigateNow(direction string, pace float64) error {
 	switch direction {

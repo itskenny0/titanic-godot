@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 from pathlib import Path
 import argparse, subprocess
-p=argparse.ArgumentParser();p.add_argument('--godot',required=True);p.add_argument('--project',default='godot');p.add_argument('--output',required=True);p.add_argument('--major',type=int,default=3);a=p.parse_args()
+p=argparse.ArgumentParser();p.add_argument('--godot',required=True);p.add_argument('--project',default='godot');p.add_argument('--output',required=True);p.add_argument('--major',type=int,default=3);p.add_argument('--bundle-patches',action='store_true');a=p.parse_args()
 project=Path(a.project).resolve();out=Path(a.output).resolve();out.parent.mkdir(parents=True,exist_ok=True)
 preset='''[preset.0]
 name="Pack"
@@ -9,13 +9,13 @@ platform="%s"
 runnable=true
 export_filter="all_resources"
 include_filter="required_files.json,fonts/LICENSE.txt,patches/*,patches/files/*,notices/*"
-exclude_filter="native/*,integration.gd,*-test.gd"
+exclude_filter="native/*,integration.gd,*-test.gd%s"
 export_path=""
 script_export_mode=0
 [preset.0.options]
 binary_format/64_bits=true
 binary_format/embed_pck=false
-''' % ('Linux/X11' if a.major==3 else 'Linux')
+''' % ('Linux/X11' if a.major==3 else 'Linux', '' if a.bundle_patches else ',patches/files/*')
 subprocess.run(['python3',str(Path(__file__).resolve().parent/'prepare-notices.py'),'--output',str(project/'notices')],check=True)
 (project/'export_presets.cfg').write_text(preset)
 if a.major==4:

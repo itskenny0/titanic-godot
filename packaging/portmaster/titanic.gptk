@@ -1,12 +1,14 @@
 # PortMaster FRT disables native joypad input. Both sticks are mapped here.
 start = f10
 select = esc
-a = mouse_left
+a = enter
 b = esc
 x = space
 y = f12
 l1 = mouse_slow
 r1 = enter
+l2 = pageup
+r2 = pagedown
 r3 = mouse_left
 up = up
 up = repeat

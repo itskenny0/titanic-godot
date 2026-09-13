@@ -33,6 +33,7 @@ trap cleanup EXIT INT TERM
 export FRT_NO_EXIT_SHORTCUTS=FRT_NO_EXIT_SHORTCUTS
 export RETANIC_ARCH="${DEVICE_ARCH:-aarch64}"
 export RETANIC_NATIVE_DIR="$GAMEDIR/native"
+export RETANIC_PATCH_DIR="$GAMEDIR/patches/files"
 export XDG_DATA_HOME="$GAMEDIR/saves"
 export SDL_GAMECONTROLLERCONFIG="$sdl_controllerconfig"
 export PATH="$godot_dir:$PATH"

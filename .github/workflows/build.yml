@@ -50,7 +50,6 @@ jobs:
           unzip -q .tools/godot3.zip -d .tools
           curl -fL https://github.com/godotengine/godot/releases/download/4.3-stable/Godot_v4.3-stable_linux.x86_64.zip -o .tools/godot4.zip
           unzip -q .tools/godot4.zip -d .tools
-      - run: python3 tools/fetch-patches.py
       - name: Export both frontends
         run: |
           xvfb-run -a python3 tools/export-pack.py --godot "$PWD/.tools/Godot_v3.5.2-stable_x11.64" --output dist/titanic.pck
@@ -58,7 +57,7 @@ jobs:
           python3 tools/export-pack.py --godot "$PWD/.tools/Godot_v4.3-stable_linux.x86_64" --project .build/godot4-project --major 4 --output dist/titanic4.pck
       - name: Check the native bridge without game data
         run: |
-          go test -race ./internal/... ./cmd/native-codecs
+          go test -race ./internal/... ./cmd/native-codecs ./cmd/personal-build
           python3 tools/build-go.py --platform linux --arch x86_64
           cmake -S native -B .build/native -DCMAKE_BUILD_TYPE=Release -DTITANIC_GO_LIBRARY="$PWD/.build/go/linux-x86_64/libtitanic_go.a"
           cmake --build .build/native --target titanic -j2
@@ -72,6 +71,9 @@ jobs:
           cp tests/ui.gd godot/ui-test.gd
           cp tests/controls.gd godot/controls-test.gd
           cp tests/controller.gd godot/controller-test.gd
+          cp tests/patches.gd godot/patches-test.gd
+          timeout 45 xvfb-run -a .tools/Godot_v3.5.2-stable_x11.64 --path godot --audio-driver Dummy --resolution 640x480 -s res://patches-test.gd -- --ui-test
+          xvfb-run -a python3 tools/test-godot4.py --godot "$PWD/.tools/Godot_v4.3-stable_linux.x86_64" --test patches --resolution 640x480
           timeout 45 xvfb-run -a .tools/Godot_v3.5.2-stable_x11.64 --path godot --audio-driver Dummy --resolution 640x480 -s res://ui-test.gd -- --ui-test
           timeout 45 xvfb-run -a .tools/Godot_v3.5.2-stable_x11.64 --path godot --audio-driver Dummy --resolution 480x800 -s res://controls-test.gd -- --ui-test --touch-test
           timeout 45 xvfb-run -a .tools/Godot_v3.5.2-stable_x11.64 --path godot --audio-driver Dummy --resolution 1280x960 -s res://controller-test.gd -- --ui-test
@@ -257,29 +259,26 @@ jobs:
           sdkmanager 'platforms;android-34' 'build-tools;34.0.0' 'ndk;26.1.10909125'
           pip install scons==4.8.1
           python3 tools/prepare-notices.py
-          python3 tools/fetch-patches.py
           python3 tools/fetch-godot.py 4 .build/godot4
           python3 tools/build-go.py --platform android --arch arm64
           python3 tools/install-module.py .build/godot4 --go-library .build/go/android-arm64/libtitanic_go.so
           python3 tools/prepare-android.py
       - name: Build ARM64 Android engine and document picker
         run: |
-          scons -C .build/godot4 platform=android target=template_debug arch=arm64 vulkan=no disable_3d=yes -j3
-          cd .build/godot4/platform/android/java
-          ./gradlew copyDebugBinaryToBin
+          python3 tools/build-android.py --jobs 3
       - name: Export touchscreen and controller APK
         run: |
           mkdir -p .tools dist
           curl -fL https://github.com/godotengine/godot/releases/download/4.3-stable/Godot_v4.3-stable_linux.x86_64.zip -o .tools/godot4.zip
           unzip -q .tools/godot4.zip -d .tools
           python3 tools/prepare-godot4.py --godot "$PWD/.tools/Godot_v4.3-stable_linux.x86_64"
-          XDG_CONFIG_HOME="$PWD/.build/android-editor-settings" python3 tools/export-android.py --godot "$PWD/.tools/Godot_v4.3-stable_linux.x86_64" --sdk "$ANDROID_HOME"
-          "$ANDROID_HOME/build-tools/34.0.0/apksigner" verify dist/titanic-android-arm64-debug.apk
-          python3 tools/verify-android.py dist/titanic-android-arm64-debug.apk
+          XDG_CONFIG_HOME="$PWD/.build/android-editor-settings" python3 tools/export-android.py --release --godot "$PWD/.tools/Godot_v4.3-stable_linux.x86_64" --sdk "$ANDROID_HOME"
+          "$ANDROID_HOME/build-tools/34.0.0/apksigner" verify dist/titanic-android-arm64-release.apk
+          python3 tools/verify-android.py dist/titanic-android-arm64-release.apk
       - uses: actions/upload-artifact@v4
         with:
           name: titanic-android-arm64
-          path: dist/titanic-android-arm64-debug.apk
+          path: dist/titanic-android-arm64-release.apk
           if-no-files-found: error
 
   release:

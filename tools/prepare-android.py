@@ -28,3 +28,10 @@ p.write_text(text)
 p=source/'platform/android/SCsub';text=p.read_text().replace('    env_android.Command(out_dir + "/libc++_shared.so", stl_lib_path, Copy("$TARGET", "$SOURCE"))', '    # libc++ is linked statically into libgodot_android.so.')
 p.write_text(text)
 (source/'platform/android/java/lib/libs/debug/arm64-v8a/libc++_shared.so').unlink(missing_ok=True)
+
+# R8 shrinks the release Java/Kotlin code. Keep JNI and reflective plugin entry points.
+shutil.copy2(root/'packaging/android/proguard-rules.pro', source/'platform/android/java/app/titanic-proguard.pro')
+p=source/'platform/android/java/app/build.gradle';text=p.read_text()
+if 'titanic-proguard.pro' not in text:
+ text=text.replace('        release {\n            // Signing', "        release {\n            minifyEnabled true\n            proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'titanic-proguard.pro'\n            // Signing")
+p.write_text(text)

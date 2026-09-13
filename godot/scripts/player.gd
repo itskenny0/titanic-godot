@@ -20,6 +20,8 @@ var audio_paused = false
 var pointer = Vector2(256, 192)
 var pointer_name = "arrow"
 var pointer_pressed = false
+var pointer_visible = true
+var controller_pointer_event = false
 var cursor_layer
 var drawn_pointer = Vector2(-1000, -1000)
 var drawn_pointer_name = ""
@@ -34,6 +36,10 @@ var ready = false
 var runtime_failed = false
 var nav_timer = 0.0
 var last_nav = ""
+var controller_surface = {"context": "busy", "key": "", "targets": []}
+var controller_selection = -1
+var controller_poll = 0.0
+var controller_triggers = [false, false]
 var smoke = false
 var smoke_time = 0.0
 var pending_restart = null
@@ -41,9 +47,17 @@ var active_mods = ""
 var virtual_keyboard = null
 var keyboard_target
 var saved_dialog
+var saved_keyboard_focus
 var save_name
 var patch_manifest = {}
 var patch_boxes = {}
+var patch_runtime = null
+var patch_busy = false
+var patch_status_label = null
+var patch_poll_timer = 0.0
+var patch_buttons = []
+var patch_import_copy = ""
+
 var android_selected_disc = 0
 var perf_elapsed = 0.0
 var perf_frames = 0
@@ -60,6 +74,7 @@ func _ready():
 	get_tree().connect("files_dropped", self, "files_dropped")
 	config.load("user://settings.cfg")
 	Input.set_mouse_mode(Input.MOUSE_MODE_HIDDEN)
+	pointer_visible = Input.get_connected_joypads().empty() and OS.get_environment("RETANIC_ARCH").empty()
 	cursor_layer = Node2D.new()
 	cursor_layer.z_index = 100
 	add_child(cursor_layer)
@@ -75,6 +90,7 @@ func _ready():
 	if Engine.has_singleton("TitanicFiles"):
 		Engine.get_singleton("TitanicFiles").connect("import_finished", self, "android_import_finished")
 		Engine.get_singleton("TitanicFiles").connect("mod_import_finished", self, "android_mod_finished")
+		Engine.get_singleton("TitanicFiles").connect("patch_import_finished", self, "android_patch_finished")
 		Engine.get_singleton("TitanicFiles").connect("save_import_finished", self, "android_save_finished")
 		Engine.get_singleton("TitanicFiles").connect("export_finished", self, "android_export_finished")
 	make_touch_controls()
@@ -86,7 +102,7 @@ func _ready():
 	for arg in OS.get_cmdline_args():
 		if arg in ["--integration-test", "--smoke-test", "--ui-test"]:
 			automated = true
-	if not patch_manifest.empty() and config.get_value("patches", "seen", "") != patch_manifest.version and not automated:
+	if not patch_manifest.empty() and (config.get_value("patches", "seen", "") != patch_manifest.version or (not config.get_value("patches", "enabled", []).empty() and not patches_available())) and not automated:
 		show_patch_picker(true)
 	else:
 		boot_configured_game()
@@ -139,9 +155,9 @@ func prepare_index(roots):
 	for group in patch_manifest.get("groups", []):
 		if group.id in enabled:
 			for name in group.files:
-				var path = "res://patches/files/" + name
+				var path = patch_path(name)
 				if not File.new().file_exists(path):
-					status.text = "Missing bundled patch: " + name + ". Reinstall this build or disable the patch."
+					status.text = "Missing patch: " + name + ". Download or import the patch ZIP in Game files / mods."
 					return false
 				for disc in [1, 2]:
 					files.index[str(disc) + "/" + name.to_lower()] = path
@@ -164,6 +180,20 @@ func start_runtime(save_path = ""):
 	queued_dialogs.clear()
 	current_dialog = -1
 	close_modal()
+	runtime = create_runtime()
+	if runtime == null:
+		return
+	var error = ""
+	runtime.execute("profile", JSON.print({"on": OS.is_debug_build()}))
+	error = runtime.execute("boot", JSON.print({"index": game_index, "save": save_path, "testing": "--integration-test" in OS.get_cmdline_args()}))
+	if not error.empty():
+		show_note(error)
+		return
+	status.show()
+	status.text = "Preparing your voyage…"
+
+func create_runtime():
+	var runtime = null
 	if ClassDB.class_exists("DreamRuntime"):
 		runtime = ClassDB.instance("DreamRuntime")
 	else:
@@ -203,13 +233,7 @@ func start_runtime(save_path = ""):
 	if not error.empty():
 		show_note(error)
 		return
-	runtime.execute("profile", JSON.print({"on": OS.is_debug_build()}))
-	error = runtime.execute("boot", JSON.print({"index": game_index, "save": save_path, "testing": "--integration-test" in OS.get_cmdline_args()}))
-	if not error.empty():
-		show_note(error)
-		return
-	status.show()
-	status.text = "Preparing your voyage…"
+	return runtime
 
 func bridge_call(method, args_json, bytes):
 	var args = JSON.parse(args_json).result
@@ -267,7 +291,10 @@ func _draw():
 func draw_cursor():
 	if touch_enabled and modal != null:
 		return
-	if pointer_name == "none" and modal == null:
+	if modal == null and controller_selection >= 0 and controller_selection < controller_surface.targets.size():
+		var target = controller_surface.targets[controller_selection]
+		cursor_layer.draw_rect(Rect2(target.x + 1, target.y + 1, max(1, target.w - 2), max(1, target.h - 2)), Color("f7d777"), false, 2)
+	if not pointer_visible or (pointer_name == "none" and modal == null):
 		return
 	var color = Color("f7e6a4") if pointer_name in ["touch", "hand", "fist"] else Color.white
 	var points = PoolVector2Array([pointer, pointer + Vector2(0, 15), pointer + Vector2(4, 11), pointer + Vector2(8, 18), pointer + Vector2(11, 16), pointer + Vector2(7, 9), pointer + Vector2(13, 9)])
@@ -287,6 +314,7 @@ func send(command):
 			print("PERF command ", command.get("action", ""), " ", elapsed / 1000.0, " ms")
 
 func _process(delta):
+	poll_patches(delta)
 	process_touch(delta)
 	process_controller(delta)
 	refresh_cursor()
@@ -446,9 +474,14 @@ func _notification(what):
 
 func _input(event):
 	if event is InputEventMouseMotion or event is InputEventMouseButton:
+		if not controller_pointer_event:
+			set_pointer_visible(true)
 		var local = event.position - game_origin
 		if Rect2(0, 0, 512, 384).has_point(local):
 			pointer = local
+		if event is InputEventMouseMotion and controller_selection >= 0:
+			controller_selection = -1
+			cursor_layer.update()
 	if event is InputEventKey and event.pressed and not event.echo:
 		if event.scancode == KEY_F11 or (event.scancode == KEY_F and event.control and event.meta):
 			OS.window_fullscreen = not OS.window_fullscreen
@@ -456,24 +489,64 @@ func _input(event):
 		elif modal == null and (event.control or event.meta) and event.scancode in [KEY_S, KEY_O]:
 			send({"action": "save" if event.scancode == KEY_S else "load"})
 			get_tree().set_input_as_handled()
+	if event is InputEventKey and not OS.get_environment("RETANIC_ARCH").empty():
+		if event.pressed:
+			set_pointer_visible(false)
+		if event.scancode == KEY_ENTER:
+			controller_confirm(event.pressed)
+			get_tree().set_input_as_handled()
+			return
+		if event.pressed and event.scancode in [KEY_UP, KEY_DOWN, KEY_LEFT, KEY_RIGHT]:
+			if modal == null:
+				controller_direction({KEY_UP: "uparrow", KEY_DOWN: "downarrow", KEY_LEFT: "leftarrow", KEY_RIGHT: "rightarrow"}[event.scancode])
+				get_tree().set_input_as_handled()
+				return
+	if event is InputEventKey and event.pressed and not event.echo:
+		if event.scancode == KEY_ESCAPE and modal != null:
+			controller_back()
+			get_tree().set_input_as_handled()
+		elif event.scancode in [KEY_PAGEUP, KEY_PAGEDOWN]:
+			controller_cycle(-1 if event.scancode == KEY_PAGEUP else 1)
+			get_tree().set_input_as_handled()
+		elif event.scancode == KEY_F12:
+			controller_keyboard()
+			get_tree().set_input_as_handled()
 	if event is InputEventJoypadButton:
+		if event.pressed:
+			set_pointer_visible(false)
 		if event.button_index == JOY_START and event.pressed:
 			show_menu()
 			get_tree().set_input_as_handled()
 		elif event.button_index == JOY_R3:
+			if event.pressed:
+				set_pointer_visible(true)
 			mouse_button(event.pressed)
 			get_tree().set_input_as_handled()
-		elif modal == null:
-			if event.button_index == JOY_BUTTON_0:
-				mouse_button(event.pressed)
-				get_tree().set_input_as_handled()
-			elif event.pressed:
-				if event.button_index == JOY_BUTTON_1:
-					send({"action": "key", "key": ".", "special": true})
-				elif event.button_index == JOY_BUTTON_2:
-					send({"action": "key", "key": " "})
-				elif event.button_index == JOY_BUTTON_3:
-					show_keyboard(null)
+		elif event.button_index in [JOY_BUTTON_0, JOY_R]:
+			controller_confirm(event.pressed)
+			get_tree().set_input_as_handled()
+		elif event.button_index == JOY_BUTTON_1:
+			if event.pressed:
+				controller_back()
+			get_tree().set_input_as_handled()
+		elif event.button_index == JOY_BUTTON_3:
+			if event.pressed:
+				controller_keyboard()
+			get_tree().set_input_as_handled()
+		elif event.button_index == JOY_BUTTON_2:
+			if event.pressed and modal == null:
+				send({"action": "key", "key": " "})
+			get_tree().set_input_as_handled()
+		elif event.button_index in [JOY_DPAD_UP, JOY_DPAD_DOWN, JOY_DPAD_LEFT, JOY_DPAD_RIGHT]:
+			# The held-input loop owns repeat, including in Godot dialogs.
+			get_tree().set_input_as_handled()
+
+	if event is InputEventJoypadMotion and event.axis in [JOY_AXIS_6, JOY_AXIS_7]:
+		var index = 0 if event.axis == JOY_AXIS_6 else 1
+		var pressed = event.axis_value > 0.5
+		if pressed and not controller_triggers[index]:
+			controller_cycle(-1 if index == 0 else 1)
+		controller_triggers[index] = pressed
 
 func _unhandled_input(event):
 	if modal != null or not ready:
@@ -508,23 +581,40 @@ func mouse_button(pressed):
 	event.pressed = pressed
 	event.position = pointer + game_origin
 	event.global_position = pointer + game_origin
+	controller_pointer_event = true
 	dispatch_pointer(event)
+	controller_pointer_event = false
 
 func dispatch_pointer(event):
 	# Controller coordinates already belong to this viewport. Sending them
 	# through global Input would apply the window's scaling a second time.
-	get_viewport().input(event)
-	if not get_viewport().is_input_handled():
-		get_viewport().unhandled_input(event)
+	# Godot 3 retains SceneTree's handled flag after a mapped button event.
+	# Deliver game input directly so a held stick keeps moving after that event.
+	_input(event)
+	if modal == null:
+		_unhandled_input(event)
+		return
+	var viewport = get_viewport()
+	var local_handling = viewport.is_handling_input_locally()
+	viewport.set_handle_input_locally(true)
+	viewport.input(event)
+	if not viewport.is_input_handled():
+		viewport.unhandled_input(event)
+	viewport.set_handle_input_locally(local_handling)
 
 func process_controller(delta):
 	var pads = Input.get_connected_joypads()
+	controller_poll -= delta
+	if controller_poll <= 0 and (not pads.empty() or not OS.get_environment("RETANIC_ARCH").empty()):
+		refresh_controller_surface()
+		controller_poll = 0.1
 	if pads.empty():
 		return
 	var pad = pads[0]
 	var motion = Vector2(Input.get_joy_axis(pad, JOY_AXIS_2), Input.get_joy_axis(pad, JOY_AXIS_3))
 	var deadzone = 0.2
 	if motion.length() > deadzone:
+		controller_selection = -1
 		var speed = 65.0 if Input.is_joy_button_pressed(pad, JOY_L) else 240.0
 		var step = motion.normalized() * pow(min(1.0, (motion.length() - deadzone) / (1.0 - deadzone)), 1.5) * speed * delta
 		pointer = Vector2(clamp(pointer.x + step.x, 0, 511), clamp(pointer.y + step.y, 0, 383))
@@ -533,8 +623,6 @@ func process_controller(delta):
 		event.global_position = pointer + game_origin
 		event.relative = step
 		dispatch_pointer(event)
-	if modal != null:
-		return
 	var movement = Vector2(Input.get_joy_axis(pad, JOY_AXIS_0), Input.get_joy_axis(pad, JOY_AXIS_1))
 	var key = ""
 	if movement.length() > 0.4:
@@ -547,9 +635,129 @@ func process_controller(delta):
 			key = pair[1]
 	nav_timer -= delta
 	if not key.empty() and (key != last_nav or nav_timer <= 0):
-		send({"action": "key", "key": key})
-		nav_timer = 0.20
+		controller_direction(key)
+		nav_timer = 0.30 if key != last_nav else 0.15
 	last_nav = key
+
+func refresh_controller_surface(include_room = false):
+	if runtime == null or runtime_failed or modal != null:
+		return
+	var surface = JSON.parse(runtime.query("targets" if include_room else "controls")).result
+	if surface is Dictionary:
+		set_controller_surface(surface)
+
+func set_controller_surface(surface):
+	var same_place = controller_surface.context == surface.context and controller_surface.key == surface.key
+	if same_place and surface.context == "room" and surface.targets.empty():
+		return
+	var old_id = ""
+	if same_place and controller_selection >= 0 and controller_selection < controller_surface.targets.size():
+		old_id = controller_surface.targets[controller_selection].id
+	var changed = JSON.print(controller_surface) != JSON.print(surface)
+	controller_surface = surface
+	if not changed:
+		return
+	controller_selection = -1
+	for i in range(surface.targets.size()):
+		if surface.targets[i].id == old_id:
+			controller_selection = i
+	if controller_selection < 0 and surface.context != "room" and not surface.targets.empty():
+		controller_selection = 0
+	if controller_selection >= 0 and not pointer_pressed:
+		focus_controller_target(controller_selection)
+	cursor_layer.update()
+
+func focus_controller_target(index):
+	if index < 0 or index >= controller_surface.targets.size():
+		return
+	controller_selection = index
+	set_pointer_visible(false)
+	var target = controller_surface.targets[index]
+	pointer = Vector2(target.aim_x, target.aim_y)
+	send({"action": "pointer", "kind": "move", "x": pointer.x, "y": pointer.y})
+	cursor_layer.update()
+
+func controller_direction(key):
+	set_pointer_visible(false)
+	if modal != null:
+		controller_ui_key({"uparrow": KEY_UP, "downarrow": KEY_DOWN, "leftarrow": KEY_LEFT, "rightarrow": KEY_RIGHT}[key], true)
+		controller_ui_key({"uparrow": KEY_UP, "downarrow": KEY_DOWN, "leftarrow": KEY_LEFT, "rightarrow": KEY_RIGHT}[key], false)
+		return
+	refresh_controller_surface()
+	if controller_surface.context in ["dialogue", "movie", "panel"]:
+		var count = controller_surface.targets.size()
+		if count > 0 and not pointer_pressed:
+			var step = -1 if key in ["uparrow", "leftarrow"] else 1
+			focus_controller_target(0 if controller_selection < 0 else (controller_selection + step + count) % count)
+		return
+	send({"action": "key", "key": key})
+
+func controller_cycle(step):
+	if modal != null:
+		controller_direction("uparrow" if step < 0 else "downarrow")
+		return
+	refresh_controller_surface(true)
+	var count = controller_surface.targets.size()
+	if count > 0 and not pointer_pressed:
+		focus_controller_target((0 if step > 0 else count - 1) if controller_selection < 0 else (controller_selection + step + count) % count)
+
+func controller_confirm(pressed):
+	if modal != null:
+		var control = get_focus_owner()
+		if pressed and control is LineEdit:
+			show_keyboard(control)
+			return
+		controller_ui_key(KEY_ENTER, pressed)
+		return
+	if pressed:
+		refresh_controller_surface()
+		set_pointer_visible(controller_selection < 0)
+	mouse_button(pressed)
+
+func set_pointer_visible(visible):
+	if pointer_visible != visible:
+		pointer_visible = visible
+		cursor_layer.update()
+
+func controller_ui_key(code, pressed):
+	var event = InputEventAction.new()
+	event.action = {KEY_ENTER: "ui_accept", KEY_UP: "ui_up", KEY_DOWN: "ui_down", KEY_LEFT: "ui_left", KEY_RIGHT: "ui_right"}[code]
+	event.pressed = pressed
+	Input.parse_input_event(event)
+
+func controller_back():
+	var control = get_focus_owner()
+	while is_instance_valid(control):
+		if control is Popup and control.visible:
+			control.hide()
+			return
+		control = control.get_parent()
+	if virtual_keyboard != null:
+		close_keyboard()
+	elif menu != null:
+		resume_game()
+	elif current_dialog != -1:
+		reply_dialog(null)
+	elif modal != null:
+		if patch_busy:
+			patch_cancel()
+		elif runtime != null:
+			note_closed()
+	else:
+		send({"action": "key", "key": ".", "special": true})
+
+func controller_keyboard():
+	if virtual_keyboard != null:
+		close_keyboard()
+	elif modal == null:
+		show_keyboard(null)
+	elif current_dialog != -1 and is_instance_valid(save_name):
+		show_keyboard(save_name)
+
+func show_controller_help():
+	var box = panel("Controller controls")
+	text_scroller(box, "Left stick / D-pad: move, or select dialogue replies and menus.\nA / R1: confirm or click. Hold to drag.\nB: back or skip speech / movies.\nL2 / R2: previous / next clickable target.\nRight stick: mouse pointer. Hold L1 for precision.\nX: door / Space. Y: keyboard.\nStart: voyage menu.\n\nUse the D-pad and A on the keyboard to enter save names or solve text puzzles.", 230)
+	button(box, "Back", "resume_game").grab_focus()
 
 func panel(title):
 	if pointer_pressed:
@@ -573,6 +781,8 @@ func panel(title):
 	label.add_font_override("font", get_font_for("16px Arial"))
 	box.add_child(label)
 	modal = p
+	controller_selection = -1
+	cursor_layer.update()
 	touch_strip.hide()
 	if runtime == null:
 		status.hide()
@@ -623,6 +833,7 @@ func show_menu():
 	button(box, "Import / export .ti saves", "save_tools")
 	button(box, "Game files / mods", "setup_from_menu")
 	button(box, "Main menu", "menu_command", ["new"])
+	button(box, "Controller controls", "show_controller_help")
 	button(box, "Credits", "show_credits")
 	button(box, "Quit", "quit_game")
 
@@ -654,7 +865,7 @@ func show_setup():
 	box.add_child(label)
 	button(box, "Choose game folder", "choose_data", [0]).grab_focus()
 	button(box, "Choose discs separately", "choose_data", [1])
-	button(box, "Bundled patches", "show_patch_picker", [false])
+	button(box, "M3tox patches", "show_patch_picker", [false])
 	button(box, "Choose external mod folder", "choose_mods")
 	button(box, "Disable external mods", "disable_mods")
 	button(box, "Back", "leave_setup")
@@ -780,6 +991,7 @@ func show_save_list(action):
 	var box = panel("Saved games")
 	var scroll = ScrollContainer.new()
 	scroll.rect_min_size = Vector2(390, 200)
+	scroll.follow_focus = true
 	box.add_child(scroll)
 	var list = VBoxContainer.new()
 	list.size_flags_horizontal = SIZE_EXPAND_FILL
@@ -825,7 +1037,10 @@ func open_save_folder():
 	OS.shell_open(ProjectSettings.globalize_path(saves.root))
 
 func show_keyboard(target):
+	if virtual_keyboard != null:
+		return
 	keyboard_target = target
+	saved_keyboard_focus = get_focus_owner()
 	saved_dialog = modal
 	if saved_dialog != null:
 		saved_dialog.hide()
@@ -840,7 +1055,8 @@ func show_keyboard(target):
 	button(box, "Space", "keyboard_key", [" "])
 	button(box, "Backspace", "keyboard_key", ["\b"])
 	button(box, "Enter", "keyboard_key", ["\r"])
-	button(box, "Done", "close_keyboard").grab_focus()
+	button(box, "Done", "close_keyboard")
+	grid.get_child(0).grab_focus()
 
 func keyboard_key(key):
 	if is_instance_valid(keyboard_target):
@@ -857,7 +1073,10 @@ func close_keyboard():
 	if is_instance_valid(saved_dialog):
 		modal = saved_dialog
 		modal.show()
+		if is_instance_valid(saved_keyboard_focus):
+			saved_keyboard_focus.grab_focus()
 	saved_dialog = null
+	saved_keyboard_focus = null
 
 # Touch controls occupy a separate strip below the original 512x384 picture.
 var touch_strip
@@ -1008,11 +1227,11 @@ func show_patch_picker(first_start = false):
 	send({"action": "pause", "on": true})
 	var box = panel("M3tox patches 1.0.3")
 	var intro = Label.new()
-	intro.text = "For Steam / GOG game files. Choose what to enable.\n" + ("You can change this later in Game files / mods." if first_start else "Applying changes restarts the game. Save first.")
+	intro.text = "Optional fixes for Steam / GOG game files.\n" + ("You can change this later in Game files / mods." if first_start else "Applying changes restarts the game. Save first.")
 	intro.add_font_override("font", get_font_for("12px Arial"))
 	box.add_child(intro)
 	var scroll = ScrollContainer.new()
-	scroll.rect_min_size = Vector2(390, 175)
+	scroll.rect_min_size = Vector2(390, 100 if not patches_available() else 135)
 	scroll.follow_focus = true
 	scroll.scroll_horizontal_enabled = false
 	box.add_child(scroll)
@@ -1036,6 +1255,21 @@ func show_patch_picker(first_start = false):
 		explanation.rect_min_size = Vector2(350, 44)
 		explanation.add_font_override("font", get_font_for("12px Arial"))
 		list.add_child(explanation)
+	patch_buttons.clear()
+	patch_status_label = Label.new()
+	patch_status_label.autowrap = true
+	patch_status_label.rect_min_size = Vector2(390, 34)
+	patch_status_label.add_font_override("font", get_font_for("12px Arial"))
+	box.add_child(patch_status_label)
+	if not patches_available():
+		patch_status_label.text = "Download about 300 MiB, choose the FULL ZIP, or continue with no patches selected."
+		var sources = HBoxContainer.new()
+		box.add_child(sources)
+		patch_buttons.append(button(sources, "Download from GitHub", "patch_download"))
+		patch_buttons.append(button(sources, "Choose patch ZIP", "patch_choose_zip"))
+		button(sources, "Stop", "patch_cancel")
+	else:
+		patch_status_label.text = "Patch files are ready. Choose which fixes to enable."
 	var actions = HBoxContainer.new()
 	box.add_child(actions)
 	button(actions, "All", "patch_select_all", [true])
@@ -1049,10 +1283,16 @@ func patch_select_all(enabled):
 		check.pressed = enabled
 
 func patch_apply():
+	if patch_busy:
+		patch_status_label.text = "Wait for the patch transfer to finish, or stop it first."
+		return
 	var enabled = []
 	for id in patch_boxes:
 		if patch_boxes[id].pressed:
 			enabled.append(id)
+	if not enabled.empty() and not patches_available():
+		patch_status_label.text = "Download or import the FULL ZIP first, or select None to play without patches."
+		return
 	config.set_value("patches", "enabled", enabled)
 	config.set_value("patches", "seen", patch_manifest.get("version", ""))
 	if config.save("user://settings.cfg") != OK:
@@ -1087,3 +1327,92 @@ func show_credits():
 		text = file.get_as_text()
 		file.close()
 	show_note(text)
+
+func patch_cache():
+	return "user://Patches/" + patch_manifest.get("sha256", "unknown")
+
+func patch_path(name):
+	var bundled = "res://patches/files/" + name
+	if File.new().file_exists(bundled):
+		return bundled
+	var personal = OS.get_environment("RETANIC_PATCH_DIR").plus_file(name)
+	if not OS.get_environment("RETANIC_PATCH_DIR").empty() and File.new().file_exists(personal):
+		return personal
+	return patch_cache().plus_file(name)
+
+func patches_available():
+	for name in patch_manifest.get("files", {}):
+		if not File.new().file_exists(patch_path(name)):
+			return false
+	return not patch_manifest.empty()
+
+func patch_download():
+	patch_start("")
+
+func patch_choose_zip():
+	if patch_busy:
+		return
+	if Engine.has_singleton("TitanicFiles"):
+		Engine.get_singleton("TitanicFiles").import_patches(ProjectSettings.globalize_path("user://"))
+	else:
+		file_dialog(FileDialog.MODE_OPEN_FILE, "patch_start", [], "*.zip ; M3tox FULL patch ZIP")
+
+func android_patch_finished(path, error):
+	if not error.empty():
+		if is_instance_valid(patch_status_label):
+			patch_status_label.text = error
+		return
+	if not path.empty():
+		patch_import_copy = path
+		patch_start(path)
+
+func patch_start(archive):
+	if patch_busy:
+		return
+	if patch_runtime == null:
+		patch_runtime = create_runtime()
+	if patch_runtime == null:
+		return
+	var error = patch_runtime.execute("patch_start", JSON.print({"archive": archive, "target": ProjectSettings.globalize_path(patch_cache())}))
+	if not error.empty():
+		if is_instance_valid(patch_status_label):
+			patch_status_label.text = error
+		return
+	patch_busy = true
+	for b in patch_buttons:
+		if is_instance_valid(b):
+			b.disabled = true
+	if is_instance_valid(patch_status_label):
+		patch_status_label.text = "Preparing patches…"
+
+func patch_cancel():
+	if patch_runtime != null:
+		patch_runtime.execute("patch_cancel")
+
+func poll_patches(delta):
+	if not patch_busy or patch_runtime == null:
+		return
+	patch_poll_timer += delta
+	if patch_poll_timer < 0.2:
+		return
+	patch_poll_timer = 0.0
+	var progress = JSON.parse(patch_runtime.query("patch_status")).result
+	var message = progress.state.capitalize()
+	if progress.state in ["downloading", "verifying"]:
+		message += ": %.1f MiB" % (float(progress.bytes) / 1048576.0)
+	elif progress.state == "extracting":
+		message = "Installing patches: %d / %d" % [progress.bytes, progress.total]
+	if progress.state in ["ready", "error"]:
+		patch_busy = false
+		message = "Patch files are ready. Choose your fixes and continue." if progress.state == "ready" else progress.error
+		patch_runtime = null
+		for b in patch_buttons:
+			if is_instance_valid(b):
+				b.disabled = false
+		if not patch_import_copy.empty():
+			var directory = Directory.new()
+			directory.remove(patch_import_copy)
+			directory.remove(patch_import_copy.get_base_dir())
+			patch_import_copy = ""
+	if is_instance_valid(patch_status_label):
+		patch_status_label.text = message

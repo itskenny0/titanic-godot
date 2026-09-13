@@ -47,6 +47,43 @@ func TestSessionPollingUsesHostFramesAndLogicalClock(t *testing.T) {
 		t.Fatal("delay missed its deadline")
 	}
 }
+
+// The original idle handler completes before room-entry events. JavaScript's
+// implicit awaits can lose a clock increment when both handlers read the same
+// value. Keep each script assignment synchronous, including at a clock boundary.
+func TestClockAndRoomEntryPreserveBothIncrements(t *testing.T) {
+	s := builtinTestSession(t)
+	increment := script.Stmt{Kind: "assign", Name: "seconds", Value: &script.Expr{
+		Kind: "binary", Text: "+", Left: &script.Expr{Kind: "variable", Text: "seconds"}, Right: &script.Expr{Kind: "number", Number: 1},
+	}}
+	inst := &script.Instance{Name: "clock", Script: &script.Script{Handlers: map[string]*script.Handler{}}}
+	for _, name := range []string{"calctime", "openscene"} {
+		inst.Script.Handlers[name] = &script.Handler{Name: name, Body: []script.Stmt{{Kind: "global", Names: []string{"seconds"}}, increment}}
+	}
+	s.Interp.Fallbacks = []*script.Instance{inst}
+	s.Interp.Globals.Set("seconds", script.Num(39))
+	if err := s.TickTime(50); err != nil {
+		t.Fatal(err)
+	}
+	if err := s.TickTime(100); err != nil {
+		t.Fatal(err)
+	}
+	if s.ScriptBusy() {
+		t.Fatal("idle clock blocked player input")
+	}
+	entry := s.Track("room entry", false, func(*Task) error {
+		_, err := s.RunGlobal("openscene", nil)
+		return err
+	})
+	s.Pump(100, true, 100)
+	if !entry.Done() || entry.Err() != nil {
+		t.Fatal("room entry did not complete", entry.Err())
+	}
+	value, _ := s.Interp.Globals.Get("seconds")
+	if value.Num() != 41 {
+		t.Fatalf("lost an increment: got %g, want 41", value.Num())
+	}
+}
 func TestSessionNestedDegreeEventsAndAbandon(t *testing.T) {
 	s := builtinTestSession(t)
 	call := func(name string, args ...script.Value) script.Stmt {

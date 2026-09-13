@@ -41,7 +41,7 @@ jobs:
           mkdir -p .build/linux-payload
           tar -xzf dist/titanic-linux-${{ matrix.arch }}.tar.gz -C .build/linux-payload
           cp -r .build/linux-payload/titanic packaging/linux/flatpak-input
-          cp packaging/linux/io.github.itskenny0.Titanic.{desktop,svg,metainfo.xml} packaging/linux/flatpak-input/
+          cp packaging/linux/io.github.itskenny0.Titanic.{desktop,png,metainfo.xml} packaging/linux/flatpak-input/
           # shellcheck disable=SC2016
           printf '#!/bin/sh\nexec /app/lib/titanic/titanic --main-pack /app/lib/titanic/titanic.pck "$@"\n' > packaging/linux/flatpak-input/launcher
       - name: Build offline Flatpak bundle
@@ -57,7 +57,7 @@ jobs:
         run: |
           mkdir -p .build/AppDir/usr/lib/titanic .build/AppDir/usr/bin
           cp -r .build/linux-payload/titanic/. .build/AppDir/usr/lib/titanic/
-          cp packaging/linux/io.github.itskenny0.Titanic.{desktop,svg} .build/AppDir/
+          cp packaging/linux/io.github.itskenny0.Titanic.{desktop,png} .build/AppDir/
           # shellcheck disable=SC2016
           printf '#!/bin/sh\nAPPDIR=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)\nexec "$APPDIR/usr/lib/titanic/titanic" --main-pack "$APPDIR/usr/lib/titanic/titanic.pck" "$@"\n' > .build/AppDir/AppRun
           chmod +x .build/AppDir/AppRun

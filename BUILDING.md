@@ -4,7 +4,6 @@ Use Go 1.26.4, Python 3.11+, CMake, SCons 4.8.1, and a C/C++ compiler. Go handle
 
 ```
 python3 tools/prepare-notices.py
-python3 tools/fetch-patches.py
 go test -race ./internal/... ./cmd/native-codecs
 python3 tools/build-go.py --platform linux --arch x86_64
 cmake -S native -B .build/native -DCMAKE_BUILD_TYPE=Release -DTITANIC_GO_LIBRARY="$PWD/.build/go/linux-x86_64/libtitanic_go.a"
@@ -30,6 +29,38 @@ If only Linux packaging failed, **Finish release packaging** can reuse the compi
 
 The `--static` Linux tarball statically links the Go gameplay library and C++ runtime. It still uses system C, display, graphics, and audio libraries. It is not a fully static ELF executable. macOS apps are ad hoc signed and Windows packages are unsigned. Android uses the committed `packaging/android/debug.keystore` with alias `androiddebugkey` and password `android`, matching the test-device installs. Production signing needs your own private keys.
 
-Run the portable Godot tests by copying `tests/runtime.gd` to `godot/runtime-test.gd` and launching Godot with `--path godot -s res://runtime-test.gd`. `tests/integration.gd` additionally needs owned game files and `--game-data=/path/to/gamedata --integration-test`. Do not include game data or saves in Git. Release builds fetch the requested, checksum-pinned M3tox patch pack; those downloaded files stay outside Git.
+Run the portable Godot tests by copying `tests/runtime.gd` to `godot/runtime-test.gd` and launching Godot with `--path godot -s res://runtime-test.gd`. `tests/integration.gd` additionally needs owned game files and `--game-data=/path/to/gamedata --integration-test`. Do not include game data or saves in Git. Public packages contain the patch chooser and checksums. The player downloads or imports the M3tox FULL ZIP on first start. Use `--bundle-patches` with either exporter if you have prepared the files using `python3 tools/fetch-patches.py`.
 
 The Go tests include synthetic fixtures captured from the pinned reference engine. With owned game files, run `TAOOT_GAME_DATA=/path/to/gamedata go test ./internal/...` for startup, navigation, and save/load integration. Set `TAOOT_MOD_DATA` to the extracted Extended Mod directory to check its startup too. The Godot integration test uses actual game data and the UI bridge; `Dummy` audio checks do not verify sound on a device.
+
+## Personal packages with game files
+
+Run these commands from the repository with Go 1.26.4. Start with an unbundled native Go APK or PortMaster ZIP from a release or your own build. The local Go tool copies only the files in `godot/required_files.json`; it leaves saves, installers, and extra mods out. The builder also downloads and bundles the checksum-pinned patches. Pass `--patch-archive /path/to/TAOOTpatch1.03.FULL.zip` to use a local copy. The chooser stays available offline. Existing outputs are never overwritten.
+
+For a GOG install, first prepare the disc folders using `python3 tools/prepare-game-data.py --source /path/to/installed-game --output gamedata`. If you already have prepared `cd1` and `cd2` folders, use their parent as `--game-data`.
+
+```
+go run ./cmd/personal-build --target portmaster --base dist/titanic-portmaster.zip --game-data gamedata --output titanic-portmaster-personal.zip
+
+go run ./cmd/personal-build --target android --base dist/titanic-android-arm64-release.apk --game-data gamedata --output titanic-android-arm64-personal.apk --android-build-tools /path/to/android-sdk/build-tools/35.0.0
+```
+
+Android needs Java 17 and Android SDK Build Tools 35 or newer. The tool aligns and signs the APK with the shared debug key, preserving `cat.kenny.taoot`. Release code and debug-key signing are separate choices. An existing `titanic-android-arm64-debug.apk` also works as a base. Add `--strip-tool /path/to/llvm-strip` to either command to remove native debug symbols while keeping the exports needed by Godot and Go. The NDK includes this tool.
+
+Install the APK normally, or extract the ZIP into the handheld's ports folder. Android reads its bundled assets directly without an import or a second extracted copy. PortMaster uses the included disc folders and its usual FRT 3.5.2 runtime. Saves still live outside the game assets. Keep these packages private; the filenames above are ignored by Git, and this mode is not part of any GitHub workflow.
+
+## Smaller Android release builds
+
+Prepare notices as above, put SCons on `PATH`, and set `ANDROID_HOME` and `JAVA_HOME`. Install Android platform 34, Build Tools 34.0.0, and NDK 26.1.10909125 for the template; the personal packager uses Build Tools 35 or newer. Then run:
+
+```
+python3 tools/fetch-godot.py 4 .build/godot4
+python3 tools/build-go.py --platform android --arch arm64
+python3 tools/install-module.py .build/godot4 --go-library .build/go/android-arm64/libtitanic_go.so
+python3 tools/prepare-android.py
+python3 tools/build-android.py
+python3 tools/prepare-godot4.py --godot /path/to/godot4
+XDG_CONFIG_HOME="$PWD/.build/android-editor-settings" python3 tools/export-android.py --release --godot /path/to/godot4 --sdk "$ANDROID_HOME"
+```
+
+The release template keeps GDScript, fonts, text shaping, and the Titanic bridge. It disables other optional modules, 3D, and Vulkan, uses size optimization and ThinLTO, and runs R8 on Java/Kotlin with keep rules for JNI and the document picker. Go builds use their normal compiler optimizations plus `-s -w` to remove symbol and debug tables. Game and patch assets make up most of the package size.
