@@ -209,12 +209,15 @@ func (s *StageController) SendToButton(flat, regionName, handler string, args []
 	return script.Num(0), nil
 }
 func (s *StageController) ClickAt(x, y int) (bool, error) {
+	return s.ClickAtPoint(float64(x), float64(y))
+}
+func (s *StageController) ClickAtPoint(x, y float64) (bool, error) {
 	if s.File == nil {
 		return false, nil
 	}
 	var hit *df.StageRegion
 	for _, r := range s.CurrentFlatRegions() {
-		if x >= r.Left && x <= r.Right && y >= r.Top && y <= r.Bottom {
+		if x >= float64(r.Left) && x <= float64(r.Right) && y >= float64(r.Top) && y <= float64(r.Bottom) {
 			hit = &r
 			break
 		}
@@ -241,7 +244,7 @@ func (s *StageController) ClickAt(x, y int) (bool, error) {
 		}
 		return false, nil
 	}
-	over, err := d.Props.PropAt(x, y, nil, false, nil)
+	over, err := d.Props.PropAtPoint(x, y, nil, false, nil)
 	if err != nil {
 		return false, err
 	}

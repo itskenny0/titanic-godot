@@ -1,0 +1,1595 @@
+[
+  {
+    "input": {
+      "flat": "none",
+      "room": false,
+      "showing": false
+    },
+    "owner": "world",
+    "pixels": "795093e43cbdee41690ef7a7a0764dda399cd0bcaf5432900f13061015fb7070",
+    "valid": false,
+    "commands": [],
+    "repaint": false
+  },
+  {
+    "input": {
+      "flat": "none",
+      "room": false,
+      "showing": true
+    },
+    "owner": "world",
+    "pixels": "795093e43cbdee41690ef7a7a0764dda399cd0bcaf5432900f13061015fb7070",
+    "valid": false,
+    "commands": [],
+    "repaint": false
+  },
+  {
+    "input": {
+      "flat": "none",
+      "room": true,
+      "showing": false
+    },
+    "owner": "world",
+    "pixels": "435932d6a533bbe08d6216974800f0b255309682c6691a45cbc92ff3e3c1f35e",
+    "valid": true,
+    "commands": [
+      {
+        "op": "text",
+        "text": "Caption",
+        "x": 7,
+        "y": 23,
+        "w": 0,
+        "h": 0,
+        "font": "12px \"Courier New\", \"MS PGothic\", \"Hiragino Kaku Gothic ProN\", \"Yu Gothic\", \"Noto Sans CJK JP\", \"Noto Sans JP\", monospace",
+        "color": "#e8e8e8"
+      }
+    ],
+    "repaint": false
+  },
+  {
+    "input": {
+      "flat": "none",
+      "room": true,
+      "showing": true
+    },
+    "owner": "world",
+    "pixels": "435932d6a533bbe08d6216974800f0b255309682c6691a45cbc92ff3e3c1f35e",
+    "valid": true,
+    "commands": [
+      {
+        "op": "text",
+        "text": "Caption",
+        "x": 7,
+        "y": 23,
+        "w": 0,
+        "h": 0,
+        "font": "12px \"Courier New\", \"MS PGothic\", \"Hiragino Kaku Gothic ProN\", \"Yu Gothic\", \"Noto Sans CJK JP\", \"Noto Sans JP\", monospace",
+        "color": "#e8e8e8"
+      }
+    ],
+    "repaint": false
+  },
+  {
+    "input": {
+      "flat": "pattern",
+      "room": false,
+      "showing": false
+    },
+    "owner": "world",
+    "pixels": "81ceef825b67828d1066b1feb21ddfafd6351e6f620efeb40b2fa13b7b055f5b",
+    "valid": true,
+    "commands": [
+      {
+        "op": "text",
+        "text": "Caption",
+        "x": 7,
+        "y": 23,
+        "w": 0,
+        "h": 0,
+        "font": "12px \"Courier New\", \"MS PGothic\", \"Hiragino Kaku Gothic ProN\", \"Yu Gothic\", \"Noto Sans CJK JP\", \"Noto Sans JP\", monospace",
+        "color": "#e8e8e8"
+      }
+    ],
+    "repaint": false
+  },
+  {
+    "input": {
+      "flat": "pattern",
+      "room": false,
+      "showing": true
+    },
+    "owner": "world",
+    "pixels": "81ceef825b67828d1066b1feb21ddfafd6351e6f620efeb40b2fa13b7b055f5b",
+    "valid": true,
+    "commands": [
+      {
+        "op": "text",
+        "text": "Caption",
+        "x": 7,
+        "y": 23,
+        "w": 0,
+        "h": 0,
+        "font": "12px \"Courier New\", \"MS PGothic\", \"Hiragino Kaku Gothic ProN\", \"Yu Gothic\", \"Noto Sans CJK JP\", \"Noto Sans JP\", monospace",
+        "color": "#e8e8e8"
+      }
+    ],
+    "repaint": false
+  },
+  {
+    "input": {
+      "flat": "pattern",
+      "room": true,
+      "showing": false
+    },
+    "owner": "world",
+    "pixels": "81ceef825b67828d1066b1feb21ddfafd6351e6f620efeb40b2fa13b7b055f5b",
+    "valid": true,
+    "commands": [
+      {
+        "op": "text",
+        "text": "Caption",
+        "x": 7,
+        "y": 23,
+        "w": 0,
+        "h": 0,
+        "font": "12px \"Courier New\", \"MS PGothic\", \"Hiragino Kaku Gothic ProN\", \"Yu Gothic\", \"Noto Sans CJK JP\", \"Noto Sans JP\", monospace",
+        "color": "#e8e8e8"
+      }
+    ],
+    "repaint": false
+  },
+  {
+    "input": {
+      "flat": "pattern",
+      "room": true,
+      "showing": true
+    },
+    "owner": "world",
+    "pixels": "fc72b9b7656428a0006ce4ca8de39d37c0ff8a74fe888fa8708bfc505773a20b",
+    "valid": true,
+    "commands": [
+      {
+        "op": "text",
+        "text": "Caption",
+        "x": 7,
+        "y": 23,
+        "w": 0,
+        "h": 0,
+        "font": "12px \"Courier New\", \"MS PGothic\", \"Hiragino Kaku Gothic ProN\", \"Yu Gothic\", \"Noto Sans CJK JP\", \"Noto Sans JP\", monospace",
+        "color": "#e8e8e8"
+      }
+    ],
+    "repaint": false
+  },
+  {
+    "input": {
+      "flat": "matte",
+      "room": false,
+      "showing": false
+    },
+    "owner": "world",
+    "pixels": "3605426867279f8ce14e251de0f244778a3c10aeb07d184c670b29c47f55ea1d",
+    "valid": true,
+    "commands": [
+      {
+        "op": "text",
+        "text": "Caption",
+        "x": 7,
+        "y": 23,
+        "w": 0,
+        "h": 0,
+        "font": "12px \"Courier New\", \"MS PGothic\", \"Hiragino Kaku Gothic ProN\", \"Yu Gothic\", \"Noto Sans CJK JP\", \"Noto Sans JP\", monospace",
+        "color": "#e8e8e8"
+      }
+    ],
+    "repaint": false
+  },
+  {
+    "input": {
+      "flat": "matte",
+      "room": false,
+      "showing": true
+    },
+    "owner": "world",
+    "pixels": "3605426867279f8ce14e251de0f244778a3c10aeb07d184c670b29c47f55ea1d",
+    "valid": true,
+    "commands": [
+      {
+        "op": "text",
+        "text": "Caption",
+        "x": 7,
+        "y": 23,
+        "w": 0,
+        "h": 0,
+        "font": "12px \"Courier New\", \"MS PGothic\", \"Hiragino Kaku Gothic ProN\", \"Yu Gothic\", \"Noto Sans CJK JP\", \"Noto Sans JP\", monospace",
+        "color": "#e8e8e8"
+      }
+    ],
+    "repaint": false
+  },
+  {
+    "input": {
+      "flat": "matte",
+      "room": true,
+      "showing": false
+    },
+    "owner": "world",
+    "pixels": "795093e43cbdee41690ef7a7a0764dda399cd0bcaf5432900f13061015fb7070",
+    "valid": false,
+    "commands": [],
+    "repaint": false
+  },
+  {
+    "input": {
+      "flat": "matte",
+      "room": true,
+      "showing": true
+    },
+    "owner": "world",
+    "pixels": "c1898a72e60386ecf8f9c234adb2bc5e4107f31197b03d5c72a21a74df88dc38",
+    "valid": true,
+    "commands": [
+      {
+        "op": "text",
+        "text": "Caption",
+        "x": 7,
+        "y": 23,
+        "w": 0,
+        "h": 0,
+        "font": "12px \"Courier New\", \"MS PGothic\", \"Hiragino Kaku Gothic ProN\", \"Yu Gothic\", \"Noto Sans CJK JP\", \"Noto Sans JP\", monospace",
+        "color": "#e8e8e8"
+      }
+    ],
+    "repaint": false
+  },
+  {
+    "input": {
+      "flat": "none",
+      "room": true,
+      "showing": true,
+      "owner": "held",
+      "fade": 0.625,
+      "subtitle": false
+    },
+    "owner": "held",
+    "pixels": "795093e43cbdee41690ef7a7a0764dda399cd0bcaf5432900f13061015fb7070",
+    "valid": false,
+    "commands": [],
+    "repaint": false
+  },
+  {
+    "input": {
+      "flat": "pattern",
+      "room": true,
+      "showing": true,
+      "owner": "held",
+      "fade": 0.625,
+      "subtitle": false
+    },
+    "owner": "held",
+    "pixels": "795093e43cbdee41690ef7a7a0764dda399cd0bcaf5432900f13061015fb7070",
+    "valid": false,
+    "commands": [],
+    "repaint": false
+  },
+  {
+    "input": {
+      "flat": "none",
+      "room": true,
+      "showing": true,
+      "owner": "faded",
+      "fade": 0.625,
+      "subtitle": false
+    },
+    "owner": "faded",
+    "pixels": "635c06c837e9c1711a9678c6f134d35108dd4d8a57fdd2bd952e1bbeb1833a71",
+    "valid": true,
+    "commands": [
+      {
+        "op": "rect",
+        "x": 0,
+        "y": 0,
+        "w": 512,
+        "h": 384,
+        "color": "rgba(0,0,0,0.625)"
+      }
+    ],
+    "repaint": false
+  },
+  {
+    "input": {
+      "flat": "pattern",
+      "room": true,
+      "showing": true,
+      "owner": "faded",
+      "fade": 0.625,
+      "subtitle": false
+    },
+    "owner": "faded",
+    "pixels": "635c06c837e9c1711a9678c6f134d35108dd4d8a57fdd2bd952e1bbeb1833a71",
+    "valid": true,
+    "commands": [
+      {
+        "op": "rect",
+        "x": 0,
+        "y": 0,
+        "w": 512,
+        "h": 384,
+        "color": "rgba(0,0,0,0.625)"
+      }
+    ],
+    "repaint": false
+  },
+  {
+    "input": {
+      "flat": "none",
+      "room": true,
+      "showing": true,
+      "owner": "puppet",
+      "fade": 0.625,
+      "subtitle": true
+    },
+    "owner": "puppet",
+    "pixels": "1ccf2fd60b150e47d4416e87d710821524d8b6c789c4ed718878b18986f74453",
+    "valid": true,
+    "commands": [
+      {
+        "op": "rect",
+        "x": 0,
+        "y": 224,
+        "w": 512,
+        "h": 40,
+        "color": "#000"
+      },
+      {
+        "op": "text",
+        "text": "The character speaks.",
+        "x": 8,
+        "y": 240,
+        "w": 0,
+        "h": 0,
+        "font": "12px Arial, Helvetica, \"MS PGothic\", \"Hiragino Kaku Gothic ProN\", \"Yu Gothic\", \"Noto Sans CJK JP\", \"Noto Sans JP\", sans-serif",
+        "color": "rgb(0, 0, 0)"
+      },
+      {
+        "op": "text",
+        "text": "Answer",
+        "x": 8,
+        "y": 280,
+        "w": 0,
+        "h": 0,
+        "font": "12px Arial, Helvetica, \"MS PGothic\", \"Hiragino Kaku Gothic ProN\", \"Yu Gothic\", \"Noto Sans CJK JP\", \"Noto Sans JP\", sans-serif",
+        "color": "rgb(252, 244, 228)"
+      },
+      {
+        "op": "stroke",
+        "x": 1.5,
+        "y": 265.5,
+        "w": 509,
+        "h": 21,
+        "color": "rgb(252, 246, 232)",
+        "line": 3
+      },
+      {
+        "op": "rect",
+        "x": 0,
+        "y": 0,
+        "w": 512,
+        "h": 384,
+        "color": "rgba(0,0,0,0.625)"
+      }
+    ],
+    "repaint": false
+  },
+  {
+    "input": {
+      "flat": "pattern",
+      "room": true,
+      "showing": true,
+      "owner": "puppet",
+      "fade": 0.625,
+      "subtitle": true
+    },
+    "owner": "puppet",
+    "pixels": "522ff6c55a60ad249618a17e66e0f161cabd4bfbd1ebb0b1d15fe9961698dcc3",
+    "valid": true,
+    "commands": [
+      {
+        "op": "rect",
+        "x": 0,
+        "y": 224,
+        "w": 512,
+        "h": 40,
+        "color": "#000"
+      },
+      {
+        "op": "text",
+        "text": "The character speaks.",
+        "x": 8,
+        "y": 240,
+        "w": 0,
+        "h": 0,
+        "font": "12px Arial, Helvetica, \"MS PGothic\", \"Hiragino Kaku Gothic ProN\", \"Yu Gothic\", \"Noto Sans CJK JP\", \"Noto Sans JP\", sans-serif",
+        "color": "rgb(0, 0, 0)"
+      },
+      {
+        "op": "text",
+        "text": "Answer",
+        "x": 8,
+        "y": 280,
+        "w": 0,
+        "h": 0,
+        "font": "12px Arial, Helvetica, \"MS PGothic\", \"Hiragino Kaku Gothic ProN\", \"Yu Gothic\", \"Noto Sans CJK JP\", \"Noto Sans JP\", sans-serif",
+        "color": "rgb(252, 244, 228)"
+      },
+      {
+        "op": "stroke",
+        "x": 1.5,
+        "y": 265.5,
+        "w": 509,
+        "h": 21,
+        "color": "rgb(252, 246, 232)",
+        "line": 3
+      },
+      {
+        "op": "rect",
+        "x": 0,
+        "y": 0,
+        "w": 512,
+        "h": 384,
+        "color": "rgba(0,0,0,0.625)"
+      }
+    ],
+    "repaint": false
+  },
+  {
+    "input": {
+      "flat": "none",
+      "room": true,
+      "showing": true,
+      "owner": "movie",
+      "fade": 0.625,
+      "subtitle": false
+    },
+    "owner": "movie",
+    "pixels": "c191376886db48ed65c2f479f9e8ec43c2a3bd3eae9f9db5eecafe37da349c71",
+    "valid": true,
+    "commands": [
+      {
+        "op": "rect",
+        "x": 0,
+        "y": 0,
+        "w": 512,
+        "h": 31,
+        "color": "rgba(0,0,0,0.625)"
+      },
+      {
+        "op": "rect",
+        "x": 0,
+        "y": 32,
+        "w": 512,
+        "h": 352,
+        "color": "rgba(0,0,0,0.625)"
+      },
+      {
+        "op": "rect",
+        "x": 0,
+        "y": 31,
+        "w": 17,
+        "h": 1,
+        "color": "rgba(0,0,0,0.625)"
+      },
+      {
+        "op": "rect",
+        "x": 19,
+        "y": 31,
+        "w": 493,
+        "h": 1,
+        "color": "rgba(0,0,0,0.625)"
+      }
+    ],
+    "repaint": false
+  },
+  {
+    "input": {
+      "flat": "pattern",
+      "room": true,
+      "showing": true,
+      "owner": "movie",
+      "fade": 0.625,
+      "subtitle": false
+    },
+    "owner": "movie",
+    "pixels": "c97ea15a8f16928df6433dd8f8be057761f1fad47ed3c4e7b3ba0b4978a6ef12",
+    "valid": true,
+    "commands": [
+      {
+        "op": "rect",
+        "x": 0,
+        "y": 0,
+        "w": 512,
+        "h": 31,
+        "color": "rgba(0,0,0,0.625)"
+      },
+      {
+        "op": "rect",
+        "x": 0,
+        "y": 32,
+        "w": 512,
+        "h": 352,
+        "color": "rgba(0,0,0,0.625)"
+      },
+      {
+        "op": "rect",
+        "x": 0,
+        "y": 31,
+        "w": 17,
+        "h": 1,
+        "color": "rgba(0,0,0,0.625)"
+      },
+      {
+        "op": "rect",
+        "x": 19,
+        "y": 31,
+        "w": 493,
+        "h": 1,
+        "color": "rgba(0,0,0,0.625)"
+      }
+    ],
+    "repaint": false
+  },
+  {
+    "input": {
+      "flat": "pattern",
+      "room": true,
+      "showing": true,
+      "dir": "open",
+      "step": 0,
+      "span": 1
+    },
+    "owner": "world",
+    "pixels": "635c06c837e9c1711a9678c6f134d35108dd4d8a57fdd2bd952e1bbeb1833a71",
+    "valid": true,
+    "commands": [
+      {
+        "op": "text",
+        "text": "Caption",
+        "x": 7,
+        "y": 23,
+        "w": 0,
+        "h": 0,
+        "font": "12px \"Courier New\", \"MS PGothic\", \"Hiragino Kaku Gothic ProN\", \"Yu Gothic\", \"Noto Sans CJK JP\", \"Noto Sans JP\", monospace",
+        "color": "#e8e8e8"
+      }
+    ],
+    "repaint": false
+  },
+  {
+    "input": {
+      "flat": "pattern",
+      "room": true,
+      "showing": true,
+      "dir": "open",
+      "step": 1,
+      "span": 1
+    },
+    "owner": "world",
+    "pixels": "8f7cd1c27030c78068c8ff5241c8f1286e84b9cf06bb2134e3b726142d2d4e55",
+    "valid": true,
+    "commands": [
+      {
+        "op": "text",
+        "text": "Caption",
+        "x": 7,
+        "y": 23,
+        "w": 0,
+        "h": 0,
+        "font": "12px \"Courier New\", \"MS PGothic\", \"Hiragino Kaku Gothic ProN\", \"Yu Gothic\", \"Noto Sans CJK JP\", \"Noto Sans JP\", monospace",
+        "color": "#e8e8e8"
+      }
+    ],
+    "repaint": false
+  },
+  {
+    "input": {
+      "flat": "pattern",
+      "room": true,
+      "showing": true,
+      "dir": "open",
+      "step": 3,
+      "span": 1
+    },
+    "owner": "world",
+    "pixels": "871cffd2e6cd4c50064e20b7b41e8f9e6367bbf0940384b49af49fefcec5db48",
+    "valid": true,
+    "commands": [
+      {
+        "op": "text",
+        "text": "Caption",
+        "x": 7,
+        "y": 23,
+        "w": 0,
+        "h": 0,
+        "font": "12px \"Courier New\", \"MS PGothic\", \"Hiragino Kaku Gothic ProN\", \"Yu Gothic\", \"Noto Sans CJK JP\", \"Noto Sans JP\", monospace",
+        "color": "#e8e8e8"
+      }
+    ],
+    "repaint": false
+  },
+  {
+    "input": {
+      "flat": "pattern",
+      "room": true,
+      "showing": true,
+      "dir": "open",
+      "step": 5,
+      "span": 1
+    },
+    "owner": "world",
+    "pixels": "38868d0360798c9036e5e08784df69c2918f2e59e6dff0cf807f90fa99a6921e",
+    "valid": true,
+    "commands": [
+      {
+        "op": "text",
+        "text": "Caption",
+        "x": 7,
+        "y": 23,
+        "w": 0,
+        "h": 0,
+        "font": "12px \"Courier New\", \"MS PGothic\", \"Hiragino Kaku Gothic ProN\", \"Yu Gothic\", \"Noto Sans CJK JP\", \"Noto Sans JP\", monospace",
+        "color": "#e8e8e8"
+      }
+    ],
+    "repaint": false
+  },
+  {
+    "input": {
+      "flat": "pattern",
+      "room": true,
+      "showing": true,
+      "dir": "close",
+      "step": 0,
+      "span": 1
+    },
+    "owner": "world",
+    "pixels": "635c06c837e9c1711a9678c6f134d35108dd4d8a57fdd2bd952e1bbeb1833a71",
+    "valid": true,
+    "commands": [
+      {
+        "op": "text",
+        "text": "Caption",
+        "x": 7,
+        "y": 23,
+        "w": 0,
+        "h": 0,
+        "font": "12px \"Courier New\", \"MS PGothic\", \"Hiragino Kaku Gothic ProN\", \"Yu Gothic\", \"Noto Sans CJK JP\", \"Noto Sans JP\", monospace",
+        "color": "#e8e8e8"
+      }
+    ],
+    "repaint": false
+  },
+  {
+    "input": {
+      "flat": "pattern",
+      "room": true,
+      "showing": true,
+      "dir": "close",
+      "step": 1,
+      "span": 1
+    },
+    "owner": "world",
+    "pixels": "36ce010a1f1e1a3a657a908e5acf99dc62a8468ffe66a82cb74178e2bbf6dc93",
+    "valid": true,
+    "commands": [
+      {
+        "op": "text",
+        "text": "Caption",
+        "x": 7,
+        "y": 23,
+        "w": 0,
+        "h": 0,
+        "font": "12px \"Courier New\", \"MS PGothic\", \"Hiragino Kaku Gothic ProN\", \"Yu Gothic\", \"Noto Sans CJK JP\", \"Noto Sans JP\", monospace",
+        "color": "#e8e8e8"
+      }
+    ],
+    "repaint": false
+  },
+  {
+    "input": {
+      "flat": "pattern",
+      "room": true,
+      "showing": true,
+      "dir": "close",
+      "step": 3,
+      "span": 1
+    },
+    "owner": "world",
+    "pixels": "6b9b1b672e54d88e6745137a3c56aa3730bd99c1c975f3a451b17a35340d75fb",
+    "valid": true,
+    "commands": [
+      {
+        "op": "text",
+        "text": "Caption",
+        "x": 7,
+        "y": 23,
+        "w": 0,
+        "h": 0,
+        "font": "12px \"Courier New\", \"MS PGothic\", \"Hiragino Kaku Gothic ProN\", \"Yu Gothic\", \"Noto Sans CJK JP\", \"Noto Sans JP\", monospace",
+        "color": "#e8e8e8"
+      }
+    ],
+    "repaint": false
+  },
+  {
+    "input": {
+      "flat": "pattern",
+      "room": true,
+      "showing": true,
+      "dir": "close",
+      "step": 5,
+      "span": 1
+    },
+    "owner": "world",
+    "pixels": "aeb563890a5990d7d48d3dbd3aadd62bc094ea8895361f202e713e9f1c471bb3",
+    "valid": true,
+    "commands": [
+      {
+        "op": "text",
+        "text": "Caption",
+        "x": 7,
+        "y": 23,
+        "w": 0,
+        "h": 0,
+        "font": "12px \"Courier New\", \"MS PGothic\", \"Hiragino Kaku Gothic ProN\", \"Yu Gothic\", \"Noto Sans CJK JP\", \"Noto Sans JP\", monospace",
+        "color": "#e8e8e8"
+      }
+    ],
+    "repaint": false
+  },
+  {
+    "input": {
+      "flat": "pattern",
+      "room": true,
+      "showing": true,
+      "dir": "left",
+      "step": 0,
+      "span": 1
+    },
+    "owner": "world",
+    "pixels": "635c06c837e9c1711a9678c6f134d35108dd4d8a57fdd2bd952e1bbeb1833a71",
+    "valid": true,
+    "commands": [
+      {
+        "op": "text",
+        "text": "Caption",
+        "x": 7,
+        "y": 23,
+        "w": 0,
+        "h": 0,
+        "font": "12px \"Courier New\", \"MS PGothic\", \"Hiragino Kaku Gothic ProN\", \"Yu Gothic\", \"Noto Sans CJK JP\", \"Noto Sans JP\", monospace",
+        "color": "#e8e8e8"
+      }
+    ],
+    "repaint": false
+  },
+  {
+    "input": {
+      "flat": "pattern",
+      "room": true,
+      "showing": true,
+      "dir": "left",
+      "step": 1,
+      "span": 1
+    },
+    "owner": "world",
+    "pixels": "782c7e9c946ef9548adfec8a945ce8f7645495cbb34e79d0de47a1044daf18fe",
+    "valid": true,
+    "commands": [
+      {
+        "op": "text",
+        "text": "Caption",
+        "x": 7,
+        "y": 23,
+        "w": 0,
+        "h": 0,
+        "font": "12px \"Courier New\", \"MS PGothic\", \"Hiragino Kaku Gothic ProN\", \"Yu Gothic\", \"Noto Sans CJK JP\", \"Noto Sans JP\", monospace",
+        "color": "#e8e8e8"
+      }
+    ],
+    "repaint": false
+  },
+  {
+    "input": {
+      "flat": "pattern",
+      "room": true,
+      "showing": true,
+      "dir": "left",
+      "step": 3,
+      "span": 1
+    },
+    "owner": "world",
+    "pixels": "7c775a6565906ea31b630b9383ed8aa35f410b60240264edca413605b0c27f16",
+    "valid": true,
+    "commands": [
+      {
+        "op": "text",
+        "text": "Caption",
+        "x": 7,
+        "y": 23,
+        "w": 0,
+        "h": 0,
+        "font": "12px \"Courier New\", \"MS PGothic\", \"Hiragino Kaku Gothic ProN\", \"Yu Gothic\", \"Noto Sans CJK JP\", \"Noto Sans JP\", monospace",
+        "color": "#e8e8e8"
+      }
+    ],
+    "repaint": false
+  },
+  {
+    "input": {
+      "flat": "pattern",
+      "room": true,
+      "showing": true,
+      "dir": "left",
+      "step": 5,
+      "span": 1
+    },
+    "owner": "world",
+    "pixels": "71ea6ebd67b2bdd315315458421b91f683b97a11c6686e6b33e19891fa48b678",
+    "valid": true,
+    "commands": [
+      {
+        "op": "text",
+        "text": "Caption",
+        "x": 7,
+        "y": 23,
+        "w": 0,
+        "h": 0,
+        "font": "12px \"Courier New\", \"MS PGothic\", \"Hiragino Kaku Gothic ProN\", \"Yu Gothic\", \"Noto Sans CJK JP\", \"Noto Sans JP\", monospace",
+        "color": "#e8e8e8"
+      }
+    ],
+    "repaint": false
+  },
+  {
+    "input": {
+      "flat": "pattern",
+      "room": true,
+      "showing": true,
+      "dir": "right",
+      "step": 0,
+      "span": 1
+    },
+    "owner": "world",
+    "pixels": "635c06c837e9c1711a9678c6f134d35108dd4d8a57fdd2bd952e1bbeb1833a71",
+    "valid": true,
+    "commands": [
+      {
+        "op": "text",
+        "text": "Caption",
+        "x": 7,
+        "y": 23,
+        "w": 0,
+        "h": 0,
+        "font": "12px \"Courier New\", \"MS PGothic\", \"Hiragino Kaku Gothic ProN\", \"Yu Gothic\", \"Noto Sans CJK JP\", \"Noto Sans JP\", monospace",
+        "color": "#e8e8e8"
+      }
+    ],
+    "repaint": false
+  },
+  {
+    "input": {
+      "flat": "pattern",
+      "room": true,
+      "showing": true,
+      "dir": "right",
+      "step": 1,
+      "span": 1
+    },
+    "owner": "world",
+    "pixels": "7b394312f8d08e9a3a6ccd467074c23f4e0aa32eb039cd2d8bb94e81eea6ab16",
+    "valid": true,
+    "commands": [
+      {
+        "op": "text",
+        "text": "Caption",
+        "x": 7,
+        "y": 23,
+        "w": 0,
+        "h": 0,
+        "font": "12px \"Courier New\", \"MS PGothic\", \"Hiragino Kaku Gothic ProN\", \"Yu Gothic\", \"Noto Sans CJK JP\", \"Noto Sans JP\", monospace",
+        "color": "#e8e8e8"
+      }
+    ],
+    "repaint": false
+  },
+  {
+    "input": {
+      "flat": "pattern",
+      "room": true,
+      "showing": true,
+      "dir": "right",
+      "step": 3,
+      "span": 1
+    },
+    "owner": "world",
+    "pixels": "4eded934491934f6769f42ee40217253968927cea731fb185ff9eeff0c0c9ab6",
+    "valid": true,
+    "commands": [
+      {
+        "op": "text",
+        "text": "Caption",
+        "x": 7,
+        "y": 23,
+        "w": 0,
+        "h": 0,
+        "font": "12px \"Courier New\", \"MS PGothic\", \"Hiragino Kaku Gothic ProN\", \"Yu Gothic\", \"Noto Sans CJK JP\", \"Noto Sans JP\", monospace",
+        "color": "#e8e8e8"
+      }
+    ],
+    "repaint": false
+  },
+  {
+    "input": {
+      "flat": "pattern",
+      "room": true,
+      "showing": true,
+      "dir": "right",
+      "step": 5,
+      "span": 1
+    },
+    "owner": "world",
+    "pixels": "4dd75567820c41e15034a394129fc2e2278984a6d0e7c43cd7ade0baaf9de064",
+    "valid": true,
+    "commands": [
+      {
+        "op": "text",
+        "text": "Caption",
+        "x": 7,
+        "y": 23,
+        "w": 0,
+        "h": 0,
+        "font": "12px \"Courier New\", \"MS PGothic\", \"Hiragino Kaku Gothic ProN\", \"Yu Gothic\", \"Noto Sans CJK JP\", \"Noto Sans JP\", monospace",
+        "color": "#e8e8e8"
+      }
+    ],
+    "repaint": false
+  },
+  {
+    "input": {
+      "flat": "pattern",
+      "room": true,
+      "showing": true,
+      "dir": "turnleft",
+      "step": 0,
+      "span": 0.25
+    },
+    "owner": "world",
+    "pixels": "351c21bfa5fea6f9d1523168aac45a5c67f15569925f136539eb738e72aaf3bb",
+    "valid": true,
+    "commands": [
+      {
+        "op": "text",
+        "text": "Caption",
+        "x": 7,
+        "y": 23,
+        "w": 0,
+        "h": 0,
+        "font": "12px \"Courier New\", \"MS PGothic\", \"Hiragino Kaku Gothic ProN\", \"Yu Gothic\", \"Noto Sans CJK JP\", \"Noto Sans JP\", monospace",
+        "color": "#e8e8e8"
+      }
+    ],
+    "repaint": false
+  },
+  {
+    "input": {
+      "flat": "pattern",
+      "room": true,
+      "showing": true,
+      "dir": "turnleft",
+      "step": 0,
+      "span": 1
+    },
+    "owner": "world",
+    "pixels": "351c21bfa5fea6f9d1523168aac45a5c67f15569925f136539eb738e72aaf3bb",
+    "valid": true,
+    "commands": [
+      {
+        "op": "text",
+        "text": "Caption",
+        "x": 7,
+        "y": 23,
+        "w": 0,
+        "h": 0,
+        "font": "12px \"Courier New\", \"MS PGothic\", \"Hiragino Kaku Gothic ProN\", \"Yu Gothic\", \"Noto Sans CJK JP\", \"Noto Sans JP\", monospace",
+        "color": "#e8e8e8"
+      }
+    ],
+    "repaint": false
+  },
+  {
+    "input": {
+      "flat": "pattern",
+      "room": true,
+      "showing": true,
+      "dir": "turnleft",
+      "step": 1,
+      "span": 0.25
+    },
+    "owner": "world",
+    "pixels": "487f801392ebe46564c63bc010627d33c31c121203804d1989664052166d8af2",
+    "valid": true,
+    "commands": [
+      {
+        "op": "text",
+        "text": "Caption",
+        "x": 7,
+        "y": 23,
+        "w": 0,
+        "h": 0,
+        "font": "12px \"Courier New\", \"MS PGothic\", \"Hiragino Kaku Gothic ProN\", \"Yu Gothic\", \"Noto Sans CJK JP\", \"Noto Sans JP\", monospace",
+        "color": "#e8e8e8"
+      }
+    ],
+    "repaint": false
+  },
+  {
+    "input": {
+      "flat": "pattern",
+      "room": true,
+      "showing": true,
+      "dir": "turnleft",
+      "step": 1,
+      "span": 1
+    },
+    "owner": "world",
+    "pixels": "4f3b8bf8ec4dba4abaff2b247cb7ab9846d8646509958367a31893e3fbec3b28",
+    "valid": true,
+    "commands": [
+      {
+        "op": "text",
+        "text": "Caption",
+        "x": 7,
+        "y": 23,
+        "w": 0,
+        "h": 0,
+        "font": "12px \"Courier New\", \"MS PGothic\", \"Hiragino Kaku Gothic ProN\", \"Yu Gothic\", \"Noto Sans CJK JP\", \"Noto Sans JP\", monospace",
+        "color": "#e8e8e8"
+      }
+    ],
+    "repaint": false
+  },
+  {
+    "input": {
+      "flat": "pattern",
+      "room": true,
+      "showing": true,
+      "dir": "turnleft",
+      "step": 3,
+      "span": 0.25
+    },
+    "owner": "world",
+    "pixels": "3eeda83b475793295acf99b3858a63cb3814152fe11b20a0713741c76a4f59f3",
+    "valid": true,
+    "commands": [
+      {
+        "op": "text",
+        "text": "Caption",
+        "x": 7,
+        "y": 23,
+        "w": 0,
+        "h": 0,
+        "font": "12px \"Courier New\", \"MS PGothic\", \"Hiragino Kaku Gothic ProN\", \"Yu Gothic\", \"Noto Sans CJK JP\", \"Noto Sans JP\", monospace",
+        "color": "#e8e8e8"
+      }
+    ],
+    "repaint": false
+  },
+  {
+    "input": {
+      "flat": "pattern",
+      "room": true,
+      "showing": true,
+      "dir": "turnleft",
+      "step": 3,
+      "span": 1
+    },
+    "owner": "world",
+    "pixels": "d6f6d2511218a06a5d1c0a01be26b3a3e3ac7882e65b232075d4f18a37a94303",
+    "valid": true,
+    "commands": [
+      {
+        "op": "text",
+        "text": "Caption",
+        "x": 7,
+        "y": 23,
+        "w": 0,
+        "h": 0,
+        "font": "12px \"Courier New\", \"MS PGothic\", \"Hiragino Kaku Gothic ProN\", \"Yu Gothic\", \"Noto Sans CJK JP\", \"Noto Sans JP\", monospace",
+        "color": "#e8e8e8"
+      }
+    ],
+    "repaint": false
+  },
+  {
+    "input": {
+      "flat": "pattern",
+      "room": true,
+      "showing": true,
+      "dir": "turnleft",
+      "step": 5,
+      "span": 0.25
+    },
+    "owner": "world",
+    "pixels": "8708214dcfa5d1b096d8e68d558019e33f0c9e24c2dd16d370c1f47273390a43",
+    "valid": true,
+    "commands": [
+      {
+        "op": "text",
+        "text": "Caption",
+        "x": 7,
+        "y": 23,
+        "w": 0,
+        "h": 0,
+        "font": "12px \"Courier New\", \"MS PGothic\", \"Hiragino Kaku Gothic ProN\", \"Yu Gothic\", \"Noto Sans CJK JP\", \"Noto Sans JP\", monospace",
+        "color": "#e8e8e8"
+      }
+    ],
+    "repaint": false
+  },
+  {
+    "input": {
+      "flat": "pattern",
+      "room": true,
+      "showing": true,
+      "dir": "turnleft",
+      "step": 5,
+      "span": 1
+    },
+    "owner": "world",
+    "pixels": "897fcf4cd310f74c8fd5719fb1e3a46bf4233e37dea68f386b6a7e9ff861e8c7",
+    "valid": true,
+    "commands": [
+      {
+        "op": "text",
+        "text": "Caption",
+        "x": 7,
+        "y": 23,
+        "w": 0,
+        "h": 0,
+        "font": "12px \"Courier New\", \"MS PGothic\", \"Hiragino Kaku Gothic ProN\", \"Yu Gothic\", \"Noto Sans CJK JP\", \"Noto Sans JP\", monospace",
+        "color": "#e8e8e8"
+      }
+    ],
+    "repaint": false
+  },
+  {
+    "input": {
+      "flat": "pattern",
+      "room": true,
+      "showing": true,
+      "dir": "turnright",
+      "step": 0,
+      "span": 0.25
+    },
+    "owner": "world",
+    "pixels": "351c21bfa5fea6f9d1523168aac45a5c67f15569925f136539eb738e72aaf3bb",
+    "valid": true,
+    "commands": [
+      {
+        "op": "text",
+        "text": "Caption",
+        "x": 7,
+        "y": 23,
+        "w": 0,
+        "h": 0,
+        "font": "12px \"Courier New\", \"MS PGothic\", \"Hiragino Kaku Gothic ProN\", \"Yu Gothic\", \"Noto Sans CJK JP\", \"Noto Sans JP\", monospace",
+        "color": "#e8e8e8"
+      }
+    ],
+    "repaint": false
+  },
+  {
+    "input": {
+      "flat": "pattern",
+      "room": true,
+      "showing": true,
+      "dir": "turnright",
+      "step": 0,
+      "span": 1
+    },
+    "owner": "world",
+    "pixels": "351c21bfa5fea6f9d1523168aac45a5c67f15569925f136539eb738e72aaf3bb",
+    "valid": true,
+    "commands": [
+      {
+        "op": "text",
+        "text": "Caption",
+        "x": 7,
+        "y": 23,
+        "w": 0,
+        "h": 0,
+        "font": "12px \"Courier New\", \"MS PGothic\", \"Hiragino Kaku Gothic ProN\", \"Yu Gothic\", \"Noto Sans CJK JP\", \"Noto Sans JP\", monospace",
+        "color": "#e8e8e8"
+      }
+    ],
+    "repaint": false
+  },
+  {
+    "input": {
+      "flat": "pattern",
+      "room": true,
+      "showing": true,
+      "dir": "turnright",
+      "step": 1,
+      "span": 0.25
+    },
+    "owner": "world",
+    "pixels": "b430b451c3892134136b2e8de21f376c9fa18fbea8ff2a056bb8fd9c8b70916e",
+    "valid": true,
+    "commands": [
+      {
+        "op": "text",
+        "text": "Caption",
+        "x": 7,
+        "y": 23,
+        "w": 0,
+        "h": 0,
+        "font": "12px \"Courier New\", \"MS PGothic\", \"Hiragino Kaku Gothic ProN\", \"Yu Gothic\", \"Noto Sans CJK JP\", \"Noto Sans JP\", monospace",
+        "color": "#e8e8e8"
+      }
+    ],
+    "repaint": false
+  },
+  {
+    "input": {
+      "flat": "pattern",
+      "room": true,
+      "showing": true,
+      "dir": "turnright",
+      "step": 1,
+      "span": 1
+    },
+    "owner": "world",
+    "pixels": "38d4c6233b51f7ce23260037cd9f2f8989c8fef95c64e8c5c9eeb6afefd514a5",
+    "valid": true,
+    "commands": [
+      {
+        "op": "text",
+        "text": "Caption",
+        "x": 7,
+        "y": 23,
+        "w": 0,
+        "h": 0,
+        "font": "12px \"Courier New\", \"MS PGothic\", \"Hiragino Kaku Gothic ProN\", \"Yu Gothic\", \"Noto Sans CJK JP\", \"Noto Sans JP\", monospace",
+        "color": "#e8e8e8"
+      }
+    ],
+    "repaint": false
+  },
+  {
+    "input": {
+      "flat": "pattern",
+      "room": true,
+      "showing": true,
+      "dir": "turnright",
+      "step": 3,
+      "span": 0.25
+    },
+    "owner": "world",
+    "pixels": "efcb7f0cacabd5f2acbf358de9f4e8602e2472f4fc96e73564ad23620c297577",
+    "valid": true,
+    "commands": [
+      {
+        "op": "text",
+        "text": "Caption",
+        "x": 7,
+        "y": 23,
+        "w": 0,
+        "h": 0,
+        "font": "12px \"Courier New\", \"MS PGothic\", \"Hiragino Kaku Gothic ProN\", \"Yu Gothic\", \"Noto Sans CJK JP\", \"Noto Sans JP\", monospace",
+        "color": "#e8e8e8"
+      }
+    ],
+    "repaint": false
+  },
+  {
+    "input": {
+      "flat": "pattern",
+      "room": true,
+      "showing": true,
+      "dir": "turnright",
+      "step": 3,
+      "span": 1
+    },
+    "owner": "world",
+    "pixels": "05355b789bfd54170669e53b79b9589cf35930c30e4c617a8929b57a4d118c53",
+    "valid": true,
+    "commands": [
+      {
+        "op": "text",
+        "text": "Caption",
+        "x": 7,
+        "y": 23,
+        "w": 0,
+        "h": 0,
+        "font": "12px \"Courier New\", \"MS PGothic\", \"Hiragino Kaku Gothic ProN\", \"Yu Gothic\", \"Noto Sans CJK JP\", \"Noto Sans JP\", monospace",
+        "color": "#e8e8e8"
+      }
+    ],
+    "repaint": false
+  },
+  {
+    "input": {
+      "flat": "pattern",
+      "room": true,
+      "showing": true,
+      "dir": "turnright",
+      "step": 5,
+      "span": 0.25
+    },
+    "owner": "world",
+    "pixels": "49f7360a5d12f1c9b67fcb0ae0837439e0d2ba456eb8829eaa7ffbad032dbb88",
+    "valid": true,
+    "commands": [
+      {
+        "op": "text",
+        "text": "Caption",
+        "x": 7,
+        "y": 23,
+        "w": 0,
+        "h": 0,
+        "font": "12px \"Courier New\", \"MS PGothic\", \"Hiragino Kaku Gothic ProN\", \"Yu Gothic\", \"Noto Sans CJK JP\", \"Noto Sans JP\", monospace",
+        "color": "#e8e8e8"
+      }
+    ],
+    "repaint": false
+  },
+  {
+    "input": {
+      "flat": "pattern",
+      "room": true,
+      "showing": true,
+      "dir": "turnright",
+      "step": 5,
+      "span": 1
+    },
+    "owner": "world",
+    "pixels": "80be6f6a31c56e8c259bf253cf81bd815e7aea954cbf2914543a9cc0a0992d14",
+    "valid": true,
+    "commands": [
+      {
+        "op": "text",
+        "text": "Caption",
+        "x": 7,
+        "y": 23,
+        "w": 0,
+        "h": 0,
+        "font": "12px \"Courier New\", \"MS PGothic\", \"Hiragino Kaku Gothic ProN\", \"Yu Gothic\", \"Noto Sans CJK JP\", \"Noto Sans JP\", monospace",
+        "color": "#e8e8e8"
+      }
+    ],
+    "repaint": false
+  },
+  {
+    "input": {
+      "flat": "pattern",
+      "room": true,
+      "showing": false,
+      "gamma": 1.2,
+      "dim": {
+        "lo": 4,
+        "hi": 80,
+        "amt": 127.5
+      }
+    },
+    "owner": "world",
+    "pixels": "d2ae90a375080a3145d4091c07f071fa28cfd0f65aacb939d53e8f613a094e78",
+    "valid": true,
+    "commands": [
+      {
+        "op": "text",
+        "text": "Caption",
+        "x": 7,
+        "y": 23,
+        "w": 0,
+        "h": 0,
+        "font": "12px \"Courier New\", \"MS PGothic\", \"Hiragino Kaku Gothic ProN\", \"Yu Gothic\", \"Noto Sans CJK JP\", \"Noto Sans JP\", monospace",
+        "color": "#e8e8e8"
+      }
+    ],
+    "repaint": false
+  },
+  {
+    "input": {
+      "flat": "pattern",
+      "room": true,
+      "showing": true,
+      "photo": true,
+      "fade": 0.0625
+    },
+    "owner": "world",
+    "pixels": "7f1c03b6c35082b09b40e49ff2e582fb073a5d9cbef6989ca121ea9f6335c984",
+    "valid": true,
+    "commands": [
+      {
+        "op": "text",
+        "text": "Caption",
+        "x": 7,
+        "y": 23,
+        "w": 0,
+        "h": 0,
+        "font": "12px \"Courier New\", \"MS PGothic\", \"Hiragino Kaku Gothic ProN\", \"Yu Gothic\", \"Noto Sans CJK JP\", \"Noto Sans JP\", monospace",
+        "color": "#e8e8e8"
+      },
+      {
+        "op": "rect",
+        "x": 0,
+        "y": 0,
+        "w": 512,
+        "h": 384,
+        "color": "rgba(0,0,0,0.063)"
+      }
+    ],
+    "repaint": false
+  },
+  {
+    "input": {
+      "flat": "none",
+      "room": false,
+      "showing": false,
+      "owner": "puppet",
+      "subtitle": true
+    },
+    "owner": "puppet",
+    "pixels": "a177fbd53f845a59eb6e1e6b3a570a1409b657b30f4d2ec99d907f83ee8e8239",
+    "valid": true,
+    "commands": [
+      {
+        "op": "rect",
+        "x": 0,
+        "y": 224,
+        "w": 512,
+        "h": 40,
+        "color": "#000"
+      },
+      {
+        "op": "text",
+        "text": "The character speaks.",
+        "x": 8,
+        "y": 240,
+        "w": 0,
+        "h": 0,
+        "font": "12px Arial, Helvetica, \"MS PGothic\", \"Hiragino Kaku Gothic ProN\", \"Yu Gothic\", \"Noto Sans CJK JP\", \"Noto Sans JP\", sans-serif",
+        "color": "rgb(0, 0, 0)"
+      },
+      {
+        "op": "text",
+        "text": "Answer",
+        "x": 8,
+        "y": 280,
+        "w": 0,
+        "h": 0,
+        "font": "12px Arial, Helvetica, \"MS PGothic\", \"Hiragino Kaku Gothic ProN\", \"Yu Gothic\", \"Noto Sans CJK JP\", \"Noto Sans JP\", sans-serif",
+        "color": "rgb(252, 244, 228)"
+      },
+      {
+        "op": "stroke",
+        "x": 1.5,
+        "y": 265.5,
+        "w": 509,
+        "h": 21,
+        "color": "rgb(252, 246, 232)",
+        "line": 3
+      }
+    ],
+    "repaint": false
+  },
+  {
+    "input": {
+      "flat": "pattern",
+      "room": true,
+      "showing": true,
+      "xray": {
+        "x": 3,
+        "y": 4
+      }
+    },
+    "owner": "world",
+    "pixels": "0a40af7bd3f4d2a9175818d4ab5f95b4683442bda68957ca8fda6be8cfe416a1",
+    "valid": true,
+    "commands": [
+      {
+        "op": "text",
+        "text": "Caption",
+        "x": 7,
+        "y": 23,
+        "w": 0,
+        "h": 0,
+        "font": "12px \"Courier New\", \"MS PGothic\", \"Hiragino Kaku Gothic ProN\", \"Yu Gothic\", \"Noto Sans CJK JP\", \"Noto Sans JP\", monospace",
+        "color": "#e8e8e8"
+      }
+    ],
+    "repaint": false
+  },
+  {
+    "input": {
+      "flat": "pattern",
+      "room": true,
+      "showing": true,
+      "xray": {
+        "x": 3.25,
+        "y": 4
+      }
+    },
+    "owner": "world",
+    "pixels": "d03e7dfa55531ef0f14946314a003d855a39e0dce94b21a6c3b167095df51284",
+    "valid": true,
+    "commands": [
+      {
+        "op": "text",
+        "text": "Caption",
+        "x": 7,
+        "y": 23,
+        "w": 0,
+        "h": 0,
+        "font": "12px \"Courier New\", \"MS PGothic\", \"Hiragino Kaku Gothic ProN\", \"Yu Gothic\", \"Noto Sans CJK JP\", \"Noto Sans JP\", monospace",
+        "color": "#e8e8e8"
+      }
+    ],
+    "repaint": false
+  },
+  {
+    "input": {
+      "flat": "pattern",
+      "room": true,
+      "showing": true,
+      "xray": {
+        "x": 3.5,
+        "y": 4.25
+      }
+    },
+    "owner": "world",
+    "pixels": "4f4c373ff7b9ef252560aae5dc5d9adc0092c97bd2ccf1d10d00586a36de4184",
+    "valid": true,
+    "commands": [
+      {
+        "op": "text",
+        "text": "Caption",
+        "x": 7,
+        "y": 23,
+        "w": 0,
+        "h": 0,
+        "font": "12px \"Courier New\", \"MS PGothic\", \"Hiragino Kaku Gothic ProN\", \"Yu Gothic\", \"Noto Sans CJK JP\", \"Noto Sans JP\", monospace",
+        "color": "#e8e8e8"
+      }
+    ],
+    "repaint": false
+  },
+  {
+    "input": {
+      "flat": "pattern",
+      "room": true,
+      "showing": true,
+      "xray": {
+        "x": 511.75,
+        "y": 383
+      }
+    },
+    "owner": "world",
+    "pixels": "4e5cc55c1176ea05768b3ddadc3fb05ecb3e36e0a094b89d0f59ac99a5d66652",
+    "valid": true,
+    "commands": [
+      {
+        "op": "text",
+        "text": "Caption",
+        "x": 7,
+        "y": 23,
+        "w": 0,
+        "h": 0,
+        "font": "12px \"Courier New\", \"MS PGothic\", \"Hiragino Kaku Gothic ProN\", \"Yu Gothic\", \"Noto Sans CJK JP\", \"Noto Sans JP\", monospace",
+        "color": "#e8e8e8"
+      }
+    ],
+    "repaint": false
+  }
+]
