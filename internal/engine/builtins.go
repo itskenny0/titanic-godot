@@ -95,7 +95,7 @@ func registerSessionBuiltins(s *Session) {
 }
 func registerCoreBuiltins(c builtinContext) {
 	c.v("random", func(a []script.Value, _ *script.Frame) script.Value {
-		return script.Num(math.Floor(c.s.Random()*numArg(a, 0, 0)) + 1)
+		return script.Num(math.Floor(float64(c.s.Random()*numArg(a, 0, 0))) + 1)
 	})
 	c.v("sqrt", func(a []script.Value, _ *script.Frame) script.Value {
 		return script.Num(math.Floor(math.Sqrt(numArg(a, 0, 0))))
@@ -199,7 +199,7 @@ func registerTimingBuiltins(c builtinContext) {
 		if err != nil {
 			return err
 		}
-		task.Sleep(numArg(a, 0, 0) * 50 / 3)
+		task.Sleep(float64(numArg(a, 0, 0)*50) / 3)
 		return nil
 	})
 	c.action("makeloop", func(a []script.Value, _ *script.Frame) error {

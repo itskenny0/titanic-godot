@@ -318,7 +318,9 @@ func (c builtinContext) startPathWalk(a *ActorInstance, name, from, to string) (
 }
 func resumeRoute(points []RoutePoint, x, y, z float64) []RoutePoint {
 	best, dist := 0, math.Inf(1)
-	distance := func(x, y, z float64) float64 { return math.Floor(math.Sqrt(x*x + y*y + z*z)) }
+	distance := func(x, y, z float64) float64 {
+		return math.Floor(math.Sqrt(float64(x*x) + float64(y*y) + float64(z*z)))
+	}
 	for i, p := range points {
 		d := distance(x-p.X, y-p.Y, z-p.Z)
 		if dist > d {

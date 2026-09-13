@@ -145,5 +145,5 @@ func (c *GameClock) AdvanceFrames(now float64) {
 		return
 	}
 	c.FrameCounter += math.Min(due, 64)
-	*c.lastFrameTick += due * period
+	*c.lastFrameTick += float64(due * period)
 }

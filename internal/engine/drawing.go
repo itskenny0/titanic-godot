@@ -59,7 +59,7 @@ func (c *DrawContext) MeasureText(text string) float64 {
 		return c.Measure(text, c.Font)
 	}
 	size := script.Str(strings.SplitN(c.Font, "px", 2)[0]).Num()
-	return float64(len(script.UTF16Units(text))) * size * .6
+	return float64(float64(float64(len(script.UTF16Units(text)))*size) * .6)
 }
 
 const cjkFallback = `"MS PGothic", "Hiragino Kaku Gothic ProN", "Yu Gothic", "Noto Sans CJK JP", "Noto Sans JP"`

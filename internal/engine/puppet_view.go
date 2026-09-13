@@ -248,7 +248,7 @@ func (v *PuppetView) DrawSignature(sig *DrawSignature) {
 }
 func (v *PuppetView) clutColor(raw []byte, index float64) string {
 	channel := func(offset, channel int) byte {
-		at := index*8 + float64(offset)
+		at := float64(index*8) + float64(offset)
 		var value float64
 		if at >= 0 && at < float64(len(raw)) && at == float64(int(at)) {
 			value = float64(raw[int(at)])

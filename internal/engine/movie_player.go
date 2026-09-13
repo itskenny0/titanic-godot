@@ -381,7 +381,7 @@ func (p *MoviePlayer) Tick(now float64) (*MovieImage, error) {
 		m.segmentStart = now
 	}
 	for c, cue := range m.seg.Cues {
-		if m.cuesFired[c] || now-m.segmentStart < float64(cue.Tick)*df.MovieTickMS {
+		if m.cuesFired[c] || now-m.segmentStart < float64(float64(cue.Tick)*df.MovieTickMS) {
 			continue
 		}
 		m.cuesFired[c] = true

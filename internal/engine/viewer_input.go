@@ -25,7 +25,7 @@ func (v *SetViewer) HitTest(x, y float64) *RoomHit {
 		x0, x1 := float64(min(o.StartRegionX, o.EndRegionX)), float64(max(o.StartRegionX, o.EndRegionX))
 		y0, y1 := float64(min(o.StartRegionY, o.EndRegionY)), float64(max(o.StartRegionY, o.EndRegionY))
 		if x >= x0 && x <= x1 && y >= y0 && y <= y1 {
-			a := (x1 - x0) * (y1 - y0)
+			a := float64((x1 - x0) * (y1 - y0))
 			if a < area {
 				area = a
 				best = &RoomHit{i, o}

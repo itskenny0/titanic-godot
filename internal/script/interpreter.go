@@ -306,7 +306,7 @@ func (i *Interpreter) Eval(e *Expr, f *Frame) (Value, error) {
 		case "-":
 			return Num(l.Num() - r.Num()), nil
 		case "*":
-			return Num(l.Num() * r.Num()), nil
+			return Num(float64(l.Num() * r.Num())), nil
 		case "/":
 			return Num(math.Trunc(l.Num() / r.Num())), nil
 		case "=":

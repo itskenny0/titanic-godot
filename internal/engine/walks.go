@@ -146,7 +146,7 @@ func (s *Scheduler) serviceWalks() {
 		w.Progress += math.Max(1, a.Speed)
 		t := math.Min(1, w.Progress/w.Dist)
 		if w.Path != nil && len(w.Path) >= 2 {
-			at := t * w.Path[len(w.Path)-1].Cum
+			at := float64(t * w.Path[len(w.Path)-1].Cum)
 			i := 1
 			for i < len(w.Path)-1 && w.Path[i].Cum < at {
 				i++
@@ -157,14 +157,14 @@ func (s *Scheduler) serviceWalks() {
 			if leg > 0 {
 				u = math.Min(1, math.Max(0, (at-from.Cum)/leg))
 			}
-			a.WorldX = jsRound(from.X + (to.X-from.X)*u)
-			a.WorldY = jsRound(from.Y + (to.Y-from.Y)*u)
-			a.WorldZ = jsRound(from.Z + (to.Z-from.Z)*u)
+			a.WorldX = jsRound(from.X + float64((to.X-from.X)*u))
+			a.WorldY = jsRound(from.Y + float64((to.Y-from.Y)*u))
+			a.WorldZ = jsRound(from.Z + float64((to.Z-from.Z)*u))
 			a.Deg = float64(Bearing(to.X-from.X, to.Y-from.Y))
 		} else {
-			a.WorldX = jsRound(w.SX + w.DX*t)
-			a.WorldY = jsRound(w.SY + w.DY*t)
-			a.WorldZ = jsRound(w.SZ + w.DZ*t)
+			a.WorldX = jsRound(w.SX + float64(w.DX*t))
+			a.WorldY = jsRound(w.SY + float64(w.DY*t))
+			a.WorldZ = jsRound(w.SZ + float64(w.DZ*t))
 		}
 		if t >= 1 {
 			s.Walks.Delete(key)

@@ -266,7 +266,7 @@ func (s *Session) TextWidth(text string, size float64) float64 {
 			n++
 		}
 	}
-	return math.Ceil(float64(n) * size * .6)
+	return math.Ceil(float64(float64(float64(n)*size) * .6))
 }
 func (s *Session) EraseTextUnderProp(p *PropInstance) error {
 	r, err := p.ScreenRect()
@@ -282,7 +282,9 @@ func (s *Session) EraseTextUnderProp(p *PropInstance) error {
 func (s *Session) SetPointer(x, y float64) { s.PointerX, s.PointerY = x, y }
 func (s *Session) PointerPoint() int32     { return PackPoint(s.PointerX, s.PointerY) }
 func (s *Session) InputPolled()            { s.lastInputPoll = s.Executor.Now() }
-func (s *Session) PollingInput() bool      { return s.Executor.Now()-s.lastInputPoll <= 4*EngineStepMS }
+func (s *Session) PollingInput() bool {
+	return s.Executor.Now()-s.lastInputPoll <= float64(4*EngineStepMS)
+}
 func (s *Session) FireHandler(inst *script.Instance, handler, me, label string) {
 	if !hasHandler(inst, handler) {
 		return

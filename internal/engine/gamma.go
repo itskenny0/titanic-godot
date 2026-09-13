@@ -26,7 +26,7 @@ func NewScreenGamma() *ScreenGamma {
 }
 func (g *ScreenGamma) buildRamp(ch int) {
 	for c := range g.ramps[ch] {
-		g.ramps[ch][c] = byte(jsRound(255 * math.Pow(float64(c)/255, g.Channels[ch])))
+		g.ramps[ch][c] = byte(jsRound(float64(255 * math.Pow(float64(c)/255, g.Channels[ch]))))
 	}
 }
 func (g *ScreenGamma) Average() float64 { return (g.Channels[0] + g.Channels[1] + g.Channels[2]) / 3 }
@@ -56,7 +56,7 @@ func (g *ScreenGamma) Step(up bool, channels [3]bool) {
 		}
 		raw := g.Channels[i] / ScreenGammaStep
 		if up {
-			raw = g.Channels[i] * ScreenGammaStep
+			raw = float64(g.Channels[i] * ScreenGammaStep)
 		}
 		next := math.Max(.3, math.Min(1.6, raw))
 		if next == g.Channels[i] {
@@ -100,9 +100,9 @@ func DimPalette(base []byte, dim ClutDim) []byte {
 	lo, hi := math.Max(0, dim.Lo), math.Min(float64(len(base))/4-1, dim.Hi)
 	for i := lo; i <= hi; i++ {
 		for ch := 0.; ch < 3; ch++ {
-			at := i*4 + ch
+			at := float64(i*4) + ch
 			if at == math.Trunc(at) && at >= 0 && at < float64(len(base)) {
-				out[int(at)] = clampedByte(float64(base[int(at)]) * factor)
+				out[int(at)] = clampedByte(float64(float64(base[int(at)]) * factor))
 			}
 		}
 	}

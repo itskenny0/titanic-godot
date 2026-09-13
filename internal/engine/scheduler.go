@@ -11,7 +11,7 @@ import (
 const EngineStepMS = 50
 const RampStepMS = EngineStepMS / 3.0
 
-func TicksAt(ms float64) float64 { return math.Floor(ms * 3 / 50) }
+func TicksAt(ms float64) float64 { return math.Floor(float64(ms*3) / 50) }
 
 type Listener struct{ X, Y, Deg float64 }
 
@@ -94,7 +94,7 @@ func (s *Scheduler) CurrentSound(channel int) string {
 }
 func (s *Scheduler) rand(n float64) float64 {
 	if n > 0 {
-		return math.Floor(s.Host.AmbientRandom()*n) + 1
+		return math.Floor(float64(s.Host.AmbientRandom()*n)) + 1
 	}
 	return 0
 }
@@ -252,7 +252,7 @@ func (s *Scheduler) TickTime(now float64) error {
 	}
 	steps := math.Floor((now - s.timeLastTick) / EngineStepMS)
 	if steps > 0 {
-		s.timeLastTick += steps * EngineStepMS
+		s.timeLastTick += float64(steps * EngineStepMS)
 		steps = math.Min(steps, 64)
 		for i := 0; i < int(steps); i++ {
 			if err := s.serviceStep(); err != nil {
@@ -276,7 +276,7 @@ func (s *Scheduler) serviceGameClock(now float64) {
 	if calls <= 0 {
 		return
 	}
-	s.clockLastMS += calls * 50
+	s.clockLastMS += float64(calls * 50)
 	calls = math.Min(calls, 20)
 	s.clockDispatching = true
 	s.Host.Track("game clock", true, func(task *Task) error {
@@ -412,14 +412,14 @@ func (s *Scheduler) fireCricket(c *Cricket) error {
 	volume, pan := 1., 0.
 	if lis := s.Host.ListenerPosition(); lis != nil {
 		dx, dy := c.X-lis.X, c.Y-lis.Y
-		dist := math.Sqrt(dx*dx + dy*dy)
+		dist := math.Sqrt(float64(dx*dx) + float64(dy*dy))
 		if dist >= c.Radius {
 			return nil
 		}
 		volume = 1 - dist/c.Radius
 		if dist > 1 {
-			th := float64(int32JS(lis.Deg)&255) / 256 * 2 * math.Pi
-			lateral := dy*math.Cos(th) - dx*math.Sin(th)
+			th := float64(float64(float64(int32JS(lis.Deg)&255)/256*2) * math.Pi)
+			lateral := float64(dy*math.Cos(th)) - float64(dx*math.Sin(th))
 			pan = math.Max(-1, math.Min(1, lateral/dist))
 		}
 	}

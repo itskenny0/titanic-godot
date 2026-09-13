@@ -226,7 +226,7 @@ func registerSceneBuiltins(c builtinContext) {
 			if err != nil {
 				return err
 			}
-			task.Sleep(steps * 50 / 3)
+			task.Sleep(float64(steps*50) / 3)
 		}
 		return nil
 	}
@@ -335,7 +335,7 @@ func registerSceneBuiltins(c builtinContext) {
 		if err != nil {
 			return err
 		}
-		cap := w.Steps*4 + 60
+		cap := float64(w.Steps*4) + 60
 		for i := 0.; i < cap && w.Active(); i++ {
 			s.NextFrame(task)
 		}

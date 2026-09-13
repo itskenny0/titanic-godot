@@ -9,9 +9,9 @@ func (d *ScreenDirector) pushTurn(dir string) {
 		return
 	}
 	width, height := from.Width, from.Height
-	travel := math.Max(1, jsRound(float64(width)*w.Span))
+	travel := math.Max(1, jsRound(float64(float64(width)*w.Span)))
 	per := math.Floor(travel/math.Max(1, w.Steps)) + 1
-	off := int(math.Max(0, math.Min(travel, w.Step*per)))
+	off := int(math.Max(0, math.Min(travel, float64(w.Step*per))))
 	keep := width - off
 	quarter := 0
 	if w.Span < 1 {
@@ -49,7 +49,7 @@ func (d *ScreenDirector) coverWithWipe() {
 	}
 	from := w.From
 	width, height := from.Width, from.Height
-	kept := int(math.Max(0, math.Min(float64(width), jsRound(float64(width)*(w.Steps-w.Step)/w.Steps))))
+	kept := int(math.Max(0, math.Min(float64(width), jsRound(float64(float64(width)*(w.Steps-w.Step))/w.Steps))))
 	if kept <= 0 {
 		return
 	}

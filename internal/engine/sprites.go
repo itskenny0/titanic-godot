@@ -90,7 +90,7 @@ func worldSprite(f *df.Sprite, proj Projection, k float64) *SpriteRect {
 	if f == nil {
 		return nil
 	}
-	return &SpriteRect{f, k, proj.X - jsRound(float64(f.PosXraw)*k), proj.Y - jsRound(float64(f.PosYraw)*k), max(1, int(jsRound(float64(f.Width)*k))), max(1, int(jsRound(float64(f.Height)*k))), false}
+	return &SpriteRect{f, k, proj.X - jsRound(float64(float64(f.PosXraw)*k)), proj.Y - jsRound(float64(float64(f.PosYraw)*k)), max(1, int(jsRound(float64(float64(f.Width)*k)))), max(1, int(jsRound(float64(float64(f.Height)*k)))), false}
 }
 func (r *SpriteRect) intersects(w, h int) bool {
 	return r != nil && r.X < float64(w) && r.Y < float64(h) && r.X+float64(r.W) > 0 && r.Y+float64(r.H) > 0
@@ -100,7 +100,7 @@ func (r *SpriteRect) sample(x, y float64) int {
 		return -1
 	}
 	if r.screen {
-		index := (y-r.Y)*float64(r.F.Width) + (x - r.X)
+		index := float64((y-r.Y)*float64(r.F.Width)) + (x - r.X)
 		if index != math.Trunc(index) || index < 0 || index >= float64(len(r.F.Opaque)) || r.F.Opaque[int(index)] == 0 {
 			return -1
 		}
@@ -148,12 +148,12 @@ func compositeFractionalSprite(r *SpriteRect, rgba []byte, w, h int, palette []b
 			return
 		}
 		if occ != nil && x >= 0 && y >= 0 && x < float64(occ.W) && y < float64(occ.H) {
-			n := y*float64(occ.W) + x
+			n := float64(y*float64(occ.W)) + x
 			if n == math.Trunc(n) && n >= 0 && n < float64(len(occ.Z)) && float64(occ.Z[int(n)]) < level {
 				return
 			}
 		}
-		d := (y*float64(w) + x) * 4
+		d := float64((float64(y*float64(w)) + x) * 4)
 		if d != math.Trunc(d) || d < 0 || d >= float64(len(rgba)) {
 			return
 		}

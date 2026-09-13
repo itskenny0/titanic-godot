@@ -161,7 +161,7 @@ func (v *SetViewer) AvailableRoads() []df.Road { return v.Set.RoadsAt(v.View().V
 func (v *SetViewer) PlayerPace() float64 {
 	switch v.Session.MoveSpeed {
 	case "slow":
-		return 2 * EngineStepMS
+		return float64(2 * EngineStepMS)
 	case "fast":
 		return EngineStepMS / 2
 	case "instant":
@@ -176,11 +176,11 @@ func (v *SetViewer) report(err error) {
 	}
 }
 func angularDistance(a, b float64) float64 {
-	d := math.Mod(a-b, 2*math.Pi)
+	d := math.Mod(a-b, float64(2*math.Pi))
 	if d < 0 {
-		d += 2 * math.Pi
+		d += float64(2 * math.Pi)
 	}
-	return math.Min(d, 2*math.Pi-d)
+	return math.Min(d, float64(2*math.Pi)-d)
 }
 func nearestView(scene *df.Scene, rotation float64) int {
 	best, dist := 0, math.Inf(1)
@@ -345,17 +345,17 @@ func (v *SetViewer) cameraFrom(p CameraPose) *WorldCamera {
 	if h == 0 {
 		h = 264
 	}
-	th := 2 * math.Pi * float64(int32JS(p.Deg)&255) / 256
+	th := float64(float64(2*math.Pi)*float64(int32JS(p.Deg)&255)) / 256
 	sb := v.Set.CameraSetback
 	f := float64(max(w, h)) / 2
 	if v.Set.FocalLength != nil {
 		f = *v.Set.FocalLength
 	}
-	return &WorldCamera{X: p.X - jsRound(sb*math.Cos(th)), Y: p.Y - jsRound(sb*math.Sin(th)), Z: p.Z + v.Session.CameraHiBias, Deg: p.Deg, F: f, CX: float64(w) / 2, CY: float64(h) / 2, ClipW: w, ClipH: h}
+	return &WorldCamera{X: p.X - jsRound(float64(sb*math.Cos(th))), Y: p.Y - jsRound(float64(sb*math.Sin(th))), Z: p.Z + v.Session.CameraHiBias, Deg: p.Deg, F: f, CX: float64(w) / 2, CY: float64(h) / 2, ClipW: w, ClipH: h}
 }
 func (v *SetViewer) WorldCamera() *WorldCamera {
 	sc, vw := v.Scene(), v.View()
-	p := CameraPose{X: float64(sc.XAxisMap), Y: float64(sc.ZAxisMap), Z: jsRound(vw.CameraHeight * 512), Deg: float64(vw.Rotation8)}
+	p := CameraPose{X: float64(sc.XAxisMap), Y: float64(sc.ZAxisMap), Z: jsRound(float64(vw.CameraHeight * 512)), Deg: float64(vw.Rotation8)}
 	if fi := standFrameInfo(sc, v.ViewIdx); fi != nil {
 		p.X = float64(fi.PosX16)
 		p.Y = float64(fi.PosZ16)

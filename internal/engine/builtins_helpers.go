@@ -85,9 +85,9 @@ func registerHelperBuiltins(c builtinContext) {
 	c.v("lowmemory", func([]script.Value, *script.Frame) script.Value { return script.Num(0) })
 	c.v("heapsize", func([]script.Value, *script.Frame) script.Value {
 		if s.LowMemory {
-			return script.Num(4 * 1024 * 1024)
+			return script.Num(float64(4 * 1024 * 1024))
 		}
-		return script.Num(64 * 1024 * 1024)
+		return script.Num(float64(64 * 1024 * 1024))
 	})
 	for _, name := range []string{"stageparam", "setparam"} {
 		params := map[float64]script.Value{}
@@ -141,13 +141,13 @@ func registerHelperBuiltins(c builtinContext) {
 	})
 	for _, name := range []string{"calcvectx", "calcvecty"} {
 		c.v(name, func(a []script.Value, _ *script.Frame) script.Value {
-			angle := float64(int32JS(numArg(a, 0, 0))&255) * 2 * math.Pi / 256
+			angle := float64(float64(float64(int32JS(numArg(a, 0, 0))&255)*2)*math.Pi) / 256
 			trig := math.Cos
 			if name == "calcvecty" {
 				trig = math.Sin
 			}
-			entry := jsRound(16384 * trig(angle))
-			n := math.Trunc(entry * float64(int16(int32JS(numArg(a, 1, 0)))) / 16384)
+			entry := jsRound(float64(16384 * trig(angle)))
+			n := math.Trunc(float64(entry*float64(int16(int32JS(numArg(a, 1, 0))))) / 16384)
 			return script.Num(float64(int16(int32JS(n))))
 		})
 	}
@@ -169,8 +169,8 @@ func registerHelperBuiltins(c builtinContext) {
 	})
 	c.action("quit", func([]script.Value, *script.Frame) error { return s.OnQuit() })
 	c.v("machinetype", func([]script.Value, *script.Frame) script.Value { return script.Str("win") })
-	c.v("freemem", func([]script.Value, *script.Frame) script.Value { return script.Num(3 * 1024 * 1024) })
-	c.v("sysmem", func([]script.Value, *script.Frame) script.Value { return script.Num(8 * 1024 * 1024) })
+	c.v("freemem", func([]script.Value, *script.Frame) script.Value { return script.Num(float64(3 * 1024 * 1024)) })
+	c.v("sysmem", func([]script.Value, *script.Frame) script.Value { return script.Num(float64(8 * 1024 * 1024)) })
 	c.v("tick", func([]script.Value, *script.Frame) script.Value { return script.Num(TicksAt(s.Executor.Now())) })
 	c.v("frame", func([]script.Value, *script.Frame) script.Value { return script.Num(s.Clock.FrameCounter) })
 	for _, name := range []string{"menuvisible", "keyaborts"} {

@@ -292,7 +292,7 @@ func (r *PropRuntime) WorldRect(e PropDrawEntry, cam WorldCamera) (*SpriteRect, 
 	if idx >= 0 && idx < len(st.RefScales) {
 		scale = st.RefScales[idx]
 	}
-	return worldSprite(f, e.Proj, p.Scale*float64(scale)/(1000*e.Proj.Depth)), err
+	return worldSprite(f, e.Proj, float64(p.Scale*float64(scale))/(float64(1000*e.Proj.Depth))), err
 }
 func occlusionLevel(depth, zclip float64, occ *Occlusion) float64 {
 	if occ == nil {

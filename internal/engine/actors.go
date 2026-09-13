@@ -167,7 +167,7 @@ func (r *ActorRuntime) DrawList(cam WorldCamera) []ActorDrawEntry {
 }
 func (r *ActorRuntime) Rect(e ActorDrawEntry, cam WorldCamera) (*SpriteRect, error) {
 	f, err := r.FrameFor(e.A, &cam)
-	return worldSprite(f, e.Proj, e.A.Scale*actorRefScale(e.A)/(1000*e.Proj.Depth)), err
+	return worldSprite(f, e.Proj, float64(e.A.Scale*actorRefScale(e.A))/(float64(1000*e.Proj.Depth))), err
 }
 func (r *ActorRuntime) ScreenRect(a *ActorInstance) (*SpriteRect, error) {
 	f, err := r.FrameFor(a, nil)

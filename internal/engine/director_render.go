@@ -250,7 +250,7 @@ func (d *ScreenDirector) compositeXRay(pal []byte) error {
 			if tx < 0 || tx >= float64(min(screen.Width, hidden.Width)) || f.Opaque[y*f.Width+x] == 0 {
 				continue
 			}
-			from, to := ty*float64(hidden.Width)+tx, (ty*float64(screen.Width)+tx)*4
+			from, to := float64(ty*float64(hidden.Width))+tx, float64((float64(ty*float64(screen.Width))+tx)*4)
 			if to != math.Trunc(to) {
 				continue
 			}

@@ -191,7 +191,7 @@ func (c *PuppetController) playLine(task *Task, p *PuppetState, line df.PuppetDi
 	}
 	skipped := false
 	p.SpeakSkip = func() { skipped = true }
-	deadline := c.Executor.Now() + seconds*1000 + 150
+	deadline := c.Executor.Now() + float64(seconds*1000) + 150
 	defer func() {
 		p.SpeakSkip = nil
 		c.Audio.Halt(VoiceChannel)
@@ -269,7 +269,7 @@ func (c *PuppetController) Scramble() {
 	}
 	n := len(p.Bevels)
 	for i := 0; i < n*5; i++ {
-		a, b := int(math.Floor(c.Random()*float64(n))), int(math.Floor(c.Random()*float64(n)))
+		a, b := int(math.Floor(float64(c.Random()*float64(n)))), int(math.Floor(float64(c.Random()*float64(n))))
 		p.Bevels[a], p.Bevels[b] = p.Bevels[b], p.Bevels[a]
 	}
 }
@@ -338,9 +338,9 @@ func (c *PuppetController) nextIdleDelay(min, max int) float64 {
 	spread := max - min
 	draw := 0.
 	if spread > 0 {
-		draw = math.Floor(c.AmbientRandom()*float64(spread)) + 1
+		draw = math.Floor(float64(c.AmbientRandom()*float64(spread))) + 1
 	}
-	return (float64(min) + draw) * (1000.0 / 60)
+	return float64((float64(min) + draw) * (1000.0 / 60))
 }
 func (c *PuppetController) armIdleSlots(p *PuppetState) {
 	p.Idle = nil

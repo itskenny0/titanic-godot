@@ -114,7 +114,7 @@ func Resample(samples []float32, from, to int) ([]float32, error) {
 		return samples, nil
 	}
 	ratio := float64(to) / float64(from)
-	size := math.Max(1, math.Floor(float64(len(samples))*ratio+0.5))
+	size := math.Max(1, math.Floor(float64(float64(len(samples))*ratio)+0.5))
 	if size > 32<<20 {
 		return nil, fmt.Errorf("resampled audio too large")
 	}
@@ -126,7 +126,7 @@ func Resample(samples []float32, from, to int) ([]float32, error) {
 		// Clamp the final interpolation to the final sample when upsampling.
 		p = min(p, len(samples)-1)
 		q := min(p+1, len(samples)-1)
-		out[i] = float32(float64(samples[p])*(1-fraction) + float64(samples[q])*fraction)
+		out[i] = float32(float64(float64(samples[p])*(1-fraction)) + float64(float64(samples[q])*fraction))
 	}
 	return out, nil
 }
@@ -143,11 +143,11 @@ func (a Audio) WriteStereoPCM(out []byte, volume, pan float64) error {
 	}
 	volume = math.Max(0, math.Min(1, volume))
 	pan = math.Max(-1, math.Min(1, pan))
-	l := volume * math.Cos((pan+1)*math.Pi/4)
-	r := volume * math.Sin((pan+1)*math.Pi/4)
+	l := float64(volume * math.Cos(float64((pan+1)*math.Pi)/4))
+	r := float64(volume * math.Sin(float64((pan+1)*math.Pi)/4))
 	for i, sample := range a.Samples {
-		s := math.Max(-1, math.Min(1, float64(sample))) * 32767
-		lv, rv := uint16(int16(math.Floor(s*l+0.5))), uint16(int16(math.Floor(s*r+0.5)))
+		s := float64(math.Max(-1, math.Min(1, float64(sample))) * 32767)
+		lv, rv := uint16(int16(math.Floor(float64(s*l)+0.5))), uint16(int16(math.Floor(float64(s*r)+0.5)))
 		out[i*4], out[i*4+1], out[i*4+2], out[i*4+3] = byte(lv), byte(lv>>8), byte(rv), byte(rv>>8)
 	}
 	return nil
