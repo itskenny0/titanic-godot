@@ -32,8 +32,16 @@ def digest(path):
 def collect(directory):
     wanted = package_names()
     found = {}
+    # Linux format jobs add standard icon sizes to the already-built debs.
+    # Only these explicit replacements supersede the original desktop artifact.
+    superseded = set()
+    for arch in ("x86_64", "arm64"):
+        name = f"titanic-linux-{arch}.deb"
+        replacement = directory / f"titanic-linux-formats-{arch}" / name
+        if replacement.is_file() and not replacement.is_symlink():
+            superseded.add(directory / f"titanic-linux-{arch}" / name)
     for path in directory.rglob("*"):
-        if path.is_symlink() or not path.is_file() or path.name not in wanted:
+        if path in superseded or path.is_symlink() or not path.is_file() or path.name not in wanted:
             continue
         if path.stat().st_size == 0:
             raise ValueError(f"Empty package: {path.name}")

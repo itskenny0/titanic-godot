@@ -22,6 +22,22 @@ class ReleaseAssetsTests(unittest.TestCase):
             with self.assertRaisesRegex(ValueError, "Missing packages: titanic-portmaster.zip"):
                 release.collect(directory)
 
+    def test_finished_deb_supersedes_only_its_desktop_artifact(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            directory = Path(temporary)
+            for name in release.package_names():
+                if name != "titanic-linux-arm64.deb":
+                    (directory / name).write_bytes(b"package")
+            original = directory / "titanic-linux-arm64/titanic-linux-arm64.deb"
+            original.parent.mkdir()
+            original.write_bytes(b"original icons")
+            final = directory / "titanic-linux-formats-arm64/titanic-linux-arm64.deb"
+            final.parent.mkdir()
+            final.write_bytes(b"standard icons")
+            self.assertEqual(release.collect(directory)[final.name], final)
+            final.unlink()
+            self.assertEqual(release.collect(directory)[original.name], original)
+
     def test_conflicting_duplicates_are_rejected(self):
         with tempfile.TemporaryDirectory() as temporary:
             directory = Path(temporary)

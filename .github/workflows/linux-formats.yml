@@ -42,6 +42,9 @@ jobs:
           tar -xzf dist/titanic-linux-${{ matrix.arch }}.tar.gz -C .build/linux-payload
           cp -r .build/linux-payload/titanic packaging/linux/flatpak-input
           cp packaging/linux/io.github.itskenny0.Titanic.{desktop,png,metainfo.xml} packaging/linux/flatpak-input/
+          if [[ -f packaging/linux/io.github.itskenny0.Titanic.256.png ]]; then
+            cp packaging/linux/io.github.itskenny0.Titanic.256.png packaging/linux/flatpak-input/
+          fi
           # shellcheck disable=SC2016
           printf '#!/bin/sh\nexec /app/lib/titanic/titanic --main-pack /app/lib/titanic/titanic.pck "$@"\n' > packaging/linux/flatpak-input/launcher
       - name: Build offline Flatpak bundle
@@ -50,18 +53,24 @@ jobs:
           sudo apt-get install -y flatpak flatpak-builder python3-pil
           flatpak remote-add --user --if-not-exists flathub https://flathub.org/repo/flathub.flatpakrepo
           flatpak-builder --user --install-deps-from=flathub --build-only --force-clean .build/flatpak-build packaging/linux/io.github.itskenny0.Titanic.yml
-          # AppStream searches standard icon sizes; retain the full-size original too.
+          # Standard theme sizes are required by desktop menus and AppStream.
+          # Repackage the existing deb too, so older tagged builds get the fix.
+          dpkg-deb --raw-extract dist/titanic-linux-${{ matrix.arch }}.deb .build/deb-icons
           python3 - <<'PYICON'
           from pathlib import Path
           from PIL import Image
           icon = Image.open('packaging/linux/io.github.itskenny0.Titanic.png')
-          root = Path('.build/flatpak-build/files/share/icons/hicolor')
-          for size in (64, 128, 256):
-              dest = root / f'{size}x{size}' / 'apps/io.github.itskenny0.Titanic.png'
-              dest.parent.mkdir(parents=True, exist_ok=True)
-              icon.resize((size, size), Image.Resampling.LANCZOS).save(dest)
+          roots = [Path('.build/flatpak-build/files/share/icons/hicolor'), Path('.build/deb-icons/usr/share/icons/hicolor')]
+          for root in roots:
+              for size in (64, 128, 256):
+                  dest = root / f'{size}x{size}' / 'apps/io.github.itskenny0.Titanic.png'
+                  dest.parent.mkdir(parents=True, exist_ok=True)
+                  icon.resize((size, size), Image.Resampling.LANCZOS).save(dest)
+              # Flatpak refuses exported icons larger than 512 pixels.
+              (root / '1024x1024/apps/io.github.itskenny0.Titanic.png').unlink(missing_ok=True)
           PYICON
-          flatpak-builder --user --finish-only --repo=.build/flatpak-repo .build/flatpak-build packaging/linux/io.github.itskenny0.Titanic.yml
+          dpkg-deb --root-owner-group --build .build/deb-icons dist/titanic-linux-${{ matrix.arch }}.deb
+          flatpak-builder --user --finish-only --disable-cache --repo=.build/flatpak-repo .build/flatpak-build packaging/linux/io.github.itskenny0.Titanic.yml
           flatpak build-bundle .build/flatpak-repo dist/titanic-linux-${{ matrix.arch }}.flatpak io.github.itskenny0.Titanic
       - name: Build AppImage
         env:
@@ -80,6 +89,7 @@ jobs:
         with:
           name: titanic-linux-formats-${{ matrix.arch }}
           path: |
+            dist/*.deb
             dist/*.flatpak
             dist/*.AppImage
           if-no-files-found: error

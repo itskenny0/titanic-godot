@@ -60,7 +60,7 @@ else:
    bindir=deb/'usr/bin';bindir.mkdir();launcher=bindir/'titanic';launcher.write_text('#!/bin/sh\nexec /usr/lib/titanic/titanic --main-pack /usr/lib/titanic/titanic.pck "$@"\n');launcher.chmod(0o755)
    debarch={'x86_64':'amd64','arm64':'arm64'}[a.arch];(deb/'DEBIAN').mkdir()
    (deb/'DEBIAN/control').write_text(f'Package: titanic-godot\nVersion: {a.version}\nArchitecture: {debarch}\nMaintainer: itskenny0\nDepends: libc6, libx11-6, libxcursor1, libxinerama1, libxrandr2, libxi6, libgl1, libasound2\nSection: games\nPriority: optional\nDescription: Godot player for Titanic Adventure Out of Time\n Original game files required.\n')
-   for src,dest in [('io.github.itskenny0.Titanic.desktop','usr/share/applications'),('io.github.itskenny0.Titanic.png','usr/share/icons/hicolor/1024x1024/apps'),('io.github.itskenny0.Titanic.metainfo.xml','usr/share/metainfo')]:
-    d=deb/dest;d.mkdir(parents=True,exist_ok=True);shutil.copy2(ROOT/'packaging/linux'/src,d/src)
+   for src,dest in [('io.github.itskenny0.Titanic.desktop','usr/share/applications'),('io.github.itskenny0.Titanic.256.png','usr/share/icons/hicolor/256x256/apps'),('io.github.itskenny0.Titanic.metainfo.xml','usr/share/metainfo')]:
+    d=deb/dest;d.mkdir(parents=True,exist_ok=True);shutil.copy2(ROOT/'packaging/linux'/src,d/src.replace('.256.png','.png'))
    subprocess.run(['dpkg-deb','--root-owner-group','--build',str(deb),str(dist/f'{name}.deb')],check=True)
 print(stage)

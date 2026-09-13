@@ -22,7 +22,7 @@ modules:
       - install -Dm755 launcher /app/bin/titanic
       - cp -r licenses /app/lib/titanic/licenses
       - install -Dm644 io.github.itskenny0.Titanic.desktop /app/share/applications/io.github.itskenny0.Titanic.desktop
-      - install -Dm644 io.github.itskenny0.Titanic.png /app/share/icons/hicolor/1024x1024/apps/io.github.itskenny0.Titanic.png
+      - install -Dm644 io.github.itskenny0.Titanic.256.png /app/share/icons/hicolor/256x256/apps/io.github.itskenny0.Titanic.png
       - install -Dm644 io.github.itskenny0.Titanic.metainfo.xml /app/share/metainfo/io.github.itskenny0.Titanic.metainfo.xml
     sources:
       - type: dir
