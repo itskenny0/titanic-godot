@@ -40,6 +40,19 @@ var controller_surface = {"context": "busy", "key": "", "targets": []}
 var controller_selection = -1
 var controller_poll = 0.0
 var controller_triggers = [false, false]
+var controller_bindings = {}
+var controller_held = {}
+var remap_action = ""
+var remap_release = ""
+var remap_buttons = {}
+var remap_status
+var remap_open = false
+var remap_deadline = 0
+const CONTROLLER_ACTIONS = [
+	["confirm", "Confirm / click"], ["back", "Back / skip"], ["menu", "Voyage menu"],
+	["door", "Door / Space"], ["keyboard", "Keyboard"], ["mouse", "Pointer click"],
+	["previous", "Previous target"], ["next", "Next target"], ["precision", "Slow pointer"],
+	["up", "Up"], ["down", "Down"], ["left", "Left"], ["right", "Right"]]
 var smoke = false
 var smoke_time = 0.0
 var pending_restart = null
@@ -73,6 +86,7 @@ func _ready():
 	get_tree().set_quit_on_go_back(false)
 	get_tree().connect("files_dropped", self, "files_dropped")
 	config.load("user://settings.cfg")
+	load_controller_bindings()
 	Input.set_mouse_mode(Input.MOUSE_MODE_HIDDEN)
 	pointer_visible = Input.get_connected_joypads().empty() and OS.get_environment("RETANIC_ARCH").empty()
 	cursor_layer = Node2D.new()
@@ -457,6 +471,7 @@ func stop_sound(id):
 
 func _notification(what):
 	if what == MainLoop.NOTIFICATION_WM_FOCUS_OUT:
+		controller_held.clear()
 		focused = false
 		send({"action": "pause", "on": true})
 	elif what == MainLoop.NOTIFICATION_WM_FOCUS_IN:
@@ -473,6 +488,9 @@ func _notification(what):
 		show_menu()
 
 func _input(event):
+	if controller_binding_input(event):
+		get_tree().set_input_as_handled()
+		return
 	if event is InputEventMouseMotion or event is InputEventMouseButton:
 		if not controller_pointer_event:
 			set_pointer_visible(true)
@@ -489,18 +507,6 @@ func _input(event):
 		elif modal == null and (event.control or event.meta) and event.scancode in [KEY_S, KEY_O]:
 			send({"action": "save" if event.scancode == KEY_S else "load"})
 			get_tree().set_input_as_handled()
-	if event is InputEventKey and not OS.get_environment("RETANIC_ARCH").empty():
-		if event.pressed:
-			set_pointer_visible(false)
-		if event.scancode == KEY_ENTER:
-			controller_confirm(event.pressed)
-			get_tree().set_input_as_handled()
-			return
-		if event.pressed and event.scancode in [KEY_UP, KEY_DOWN, KEY_LEFT, KEY_RIGHT]:
-			if modal == null:
-				controller_direction({KEY_UP: "uparrow", KEY_DOWN: "downarrow", KEY_LEFT: "leftarrow", KEY_RIGHT: "rightarrow"}[event.scancode])
-				get_tree().set_input_as_handled()
-				return
 	if event is InputEventKey and event.pressed and not event.echo:
 		if event.scancode == KEY_ESCAPE and modal != null:
 			controller_back()
@@ -511,42 +517,6 @@ func _input(event):
 		elif event.scancode == KEY_F12:
 			controller_keyboard()
 			get_tree().set_input_as_handled()
-	if event is InputEventJoypadButton:
-		if event.pressed:
-			set_pointer_visible(false)
-		if event.button_index == JOY_START and event.pressed:
-			show_menu()
-			get_tree().set_input_as_handled()
-		elif event.button_index == JOY_R3:
-			if event.pressed:
-				set_pointer_visible(true)
-			mouse_button(event.pressed)
-			get_tree().set_input_as_handled()
-		elif event.button_index in [JOY_BUTTON_0, JOY_R]:
-			controller_confirm(event.pressed)
-			get_tree().set_input_as_handled()
-		elif event.button_index == JOY_BUTTON_1:
-			if event.pressed:
-				controller_back()
-			get_tree().set_input_as_handled()
-		elif event.button_index == JOY_BUTTON_3:
-			if event.pressed:
-				controller_keyboard()
-			get_tree().set_input_as_handled()
-		elif event.button_index == JOY_BUTTON_2:
-			if event.pressed and modal == null:
-				send({"action": "key", "key": " "})
-			get_tree().set_input_as_handled()
-		elif event.button_index in [JOY_DPAD_UP, JOY_DPAD_DOWN, JOY_DPAD_LEFT, JOY_DPAD_RIGHT]:
-			# The held-input loop owns repeat, including in Godot dialogs.
-			get_tree().set_input_as_handled()
-
-	if event is InputEventJoypadMotion and event.axis in [JOY_AXIS_6, JOY_AXIS_7]:
-		var index = 0 if event.axis == JOY_AXIS_6 else 1
-		var pressed = event.axis_value > 0.5
-		if pressed and not controller_triggers[index]:
-			controller_cycle(-1 if index == 0 else 1)
-		controller_triggers[index] = pressed
 
 func _unhandled_input(event):
 	if modal != null or not ready:
@@ -603,19 +573,21 @@ func dispatch_pointer(event):
 	viewport.set_handle_input_locally(local_handling)
 
 func process_controller(delta):
+	if not remap_action.empty():
+		if OS.get_ticks_msec() >= remap_deadline:
+			cancel_controller_remap()
+		return
 	var pads = Input.get_connected_joypads()
 	controller_poll -= delta
 	if controller_poll <= 0 and (not pads.empty() or not OS.get_environment("RETANIC_ARCH").empty()):
 		refresh_controller_surface()
 		controller_poll = 0.1
-	if pads.empty():
-		return
-	var pad = pads[0]
-	var motion = Vector2(Input.get_joy_axis(pad, JOY_AXIS_2), Input.get_joy_axis(pad, JOY_AXIS_3))
+	var pad = -1 if pads.empty() else pads[0]
+	var motion = Vector2.ZERO if pad < 0 else Vector2(Input.get_joy_axis(pad, JOY_AXIS_2), Input.get_joy_axis(pad, JOY_AXIS_3))
 	var deadzone = 0.2
 	if motion.length() > deadzone:
 		controller_selection = -1
-		var speed = 65.0 if Input.is_joy_button_pressed(pad, JOY_L) else 240.0
+		var speed = 65.0 if controller_action_held("precision") else 240.0
 		var step = motion.normalized() * pow(min(1.0, (motion.length() - deadzone) / (1.0 - deadzone)), 1.5) * speed * delta
 		pointer = Vector2(clamp(pointer.x + step.x, 0, 511), clamp(pointer.y + step.y, 0, 383))
 		var event = InputEventMouseMotion.new()
@@ -623,15 +595,15 @@ func process_controller(delta):
 		event.global_position = pointer + game_origin
 		event.relative = step
 		dispatch_pointer(event)
-	var movement = Vector2(Input.get_joy_axis(pad, JOY_AXIS_0), Input.get_joy_axis(pad, JOY_AXIS_1))
+	var movement = Vector2.ZERO if pad < 0 else Vector2(Input.get_joy_axis(pad, JOY_AXIS_0), Input.get_joy_axis(pad, JOY_AXIS_1))
 	var key = ""
 	if movement.length() > 0.4:
 		if abs(movement.x) > abs(movement.y):
 			key = "leftarrow" if movement.x < 0 else "rightarrow"
 		else:
 			key = "uparrow" if movement.y < 0 else "downarrow"
-	for pair in [[JOY_DPAD_UP, "uparrow"], [JOY_DPAD_DOWN, "downarrow"], [JOY_DPAD_LEFT, "leftarrow"], [JOY_DPAD_RIGHT, "rightarrow"]]:
-		if Input.is_joy_button_pressed(pad, pair[0]):
+	for pair in [["up", "uparrow"], ["down", "downarrow"], ["left", "leftarrow"], ["right", "rightarrow"]]:
+		if controller_action_held(pair[0]):
 			key = pair[1]
 	nav_timer -= delta
 	if not key.empty() and (key != last_nav or nav_timer <= 0):
@@ -726,6 +698,9 @@ func controller_ui_key(code, pressed):
 	Input.parse_input_event(event)
 
 func controller_back():
+	if remap_open:
+		controller_settings_back()
+		return
 	var control = get_focus_owner()
 	while is_instance_valid(control):
 		if control is Popup and control.visible:
@@ -754,10 +729,227 @@ func controller_keyboard():
 	elif current_dialog != -1 and is_instance_valid(save_name):
 		show_keyboard(save_name)
 
+# Store native indices separately for Godot 3 and 4, whose button numbers differ.
+func controller_config_section():
+	return "controller_" + str(Engine.get_version_info().major)
+
+func default_controller_bindings():
+	return {
+		"confirm": ["b:" + str(JOY_BUTTON_0), "b:" + str(JOY_R), "k:" + str(KEY_ENTER)],
+		"back": ["b:" + str(JOY_BUTTON_1), "k:" + str(KEY_ESCAPE)],
+		"menu": ["b:" + str(JOY_START), "k:" + str(KEY_F10)],
+		"door": ["b:" + str(JOY_BUTTON_2), "k:" + str(KEY_SPACE)],
+		"keyboard": ["b:" + str(JOY_BUTTON_3), "k:" + str(KEY_F12)],
+		"mouse": ["b:" + str(JOY_R3)], "precision": ["b:" + str(JOY_L)],
+		"previous": ["t:0", "k:" + str(KEY_PAGEUP)], "next": ["t:1", "k:" + str(KEY_PAGEDOWN)],
+		"up": ["b:" + str(JOY_DPAD_UP), "k:" + str(KEY_UP)],
+		"down": ["b:" + str(JOY_DPAD_DOWN), "k:" + str(KEY_DOWN)],
+		"left": ["b:" + str(JOY_DPAD_LEFT), "k:" + str(KEY_LEFT)],
+		"right": ["b:" + str(JOY_DPAD_RIGHT), "k:" + str(KEY_RIGHT)]}
+
+func load_controller_bindings():
+	controller_bindings = default_controller_bindings()
+	var saved = config.get_value(controller_config_section(), "bindings", {})
+	if saved is Dictionary:
+		for action in controller_bindings:
+			if saved.get(action) is Array:
+				controller_bindings[action] = saved[action].duplicate()
+
+func controller_binding_input(event):
+	var token = ""
+	var pressed = false
+	if event is InputEventJoypadButton:
+		token = "b:" + str(event.button_index)
+		pressed = event.pressed
+	elif event is InputEventJoypadMotion and event.axis in [JOY_AXIS_6, JOY_AXIS_7]:
+		var index = 0 if event.axis == JOY_AXIS_6 else 1
+		pressed = event.axis_value > 0.5
+		if pressed == controller_triggers[index]:
+			return true
+		controller_triggers[index] = pressed
+		token = "t:" + str(index)
+	elif event is InputEventKey:
+		token = "k:" + str(event.scancode)
+		pressed = event.pressed
+	else:
+		return false
+	if not pressed:
+		controller_held.erase(token)
+	if token == remap_release:
+		if not pressed:
+			remap_release = ""
+		return true
+	if not remap_action.empty():
+		if pressed and not (event is InputEventKey and event.echo):
+			assign_controller_binding(remap_action, token)
+			remap_release = token
+			cancel_controller_remap()
+		return true
+	if event is InputEventKey:
+		# Keep normal typing and keyboard shortcuts in text fields.
+		if get_focus_owner() is LineEdit or event.control or event.meta or event.alt:
+			return false
+		# Keyboard arrows also cover Android controllers that report a D-pad as keys.
+		var portable = not OS.get_environment("RETANIC_ARCH").empty() or OS.get_name() == "Android"
+		var navigation = event.scancode in [KEY_UP, KEY_DOWN, KEY_LEFT, KEY_RIGHT]
+		var custom = config.get_value(controller_config_section(), "keyboard_remapped", false)
+		if not portable and not navigation and not custom:
+			return false
+	for action in controller_bindings:
+		if token in controller_bindings[action]:
+			if pressed:
+				controller_held[token] = action
+				set_pointer_visible(false)
+			else:
+				controller_held.erase(token)
+			if event is InputEventKey and event.echo:
+				return true
+			controller_action(action, pressed)
+			return true
+	# Consume old navigation bindings, but leave typing available for game puzzles.
+	if event is InputEventKey:
+		return event.scancode in [KEY_UP, KEY_DOWN, KEY_LEFT, KEY_RIGHT, KEY_ENTER, KEY_ESCAPE, KEY_F10, KEY_F12, KEY_SPACE, KEY_PAGEUP, KEY_PAGEDOWN]
+	# Unassigned native buttons must not activate Godot's default UI bindings.
+	return true
+
+func controller_action_held(action):
+	return action in controller_held.values()
+
+func controller_action(action, pressed):
+	if action == "confirm":
+		controller_confirm(pressed)
+	elif action == "mouse":
+		if pressed:
+			set_pointer_visible(true)
+		mouse_button(pressed)
+	elif pressed:
+		match action:
+			"back": controller_back()
+			"menu": show_menu()
+			"keyboard": controller_keyboard()
+			"previous": controller_cycle(-1)
+			"next": controller_cycle(1)
+			"door":
+				if modal == null:
+					send({"action": "key", "key": " "})
+			"up", "down", "left", "right":
+				last_nav = action + "arrow"
+				nav_timer = 0.30
+				controller_direction(last_nav)
+
+func controller_binding_label(token):
+	if token.begins_with("k:"):
+		return OS.get_scancode_string(int(token.substr(2)))
+	if token.begins_with("t:"):
+		return "L2" if token == "t:0" else "R2"
+	var names = {JOY_BUTTON_0: "A", JOY_BUTTON_1: "B", JOY_BUTTON_2: "X", JOY_BUTTON_3: "Y",
+		JOY_START: "Start", JOY_R: "R1", JOY_L: "L1", JOY_R3: "R3",
+		JOY_DPAD_UP: "D-pad up", JOY_DPAD_DOWN: "D-pad down", JOY_DPAD_LEFT: "D-pad left", JOY_DPAD_RIGHT: "D-pad right"}
+	var index = int(token.substr(2))
+	return names.get(index, "Button " + str(index))
+
+func show_controller_settings():
+	var box = panel("Controller settings")
+	remap_open = true
+	var hint = Label.new()
+	hint.text = "Choose an action, then press its new button.\nLeft stick moves. Right stick controls the pointer."
+	hint.add_font_override("font", get_font_for("12px Arial"))
+	box.add_child(hint)
+	var scroll = ScrollContainer.new()
+	scroll.rect_min_size = Vector2(390, 158)
+	scroll.follow_focus = true
+	scroll.scroll_horizontal_enabled = false
+	box.add_child(scroll)
+	var rows = VBoxContainer.new()
+	rows.size_flags_horizontal = SIZE_EXPAND_FILL
+	scroll.add_child(rows)
+	remap_buttons.clear()
+	for pair in CONTROLLER_ACTIONS:
+		remap_buttons[pair[0]] = button(rows, "", "begin_controller_remap", [pair[0]])
+	remap_status = Label.new()
+	remap_status.add_font_override("font", get_font_for("12px Arial"))
+	remap_status.rect_min_size = Vector2(390, 30)
+	remap_status.autowrap = true
+	box.add_child(remap_status)
+	var actions = HBoxContainer.new()
+	box.add_child(actions)
+	button(actions, "Cancel binding", "cancel_controller_remap")
+	button(actions, "Reset defaults", "reset_controller_bindings")
+	button(actions, "Help", "show_controller_help")
+	button(actions, "Back", "controller_settings_back")
+	update_controller_remap_labels()
+	remap_buttons.confirm.grab_focus()
+
+func update_controller_remap_labels():
+	var portable = not OS.get_environment("RETANIC_ARCH").empty()
+	for pair in CONTROLLER_ACTIONS:
+		var names = []
+		for token in controller_bindings[pair[0]]:
+			if not portable or token.begins_with("k:"):
+				names.append(controller_binding_label(token))
+		remap_buttons[pair[0]].text = pair[1] + ": " + (PoolStringArray(names).join(" / ") if not names.empty() else "Unassigned")
+		if portable and pair[0] in ["mouse", "precision"]:
+			remap_buttons[pair[0]].text = pair[1] + ": set by PortMaster"
+			remap_buttons[pair[0]].disabled = true
+	remap_status.text = "Changes are saved automatically. Shared buttons swap actions."
+	if portable:
+		remap_status.text = "PortMaster remaps emitted keys. Buttons sharing a key change together."
+
+func begin_controller_remap(action):
+	controller_held.clear()
+	remap_action = action
+	remap_deadline = OS.get_ticks_msec() + 10000
+	remap_status.text = "Press a button, trigger or key (10 seconds)."
+
+func cancel_controller_remap():
+	var action = remap_action
+	remap_action = ""
+	if remap_open:
+		update_controller_remap_labels()
+		if remap_buttons.has(action):
+			remap_buttons[action].grab_focus()
+
+func assign_controller_binding(action, token):
+	var keyboard = token.begins_with("k:")
+	var old = ""
+	var retained = []
+	for binding in controller_bindings[action]:
+		if binding.begins_with("k:") == keyboard:
+			if old.empty():
+				old = binding
+		else:
+			retained.append(binding)
+	for other in controller_bindings:
+		if other != action and token in controller_bindings[other]:
+			controller_bindings[other].erase(token)
+			if not old.empty():
+				controller_bindings[other].append(old)
+	retained.append(token)
+	controller_bindings[action] = retained
+	if keyboard:
+		config.set_value(controller_config_section(), "keyboard_remapped", true)
+	save_controller_bindings()
+
+func save_controller_bindings():
+	config.set_value(controller_config_section(), "bindings", controller_bindings)
+	config.save("user://settings.cfg")
+
+func reset_controller_bindings():
+	controller_held.clear()
+	controller_bindings = default_controller_bindings()
+	config.set_value(controller_config_section(), "keyboard_remapped", false)
+	save_controller_bindings()
+	cancel_controller_remap()
+
+func controller_settings_back():
+	close_modal()
+	menu = null
+	show_menu()
+
 func show_controller_help():
 	var box = panel("Controller controls")
 	text_scroller(box, "Left stick / D-pad: move, or select dialogue replies and menus.\nA / R1: confirm or click. Hold to drag.\nB: back or skip speech / movies.\nL2 / R2: previous / next clickable target.\nRight stick: mouse pointer. Hold L1 for precision.\nX: door / Space. Y: keyboard.\nStart: voyage menu.\n\nUse the D-pad and A on the keyboard to enter save names or solve text puzzles.", 230)
-	button(box, "Back", "resume_game").grab_focus()
+	button(box, "Back", "show_controller_settings").grab_focus()
 
 func panel(title):
 	if pointer_pressed:
@@ -798,6 +990,8 @@ func button(box, title, method, args = []):
 	return b
 
 func close_modal():
+	remap_open = false
+	remap_action = ""
 	if is_instance_valid(modal):
 		modal.queue_free()
 	modal = null
@@ -833,7 +1027,7 @@ func show_menu():
 	button(box, "Import / export .ti saves", "save_tools")
 	button(box, "Game files / mods", "setup_from_menu")
 	button(box, "Main menu", "menu_command", ["new"])
-	button(box, "Controller controls", "show_controller_help")
+	button(box, "Controller settings", "show_controller_settings")
 	button(box, "Credits", "show_credits")
 	button(box, "Quit", "quit_game")
 
@@ -1246,6 +1440,8 @@ func show_patch_picker(first_start = false):
 		check.text = group.title
 		check.pressed = group.id in selected
 		check.rect_min_size.y = 30
+		check.add_icon_override("checked", preload("res://icons/checkbox_checked.svg"))
+		check.add_icon_override("unchecked", preload("res://icons/checkbox_unchecked.svg"))
 		check.add_font_override("font", get_font_for("14px Arial"))
 		list.add_child(check)
 		patch_boxes[group.id] = check

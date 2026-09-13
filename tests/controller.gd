@@ -110,6 +110,91 @@ func begin():
 	check(player.get_focus_owner().text == "Save", "keyboard restores dialog focus")
 	joy_button(player, JOY_BUTTON_1, true)
 	check(player.current_dialog == -1, "B cancels save without writing")
+	# Bindings must work from events even if the OS lists another joypad first.
+	player.controller_held.clear()
+	recorder.surface = {"context": "room", "key": "room", "targets": []}
+	recorder.commands.clear()
+	var dpad = InputEventJoypadButton.new()
+	dpad.device = 7
+	dpad.button_index = JOY_DPAD_DOWN
+	dpad.pressed = true
+	player._input(dpad)
+	check(recorder.commands.back().key == "downarrow", "D-pad event moves without a connected analog device")
+	player.process_controller(0.31)
+	check(recorder.commands.back().key == "downarrow", "held D-pad repeats")
+	dpad.pressed = false
+	player._input(dpad)
+	check(not player.controller_action_held("down"), "D-pad release stops repeat")
+	# Android D-pads can arrive as ordinary arrow keys.
+	mapped.scancode = KEY_UP
+	mapped.pressed = true
+	player._input(mapped)
+	check(recorder.commands.back().key == "uparrow", "keyboard D-pad moves outside PortMaster")
+	mapped.pressed = false
+	player._input(mapped)
+	player.show_menu()
+	player.show_controller_settings()
+	yield(self, "idle_frame")
+	yield(self, "idle_frame")
+	var bounds = player.modal.get_global_rect()
+	check(bounds.position.x >= 0 and bounds.position.y >= 0 and bounds.end.x <= player.layout_size.x and bounds.end.y <= player.layout_size.y, "remapping menu fits handheld viewport")
+	VisualServer.force_draw()
+	var screenshot = get_root().get_texture().get_data()
+	screenshot.flip_y()
+	screenshot.save_png("user://controller-remap.png")
+	player.begin_controller_remap("confirm")
+	joy_button(player, JOY_BUTTON_3, true)
+	check(player.remap_action.empty(), "button capture completes")
+	check(player.modal != null and player.virtual_keyboard == null, "captured Y never opens keyboard")
+	joy_button(player, JOY_BUTTON_3, false)
+	var bindings = player.controller_bindings.duplicate(true)
+	player.config = ConfigFile.new()
+	check(player.config.load("user://settings.cfg") == OK, "saved bindings file loads")
+	player.load_controller_bindings()
+	check(JSON.print(player.controller_bindings) == JSON.print(bindings), "remapping survives config reload")
+	check("b:" + str(JOY_BUTTON_3) in player.controller_bindings.confirm, "Y now confirms")
+	check("b:" + str(JOY_BUTTON_0) in player.controller_bindings.keyboard, "conflicting keyboard action swaps to A")
+	player.begin_controller_remap("up")
+	dpad.button_index = 25
+	dpad.pressed = true
+	player._input(dpad)
+	dpad.pressed = false
+	player._input(dpad)
+	player.controller_settings_back()
+	player.resume_game()
+	dpad.pressed = true
+	player._input(dpad)
+	check(recorder.commands.back().key == "uparrow", "unusual D-pad button can be remapped")
+	dpad.pressed = false
+	player._input(dpad)
+	player.show_menu()
+	player.show_controller_settings()
+	player.reset_controller_bindings()
+	check(JSON.print(player.controller_bindings) == JSON.print(player.default_controller_bindings()), "reset restores every default")
+	player.begin_controller_remap("back")
+	player.cancel_controller_remap()
+	check(player.remap_action.empty(), "capture can be cancelled")
+	player.begin_controller_remap("up")
+	mapped.scancode = KEY_Z
+	mapped.pressed = true
+	player._input(mapped)
+	mapped.pressed = false
+	player._input(mapped)
+	player.controller_settings_back()
+	player.resume_game()
+	mapped.pressed = true
+	player._input(mapped)
+	check(recorder.commands.back().key == "uparrow", "keyboard-style D-pad can be remapped")
+	mapped.pressed = false
+	player._input(mapped)
+	mapped.scancode = KEY_T
+	mapped.pressed = true
+	check(not player.controller_binding_input(mapped), "remapping leaves ordinary puzzle typing available")
+	player.show_menu()
+	player.show_controller_settings()
+	player.reset_controller_bindings()
+	player.controller_settings_back()
+	check(player.menu == player.modal, "Back returns to voyage menu")
 	print("CONTROLLER ", "FAIL" if failed else "PASS")
 	quit(1 if failed else 0)
 

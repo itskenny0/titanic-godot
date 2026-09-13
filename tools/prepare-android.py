@@ -35,3 +35,13 @@ p=source/'platform/android/java/app/build.gradle';text=p.read_text()
 if 'titanic-proguard.pro' not in text:
  text=text.replace('        release {\n            // Signing', "        release {\n            minifyEnabled true\n            proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'titanic-proguard.pro'\n            // Signing")
 p.write_text(text)
+
+# Some consoles expose their D-pad as a separate key device, with no joystick ID.
+# Godot otherwise enters the gamepad branch and silently drops those key events.
+p=source/'platform/android/java/lib/src/org/godotengine/godot/input/GodotInputHandler.java'
+text=p.read_text()
+old='if (isKeyEventGameDevice(source)) {'
+new='if (isKeyEventGameDevice(source) && mJoystickIds.indexOfKey(event.getDeviceId()) >= 0) {'
+if text.count(old) + text.count(new) != 2:
+ raise SystemExit('Unexpected Android key handler; check D-pad fallback before building')
+p.write_text(text.replace(old, new))

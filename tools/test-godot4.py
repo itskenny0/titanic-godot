@@ -11,10 +11,11 @@ s=s.replace('yield(self, "idle_frame")','await process_frame').replace('yield(Vi
 s=re.sub(r'yield\(create_timer\(([\d.]+)\), "timeout"\)',r'await create_timer(\1).timeout',s)
 s=s.replace('get_texture().get_data()', 'get_texture().get_image()').replace('OS.window_size', 'DisplayServer.window_get_size()').replace('check_box.pressed', 'check_box.button_pressed')
 s=s.replace('VisualServer.force_draw()', 'RenderingServer.force_draw()')
-s=s.replace('.empty()', '.is_empty()')
+s=re.sub(r'^\t(?:image|screenshot)\.flip_y\(\)\n', '', s, flags=re.M)
+s=s.replace('.empty()', '.is_empty()').replace('.has_icon_override(', '.has_theme_icon_override(').replace('.get_icon(', '.get_theme_icon(')
 s=s.replace('extends Reference', 'extends RefCounted').replace('.scancode', '.keycode')
 s=s.replace('player.get_focus_owner()', 'player.get_viewport().gui_get_focus_owner()')
-for old,new in {'JOY_BUTTON_0':'JOY_BUTTON_A','JOY_BUTTON_1':'JOY_BUTTON_B','JOY_BUTTON_3':'JOY_BUTTON_Y'}.items():
+for old,new in {'JOY_BUTTON_0':'JOY_BUTTON_A','JOY_BUTTON_1':'JOY_BUTTON_B','JOY_BUTTON_3':'JOY_BUTTON_Y','JOY_DPAD_DOWN':'JOY_BUTTON_DPAD_DOWN'}.items():
  s=re.sub(r'\b'+old+r'\b',new,s)
 name=f'{a.test}-test.gd';(project/name).write_text(s)
 cmd=[a.godot,'--path',str(project),'--audio-driver','Dummy','--resolution',a.resolution,'-s','res://'+name,'--','--integration-test' if a.test=='integration' else '--ui-test','--patches='+a.patches]
