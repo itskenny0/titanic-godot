@@ -10,6 +10,8 @@
 - Acquire cd1.iso and cd2.iso or the GOG or Steam release files. If you acquired the ISOs, extract each into folders cd1 and cd2. Place this folder into a subfolder such as Downloads so scoped storage allows it.
 - Download the titanic-godot apk and start it. The game will ask you for the paths on startup.
 
+Android supports both gamepad and touchscreen play.
+
 ## Play quickly (PortMaster)
 - Acquire cd1.iso and cd2.iso or the GOG or Steam release files. If you acquired the ISOs, extract each into folders cd1 and cd2.
 - Download the portmaster zip from releases
