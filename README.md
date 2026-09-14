@@ -22,7 +22,7 @@ Extract the PortMaster ZIP into your handheld's ports folder, then add your game
 
 Launch Titanic from the handheld's ports menu. No ISO extraction or GOG/Steam conversion needed.
 
-F10 to access the engine menu. For the rest, read more below.
+F10 (or Start on controller) to access the engine menu. For the rest, read more below.
 
 ## more
 
