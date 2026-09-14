@@ -43,6 +43,7 @@ s=s.replace('get_tree().set_screen_stretch(SceneTree.STRETCH_MODE_2D, SceneTree.
 s=s.replace('img.create(52, 52, false, Image.FORMAT_RGBA8)','img = Image.create(52, 52, false, Image.FORMAT_RGBA8)')
 s=re.sub(r'texture\.create_from_image\(img\).*', 'texture = ImageTexture.create_from_image(img)', s)
 s=s.replace('text.align = Label.ALIGNMENT_CENTER','text.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER')
+s=s.replace('.valign = Label.VALIGN_CENTER', '.vertical_alignment = VERTICAL_ALIGNMENT_CENTER')
 s=s.replace('.autowrap = true', '.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART').replace('.align =', '.horizontal_alignment =').replace('t.normal = texture', 't.texture_normal = texture')
 s=s.replace('Engine.target_fps', 'Engine.max_fps')
 s=s.replace('scroll.scroll_horizontal_enabled = false', 'scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED')

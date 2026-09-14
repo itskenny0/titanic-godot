@@ -28,6 +28,8 @@ var drawn_pointer_name = ""
 var modal
 var menu
 var status
+var save_reminder = null
+var save_reminder_pending = false
 var current_dialog = -1
 var queued_dialogs = []
 var focused = true
@@ -200,6 +202,7 @@ func prepare_index(roots):
 	return true
 
 func start_runtime(save_path = ""):
+	save_reminder_pending = false
 	if is_instance_valid(close_request_dialog):
 		close_request_dialog.queue_free()
 	close_request_dialog = null
@@ -224,6 +227,37 @@ func start_runtime(save_path = ""):
 		return
 	status.show()
 	status.text = "Preparing your voyage…"
+	save_reminder_pending = save_path.empty() and not config.get_value("tips", "save_reminder_seen", false)
+
+func show_save_reminder():
+	save_reminder_pending = false
+	save_reminder = Control.new()
+	save_reminder.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	save_reminder.rect_position = game_origin + Vector2(16, 16)
+	save_reminder.rect_size = Vector2(480, 56)
+	var label = Label.new()
+	label.text = "This game has no autosave! Don't forget to save regularly!"
+	label.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	label.rect_position = Vector2(12, 8)
+	label.rect_size = Vector2(456, 40)
+	label.autowrap = true
+	label.align = Label.ALIGN_CENTER
+	label.valign = Label.VALIGN_CENTER
+	label.add_font_override("font", get_font_for("14px Arial"))
+	label.add_color_override("font_color", Color.white)
+	label.add_color_override("font_shadow_color", Color.black)
+	label.add_constant_override("shadow_offset_x", 1)
+	label.add_constant_override("shadow_offset_y", 1)
+	save_reminder.add_child(label)
+	add_child(save_reminder)
+	config.set_value("tips", "save_reminder_seen", true)
+	config.save("user://settings.cfg")
+	get_tree().create_timer(5.0).connect("timeout", self, "hide_save_reminder")
+
+func hide_save_reminder():
+	if is_instance_valid(save_reminder):
+		save_reminder.queue_free()
+	save_reminder = null
 
 func create_runtime():
 	var runtime = null
@@ -375,6 +409,8 @@ func _process(delta):
 				has_frame = true
 			else:
 				frame_texture.set_data(frame_image)
+			if save_reminder_pending:
+				show_save_reminder()
 			overlays = JSON.parse(runtime.query("overlay")).result
 			update()
 		var present_finished = OS.get_ticks_usec()
@@ -1349,6 +1385,8 @@ func update_touch_layout(_device = 0, _connected = false):
 		layout_size = desired
 		get_tree().set_screen_stretch(SceneTree.STRETCH_MODE_2D, SceneTree.STRETCH_ASPECT_KEEP, layout_size)
 	status.rect_position = game_origin + Vector2(20, 160)
+	if is_instance_valid(save_reminder):
+		save_reminder.rect_position = game_origin + Vector2(16, 16)
 	for child in get_children():
 		if child is PanelContainer:
 			child.rect_position = (layout_size - child.rect_size) / 2
