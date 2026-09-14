@@ -6,6 +6,16 @@
 - Copy titanic.exe and titanic.pck into the game folder.
 - Start titanic.exe
 
+## Play quickly (Android)
+- Acquire cd1.iso and cd2.iso or the GOG or Steam release files. If you acquired the ISOs, extract each into folders cd1 and cd2. Place this folder into a subfolder such as Downloads so scoped storage allows it.
+- Download the titanic-godot apk and start it. The game will ask you for the paths on startup.
+
+## Play quickly (PortMaster)
+- Acquire cd1.iso and cd2.iso or the GOG or Steam release files. If you acquired the ISOs, extract each into folders cd1 and cd2.
+- Download the portmaster zip from releases
+- add the cd1 and cd2 folders or the Steam/GOG game files to the gamefiles directory.
+- copy it to the ports location for your handheld
+
 F10 to access the engine menu. For the rest, read more below.
 
 ## more
