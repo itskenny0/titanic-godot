@@ -23,7 +23,7 @@ Each desktop target gets its own Godot source directory. Do not build different 
 
 Linux needs the Godot X11, OpenGL, ALSA, PulseAudio, and udev development packages. Windows cross builds use LLVM MinGW 20240619. macOS builds require Xcode command line tools; the player requires macOS 12 or later. See `.github/workflows/build.yml` for complete commands for every package, including Android and PortMaster.
 
-Publishing a GitHub release builds its tagged source and attaches all packages, SHA-256 checksums, and build details after every target succeeds. To fill in downloads for an existing release, run **Build Godot players** from Actions on `main` and enter its tag in `release_tag`. Leave that field blank for a build without publishing. Reruns replace the downloads for the same tag.
+Releases with `dirty` in their tag or title skip automatic builds; upload their packages manually. Publishing any other GitHub release builds its tagged source and attaches all packages, SHA-256 checksums, and build details after every target succeeds. To fill in downloads for an existing release, run **Build Godot players** from Actions on `main` and enter its tag in `release_tag`. Leave that field blank for a build without publishing. Reruns replace the downloads for the same tag.
 
 If only Linux packaging failed, **Finish release packaging** can reuse the compiled packages from that build run. Enter the release tag and Actions run ID. It checks the archived source against the tag before attaching the downloads.
 
