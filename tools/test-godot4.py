@@ -2,7 +2,7 @@
 """Run the shared UI or owned-data integration test on the generated frontend."""
 from pathlib import Path
 import argparse, re, subprocess
-p=argparse.ArgumentParser();p.add_argument('--godot',required=True);p.add_argument('--test',choices=['ui','integration','controller','idle','patches','game_files'],required=True);p.add_argument('--game-data');p.add_argument('--resolution',default='640x480');p.add_argument('--touch',action='store_true');p.add_argument('--patches',default='none');a=p.parse_args()
+p=argparse.ArgumentParser();p.add_argument('--godot',required=True);p.add_argument('--test',choices=['ui','integration','controller','idle','patches','game_files','window_close'],required=True);p.add_argument('--game-data');p.add_argument('--resolution',default='640x480');p.add_argument('--touch',action='store_true');p.add_argument('--patches',default='none');p.add_argument('--expect-isos',action='store_true');a=p.parse_args()
 root=Path(__file__).resolve().parents[1];project=root/'.build/godot4-project'
 s=(root/'tests'/f'{a.test}.gd').read_text()
 if a.test == 'game_files':
@@ -23,6 +23,7 @@ for old,new in {'JOY_BUTTON_0':'JOY_BUTTON_A','JOY_BUTTON_1':'JOY_BUTTON_B','JOY
 name=f'{a.test}-test.gd';(project/name).write_text(s)
 cmd=[a.godot,'--path',str(project),'--audio-driver','Dummy','--resolution',a.resolution,'-s','res://'+name,'--','--integration-test' if a.test=='integration' else '--ui-test','--patches='+a.patches]
 if a.game_data:cmd+=['--game-data='+a.game_data]
+if a.expect_isos:cmd+=['--expect-isos']
 if a.touch:cmd+=['--touch-test']
 try:subprocess.run(cmd,check=True,timeout=100)
 finally:(project/name).unlink(missing_ok=True)

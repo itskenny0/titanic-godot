@@ -1,8 +1,8 @@
 # Setup and mods
 
-Use your own English PC game files. Select the installed GOG/Steam game folder or its `LOCAL` folder directly. The player reads those files in place, without conversion or duplicate disc folders. It also accepts original discs extracted into separate `cd1` and `cd2` folders, retaining each disc's DATA and MOVIES directories.
+Use your own English PC game files. You can place both CD ISO images beside the player or select their folder in Game files / mods. Filenames are matched case-insensitively: one must contain `cd1`, the other `cd2`, with an `.iso` extension. Keep one matching image per disc in that folder. The player reads individual files inside the images without mounting or extracting them. Select the installed GOG/Steam game folder or its `LOCAL` folder directly. The player reads those files in place, without conversion or duplicate disc folders. It also accepts original discs extracted into separate `cd1` and `cd2` folders, retaining each disc's DATA and MOVIES directories.
 
-You can select the folder in Game files / mods or pass `--game-data=/path/to/game`. Keep it available while playing. Android's document picker imports the files into app storage. Install or extract your purchased game first; the player does not open installers or ISO images.
+You can select the folder in Game files / mods or pass `--game-data=/path/to/game`. Keep it available while playing. Android's document picker imports the files into app storage. The player does not run installers.
 
 The player checks the required files before starting. Enable patches or external mods through the player to keep your originals intact.
 
@@ -16,7 +16,7 @@ The LNGHALL lounge unlock needs LOUNGE1C.SET on both discs. The loader maps the 
 
 ## Controls and saves
 
-Arrow keys move. The mouse interacts and chooses dialogue; hold the left button to drag. Space operates the original door shortcut. Escape skips animations. F10 opens the player menu, F11 toggles fullscreen, and F12 opens the on-screen keyboard. Ctrl/Cmd+S saves, Ctrl/Cmd+O loads. F1-F9 retain the Mac player's brightness/color shortcuts.
+Arrow keys move. The mouse interacts and chooses dialogue; hold the left button to drag. Space operates the original door shortcut. Escape skips animations. F10 opens the player menu, F11 toggles fullscreen, and F12 opens the on-screen keyboard. Ctrl/Cmd+S saves, Ctrl/Cmd+O loads. F1-F9 retain the Mac player's brightness/color shortcuts. Closing the window opens the engine menu; a second click leaves it open. Four or more close requests spanning at least 2.5 seconds force an exit, provided the clicks stay within 2.5 seconds of each other.
 
 The original life-preserver menu remains available. Save while exploring, after conversations and animations finish. The player pauses when it loses focus. Save before quitting; there is no autosave.
 

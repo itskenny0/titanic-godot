@@ -1,6 +1,6 @@
 # PortMaster
 
-Extract `titanic-portmaster.zip` into your ports folder. Copy your GOG/Steam game files, keeping the `LOCAL` folder, into `ports/titanic/gamedata`. Extracted `cd1` and `cd2` folders also work there. The ZIP contains the Godot pack, ARM libraries, and a first-start patch chooser. Download or import the M3tox 1.0.3 FULL ZIP there. Personal packages include the patches. The full game is not included. PortMaster downloads the shared `frt_3.5.2.squashfs` runtime.
+Extract `titanic-portmaster.zip` into your ports folder. Put both CD ISOs inside `ports/titanic`, in its `gamedata` folder, or beside `Titanic.sh`. Their filenames must contain `cd1` and `cd2` (case-insensitive), with an `.iso` extension. FRT reads them directly without mounting or extraction. GOG/Steam game files with their `LOCAL` folder and extracted `cd1` and `cd2` folders also work in `gamedata`. The ZIP contains the Godot pack, ARM libraries, and a first-start patch chooser. Download or import the M3tox 1.0.3 FULL ZIP there. Personal packages include the patches. The full game is not included. PortMaster downloads the shared `frt_3.5.2.squashfs` runtime.
 
 | Control | Action |
 | --- | --- |

@@ -16,6 +16,7 @@ import (
 	"sort"
 	"strings"
 
+	"github.com/itskenny0/titanic-godot/internal/iso9660"
 	"github.com/itskenny0/titanic-godot/internal/patches"
 )
 
@@ -27,6 +28,7 @@ type asset struct {
 	name, source string
 	size         int64
 	info         os.FileInfo
+	offset       int64
 }
 
 // resolve rejects links and ambiguous case variants, including directory components.
@@ -63,7 +65,7 @@ func inventory(root, manifest string) ([]asset, error) {
 		return nil, err
 	}
 	if !info.IsDir() {
-		return nil, fmt.Errorf("game data must be a GOG/Steam folder, LOCAL folder, or parent containing cd1 and cd2")
+		return nil, fmt.Errorf("game data must be a folder with cd1 and cd2 ISOs, extracted discs, or GOG/Steam files")
 	}
 	data, err := os.ReadFile(manifest)
 	if err != nil {
@@ -83,8 +85,15 @@ func inventory(root, manifest string) ([]asset, error) {
 	var result []asset
 	seen := map[string]bool{}
 	packed := map[string]bool{}
-	sources := map[string]string{}
+	sources := map[string]asset{}
 	for _, disc := range []string{"1", "2"} {
+		var image map[string]iso9660.Entry
+		if strings.EqualFold(filepath.Ext(roots[disc]), ".iso") {
+			image, err = iso9660.Open(roots[disc])
+			if err != nil {
+				return nil, fmt.Errorf("disc %s: %w", disc, err)
+			}
+		}
 		for _, relative := range required[disc] {
 			if !safePath(relative) || relative != strings.ToLower(relative) || strings.HasSuffix(relative, ".ti") {
 				return nil, fmt.Errorf("unsafe game asset in manifest: %q", relative)
@@ -98,7 +107,17 @@ func inventory(root, manifest string) ([]asset, error) {
 			if digital {
 				sourceName = path.Base(relative)
 			}
-			source, err := resolve(roots[disc], sourceName)
+			source := roots[disc]
+			var entry iso9660.Entry
+			if image != nil {
+				var ok bool
+				entry, ok = image[sourceName]
+				if !ok || entry.Size == 0 {
+					return nil, fmt.Errorf("disc %s ISO is missing %s", disc, sourceName)
+				}
+			} else {
+				source, err = resolve(roots[disc], sourceName)
+			}
 			if err != nil {
 				return nil, err
 			}
@@ -109,19 +128,26 @@ func inventory(root, manifest string) ([]asset, error) {
 			if !info.Mode().IsRegular() || info.Size() == 0 {
 				return nil, fmt.Errorf("empty or nonregular game asset: %s", source)
 			}
-			sources[name] = source
+			item := asset{name: name, source: source, size: info.Size(), info: info}
+			if image != nil {
+				item.offset = entry.Offset
+				item.size = entry.Size
+			}
+			sources[name] = item
 			if digital {
 				name = "LOCAL/" + sourceName
 			}
 			if !packed[name] {
-				result = append(result, asset{name, source, info.Size(), info})
+				item.name = name
+				result = append(result, item)
 				packed[name] = true
 			}
 		}
 	}
 	// Check identifying DreamFactory containers in either source layout.
 	for _, name := range []string{"cd1/data/bootfile", "cd1/data/bedsit1.set", "cd1/data/main.stg", "cd1/data/ctl.stg", "cd2/data/a14.set", "cd2/data/deckbd.set", "cd2/data/cargo.set"} {
-		source := sources[name]
+		item := sources[name]
+		source := item.source
 		if source == "" {
 			return nil, fmt.Errorf("missing identifying game file: %s", name)
 		}
@@ -129,19 +155,14 @@ func inventory(root, manifest string) ([]asset, error) {
 		if err != nil {
 			return nil, err
 		}
-		info, err := f.Stat()
-		if err != nil {
-			f.Close()
-			return nil, err
-		}
 		var header [32]byte
-		_, err = io.ReadFull(f, header[:])
+		_, err = io.ReadFull(io.NewSectionReader(f, item.offset, item.size), header[:])
 		f.Close()
 		valid := false
-		if err == nil && info.Size() >= 1024 {
+		if err == nil && item.size >= 1024 {
 			for _, order := range []binary.ByteOrder{binary.LittleEndian, binary.BigEndian} {
 				count := int64(order.Uint32(header[20:]))
-				valid = valid || int64(order.Uint32(header[4:])) == info.Size() && count > 0 && count <= (info.Size()-1024)/4
+				valid = valid || int64(order.Uint32(header[4:])) == item.size && count > 0 && count <= (item.size-1024)/4
 			}
 		}
 		if !valid {
@@ -183,7 +204,14 @@ func gameRoots(root string) (map[string]string, bool, error) {
 	if names["bootfile"] && names["bedsit1.set"] {
 		return map[string]string{"1": root, "2": root}, true, nil
 	}
-	return nil, false, fmt.Errorf("select a GOG/Steam game folder, LOCAL folder, or parent containing cd1 and cd2")
+	images, err := iso9660.Discover(root)
+	if err != nil {
+		return nil, false, err
+	}
+	if images[0] != "" {
+		return map[string]string{"1": images[0], "2": images[1]}, false, nil
+	}
+	return nil, false, fmt.Errorf("select a folder with cd1 and cd2 ISOs, extracted discs, or GOG/Steam files")
 }
 
 func safePath(name string) bool {
@@ -323,7 +351,7 @@ func addAsset(writer *zip.Writer, prefix, target string, item asset) error {
 	if err != nil {
 		return err
 	}
-	if !os.SameFile(item.info, before) || before.Size() != item.size || !before.ModTime().Equal(item.info.ModTime()) {
+	if !os.SameFile(item.info, before) || before.Size() != item.info.Size() || !before.ModTime().Equal(item.info.ModTime()) {
 		return fmt.Errorf("source changed: %s", item.source)
 	}
 	header := &zip.FileHeader{Name: prefix + item.name, Method: zip.Deflate}
@@ -336,7 +364,7 @@ func addAsset(writer *zip.Writer, prefix, target string, item asset) error {
 	if err != nil {
 		return err
 	}
-	count, err := io.Copy(dst, file)
+	count, err := io.Copy(dst, io.NewSectionReader(file, item.offset, item.size))
 	if err != nil {
 		return err
 	}
@@ -467,7 +495,7 @@ func build(options Options, patchManifest patches.Manifest) error {
 		if err != nil {
 			return err
 		}
-		patchAssets = append(patchAssets, asset{name, source, info.Size(), info})
+		patchAssets = append(patchAssets, asset{name: name, source: source, size: info.Size(), info: info})
 	}
 	sort.Slice(patchAssets, func(i, j int) bool { return patchAssets[i].name < patchAssets[j].name })
 	unsigned := filepath.Join(stage, "unsigned.zip")

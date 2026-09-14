@@ -17,6 +17,15 @@ func begin():
 		print("FAIL: runtime missing")
 		quit(1)
 		return
+	if "--expect-isos" in OS.get_cmdline_args():
+		var discs = {}
+		for key in player.game_index:
+			if player.game_index[key].begins_with("iso:"):
+				discs[key.substr(0, 1)] = true
+		if not discs.has("1") or not discs.has("2"):
+			print("FAIL: integration must read both ISO images")
+			quit(1)
+			return
 	step()
 
 func state():

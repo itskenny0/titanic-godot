@@ -12,6 +12,6 @@ with tarfile.open(out,'w:gz') as archive:
   relative=raw.decode();p=root/relative
   if not p.is_file() or p.is_symlink():continue
   if any(x in p.parts for x in ['.git','.build','.tools','originalgame','gamedata','dist','node_modules']):continue
-  if p.suffix.lower() in ['.ti','.set','.shp','.pup','.mov','.trk','.sfx','.exe','.dll','.so','.dylib']:raise SystemExit('Unexpected binary/game data in source: '+relative)
+  if p.suffix.lower() in ['.iso','.ti','.set','.shp','.pup','.mov','.trk','.sfx','.exe','.dll','.so','.dylib']:raise SystemExit('Unexpected binary/game data in source: '+relative)
   archive.add(p,arcname='titanic-godot/'+relative)
 print(out)

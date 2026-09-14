@@ -26,4 +26,5 @@ godot/notices/
 # Local packages containing owned game data.
 *.apk
 *.zip
+*.[iI][sS][oO]
 /.titanic-personal-*/

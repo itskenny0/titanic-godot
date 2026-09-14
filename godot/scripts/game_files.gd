@@ -2,6 +2,35 @@ extends Reference
 # Original discs keep separate paths; digital LOCAL files serve both namespaces.
 var error = ""
 var index = {}
+var iso_indexer = null
+
+# Range descriptors let the existing Godot file bridge seek inside an ISO.
+# The Go reader indexes directories once; game assets are read only on demand.
+func read_asset(path):
+	var offset = 0
+	var size = -1
+	if path.begins_with("iso:"):
+		var parsed = JSON.parse(path.substr(4)).result
+		if not parsed is Dictionary or not parsed.get("path", null) is String:
+			return null
+		path = parsed.path
+		offset = int(parsed.get("offset", -1))
+		size = int(parsed.get("size", -1))
+		if offset < 0 or size <= 0 or size > 512 * 1024 * 1024:
+			return null
+	var file = File.new()
+	if file.open(path, File.READ) != OK:
+		return null
+	var length = file.get_len()
+	if size < 0:
+		size = length
+	if offset > length or size > length - offset or size > 512 * 1024 * 1024:
+		file.close()
+		return null
+	file.seek(offset)
+	var data = file.get_buffer(size)
+	file.close()
+	return data if data.size() == size else null
 
 func scan(path):
 	var result = {}
@@ -51,6 +80,21 @@ func validate(disc1, disc2):
 	var pending = {}
 	for disc in [1, 2]:
 		var root = disc1 if disc == 1 else disc2
+		if root.get_extension().to_lower() == "iso":
+			if iso_indexer == null:
+				error = "This build cannot index ISO images."
+				return false
+			var image = iso_indexer.index_iso(root)
+			if not image.get("error", "").empty():
+				error = "Disc %d: %s" % [disc, image.error]
+				return false
+			for relative in required[str(disc)]:
+				var entry = image.get("files", {}).get(relative.to_lower(), {})
+				if entry.get("size", 0) <= 0:
+					error = "Disc %d ISO is missing %s." % [disc, relative]
+					return false
+				pending[str(disc) + "/" + relative.get_file().to_lower()] = "iso:" + JSON.print({"path": root, "offset": entry.offset, "size": entry.size})
+			continue
 		for relative in required[str(disc)]:
 			var path = resolve_case(root, relative.get_file() if digital else relative, directories)
 			if path.empty() or file.open(path, File.READ) != OK:
@@ -83,6 +127,26 @@ func discover(root):
 			return [local, local]
 	if names.has("bootfile") and names.has("bedsit1.set"):
 		return [root, root]
+	var images = ["", ""]
+	for name in names:
+		if not name.ends_with(".iso") or not File.new().file_exists(root.plus_file(names[name])):
+			continue
+		var one = "cd1" in name
+		var two = "cd2" in name
+		if not one and not two:
+			continue
+		if one and two:
+			error = "ISO filename matches both cd1 and cd2: " + names[name]
+			return []
+		var disc = 0 if one else 1
+		if not images[disc].empty():
+			error = "Multiple ISOs match cd%d. Keep one image for each disc in the folder." % (disc + 1)
+			return []
+		images[disc] = root.plus_file(names[name])
+	if not images[0].empty() and not images[1].empty():
+		return images
+	if not images[0].empty() or not images[1].empty():
+		error = "Select a folder with both cd1 and cd2 ISO images."
 	return []
 
 func mod_files(root, depth = 0):

@@ -246,6 +246,56 @@ func TestOwnedDigitalInventory(t *testing.T) {
 	}
 }
 
+func TestOwnedISOInventory(t *testing.T) {
+	root := os.Getenv("TAOOT_ISO_DIR")
+	if root == "" {
+		t.Skip("set TAOOT_ISO_DIR to owned disc images")
+	}
+	assets, err := inventory(root, "../../godot/required_files.json")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(assets) != 536 {
+		t.Fatalf("expected 536 original disc files, got %d", len(assets))
+	}
+	for _, a := range assets {
+		if a.offset <= 0 || a.size <= 0 || a.offset+a.size > a.info.Size() {
+			t.Fatal("invalid ISO asset range", a.name)
+		}
+	}
+}
+
+func TestPackageISOSection(t *testing.T) {
+	for _, target := range []string{"android", "portmaster"} {
+		t.Run(target, func(t *testing.T) {
+			source := filepath.Join(t.TempDir(), "disc.iso")
+			os.WriteFile(source, []byte("beforeGAMEafter"), 0600)
+			info, _ := os.Stat(source)
+			var b bytes.Buffer
+			z := zip.NewWriter(&b)
+			if err := addAsset(z, "gamedata/", target, asset{name: "cd1/data/bootfile", source: source, size: 4, info: info, offset: 6}); err != nil {
+				t.Fatal(err)
+			}
+			if err := z.Close(); err != nil {
+				t.Fatal(err)
+			}
+			r, err := zip.NewReader(bytes.NewReader(b.Bytes()), int64(b.Len()))
+			if err != nil {
+				t.Fatal(err)
+			}
+			f, err := r.File[0].Open()
+			if err != nil {
+				t.Fatal(err)
+			}
+			data, err := io.ReadAll(f)
+			f.Close()
+			if err != nil || string(data) != "GAME" {
+				t.Fatal(string(data), err)
+			}
+		})
+	}
+}
+
 func TestInventoryFailures(t *testing.T) {
 	for _, scenario := range []string{"missing", "empty", "damaged", "ambiguous", "link", "traversal", "save"} {
 		t.Run(scenario, func(t *testing.T) {

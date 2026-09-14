@@ -17,6 +17,7 @@ import (
 	"unsafe"
 
 	"github.com/itskenny0/titanic-godot/internal/engine"
+	"github.com/itskenny0/titanic-godot/internal/iso9660"
 	"github.com/itskenny0/titanic-godot/internal/patches"
 )
 
@@ -154,6 +155,20 @@ func taoot_player_call(handle C.uintptr_t, method, args *C.char, out *C.TaootRes
 	var value any
 	var err error
 	switch name {
+	case "iso_index":
+		var request struct {
+			Path string `json:"path"`
+		}
+		err = json.Unmarshal(raw, &request)
+		if err == nil {
+			var entries map[string]iso9660.Entry
+			entries, err = iso9660.Open(request.Path)
+			value = map[string]any{"files": entries}
+		}
+		if err != nil {
+			value = map[string]string{"error": err.Error()}
+			err = nil
+		}
 	case "patch_start":
 		var request patches.Request
 		err = json.Unmarshal(raw, &request)

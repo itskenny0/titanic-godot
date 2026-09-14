@@ -45,7 +45,7 @@ import json, os, pathlib, sys
 pathlib.Path(os.environ['TEST_RESULT']).write_text(json.dumps({
     'args': sys.argv[1:], 'cwd': os.getcwd(),
     'arch': os.environ['RETANIC_ARCH'], 'saves': os.environ['XDG_DATA_HOME'],
-    'native': os.environ['RETANIC_NATIVE_DIR'],
+    'native': os.environ['RETANIC_NATIVE_DIR'], 'game': os.environ['RETANIC_GAME_DIR'],
     'helper': os.environ.get('TEST_PLATFORM_HELPER', '')}))
 ''')
         # Paths containing spaces are safe for the launcher and game directory.
@@ -70,6 +70,7 @@ pathlib.Path(os.environ['TEST_RESULT']).write_text(json.dumps({
             assert state['cwd'] == str(game)
             assert state['arch'] == arch
             assert state['native'] == str(game/'native')
+            assert state['game'] == str(game)
             assert state['saves'] == str(game/'saves')
             assert state['args'] == ['--audio-driver', 'Dummy', '--resolution', '320x240',
                                      '--resolution', resolution, '--main-pack', str(game/'titanic.pck'),

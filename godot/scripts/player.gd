@@ -32,6 +32,11 @@ var current_dialog = -1
 var queued_dialogs = []
 var focused = true
 var manual_pause = false
+var close_first_ms = -1
+var close_last_ms = -1
+var close_count = 0
+var close_request_dialog = null
+var close_dialog_pause = false
 var ready = false
 var runtime_failed = false
 var nav_timer = 0.0
@@ -80,6 +85,7 @@ var perf_events_us = 0
 var perf_peak_us = 0
 
 func _ready():
+	files.iso_indexer = self
 	Engine.target_fps = 30 if not OS.get_environment("RETANIC_ARCH").empty() else 60
 	OS.low_processor_usage_mode = true
 	get_tree().set_auto_accept_quit(false)
@@ -144,11 +150,21 @@ func boot_configured_game():
 			smoke = true
 	if root.empty():
 		var base = OS.get_executable_path().get_base_dir()
-		for candidate in ["user://gamedata", base.plus_file("gamedata"), base, ProjectSettings.globalize_path("res://../gamedata")]:
+		var candidates = ["user://gamedata", base.plus_file("gamedata"), base, ProjectSettings.globalize_path("res://../gamedata")]
+		if OS.get_name() in ["OSX", "macOS"]:
+			candidates.append(base.get_base_dir().get_base_dir().get_base_dir())
+		for candidate in candidates:
 			if not files.discover(candidate).empty():
 				root = candidate
 				break
 	var roots = files.discover(root) if not root.empty() else []
+	# FRT runs from a mounted runtime directory, not beside the game pack.
+	var port_dir = OS.get_environment("RETANIC_GAME_DIR")
+	if roots.empty() and files.error.empty() and not port_dir.empty():
+		for candidate in [port_dir, port_dir.get_base_dir()]:
+			roots = files.discover(candidate)
+			if not roots.empty() or not files.error.empty():
+				break
 	if roots.empty():
 		var d1 = config.get_value("game", "disc1", "")
 		var d2 = config.get_value("game", "disc2", "")
@@ -184,6 +200,9 @@ func prepare_index(roots):
 	return true
 
 func start_runtime(save_path = ""):
+	if is_instance_valid(close_request_dialog):
+		close_request_dialog.queue_free()
+	close_request_dialog = null
 	manual_pause = false
 	runtime_failed = false
 	for id in sounds.keys():
@@ -249,6 +268,13 @@ func create_runtime():
 		return
 	return runtime
 
+func index_iso(path):
+	var reader = create_runtime()
+	if reader == null:
+		return {"error": "The ISO reader could not be loaded."}
+	var result = JSON.parse(reader.query("iso_index", JSON.print({"path": ProjectSettings.globalize_path(path)}))).result
+	return result if result is Dictionary else {"error": "This engine build does not support ISO images."}
+
 func bridge_call(method, args_json, bytes):
 	var args = JSON.parse(args_json).result
 	match method:
@@ -256,12 +282,7 @@ func bridge_call(method, args_json, bytes):
 			var path = args.path
 			if path.begins_with("save:"):
 				path = saves.path_for(path.substr(5))
-			var f = File.new()
-			if f.open(path, File.READ) != OK:
-				return null
-			var data = f.get_buffer(f.get_len())
-			f.close()
-			return data
+			return files.read_asset(path)
 		"write":
 			if not args.path.begins_with("save:"):
 				return JSON.print({"error": "Invalid save destination"})
@@ -485,7 +506,34 @@ func _notification(what):
 		elif modal == null:
 			show_menu()
 	elif what == MainLoop.NOTIFICATION_WM_QUIT_REQUEST:
-		show_menu()
+		if window_close_requested(OS.get_ticks_msec()):
+			OS.kill(OS.get_process_id())
+
+func window_close_requested(now):
+	if close_last_ms < 0 or now < close_last_ms or now - close_last_ms > 2500:
+		close_first_ms = now
+		close_count = 0
+	close_last_ms = now
+	close_count += 1
+	# A double-click only opens the menu. Persistent requests over several
+	# seconds bypass normal shutdown, including a stuck gameplay session.
+	if close_count >= 4 and now - close_first_ms >= 2500:
+		return true
+	if is_instance_valid(menu) and modal == menu:
+		menu.show()
+		return false
+	menu = null
+	if virtual_keyboard != null:
+		close_keyboard()
+	if modal != null:
+		if is_instance_valid(close_request_dialog):
+			close_request_dialog.queue_free()
+		close_request_dialog = modal
+		close_dialog_pause = manual_pause
+		modal.hide()
+		modal = null
+	show_menu()
+	return false
 
 func _input(event):
 	if controller_binding_input(event):
@@ -1039,7 +1087,12 @@ func resume_game():
 	manual_pause = false
 	close_modal()
 	menu = null
-	send({"action": "pause", "on": not focused})
+	if is_instance_valid(close_request_dialog):
+		modal = close_request_dialog
+		modal.show()
+		manual_pause = close_dialog_pause
+	close_request_dialog = null
+	send({"action": "pause", "on": manual_pause or not focused})
 
 func menu_command(action):
 	resume_game()
@@ -1058,7 +1111,7 @@ func show_setup():
 	send({"action": "pause", "on": true})
 	var box = panel("Titanic: Game files")
 	var label = Label.new()
-	label.text = "Choose your GOG / Steam game folder or LOCAL folder,\nor a folder containing extracted cd1 and cd2 discs.\nChanging files restarts the game; save first."
+	label.text = "Choose a folder with cd1 and cd2 ISOs, extracted discs,\nor your GOG / Steam game files.\nChanging files restarts the game; save first."
 	label.add_font_override("font", get_font_for("13px Arial"))
 	box.add_child(label)
 	button(box, "Choose game folder", "choose_data", [0]).grab_focus()
@@ -1090,7 +1143,7 @@ func choose_data(disc):
 	if OS.get_name() == "Android" and Engine.has_singleton("TitanicFiles"):
 		android_selected_disc = disc
 		var box = panel("Importing game files")
-		text_scroller(box, "Choose your GOG / Steam game folder, LOCAL folder, or the folder containing cd1 and cd2. Copying can take a few minutes. Keep Titanic open until it finishes.", 210)
+		text_scroller(box, "Choose the folder containing both cd1 and cd2 ISOs, extracted discs, or GOG / Steam files. Copying can take a few minutes. Keep Titanic open until it finishes.", 210)
 		Engine.get_singleton("TitanicFiles").import_game(ProjectSettings.globalize_path("user://"))
 		return
 	file_dialog(FileDialog.MODE_OPEN_DIR, "data_selected", [disc])
@@ -1102,7 +1155,7 @@ func data_selected(path, disc):
 		return
 	var roots = files.discover(path) if disc == 0 else [config.get_value("pending", "disc1", ""), path]
 	if roots.size() != 2 or not prepare_index(roots):
-		show_note(files.error if not files.error.empty() else "Select your GOG / Steam game folder, LOCAL folder, or a parent containing cd1 and cd2.")
+		show_note(files.error if not files.error.empty() else "Select a folder with cd1 and cd2 ISOs, extracted discs, or GOG / Steam files.")
 		return
 	config.set_value("game", "root", path if disc == 0 else "")
 	config.set_value("game", "disc1", roots[0])

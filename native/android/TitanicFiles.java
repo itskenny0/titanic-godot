@@ -63,7 +63,8 @@ public final class TitanicFiles extends GodotPlugin {
    finally{busy=false;}
   }, "TitanicImport").start();
  }
- private boolean gameFile(String name){String n=name.toLowerCase(Locale.ROOT);return n.equals("bootfile")||n.matches(".*\\.(set|shp|stg|cst|pup|mov|trk|sfx|snd|11k)$");}
+ private boolean discImage(String name){String n=name.toLowerCase(Locale.ROOT);return n.endsWith(".iso")&&(n.contains("cd1")||n.contains("cd2"));}
+ private boolean gameFile(String name){String n=name.toLowerCase(Locale.ROOT);return discImage(name)||n.equals("bootfile")||n.matches(".*\\.(set|shp|stg|cst|pup|mov|trk|sfx|snd|11k)$");}
  private void copyTree(Uri tree,String id,File target,int depth,long[] count)throws IOException{
   if(depth>8)throw new IOException("Game folder is nested too deeply");
   Uri children=DocumentsContract.buildChildDocumentsUriUsingTree(tree,id);
@@ -79,15 +80,18 @@ public final class TitanicFiles extends GodotPlugin {
     else {
      if(++count[0]>2000)throw new IOException("Too many files; choose the game folder or its LOCAL folder");
      Uri document=DocumentsContract.buildDocumentUriUsingTree(tree,childId);
-     try(InputStream in=getActivity().getContentResolver().openInputStream(document);OutputStream out=new FileOutputStream(file)){count[1]+=transfer(in,out);}
+     try(InputStream in=getActivity().getContentResolver().openInputStream(document);OutputStream out=new FileOutputStream(file)){count[1]+=transfer(in,out,discImage(name)?1024L*1024*1024:512L*1024*1024);}
      if(count[1]>4L*1024*1024*1024)throw new IOException("Import exceeds 4 GiB");
     }
    }
   }
  }
  private long transfer(InputStream in,OutputStream out)throws IOException{
+  return transfer(in,out,512L*1024*1024);
+ }
+ private long transfer(InputStream in,OutputStream out,long limit)throws IOException{
   if(in==null||out==null)throw new IOException("Cannot open document");byte[] b=new byte[131072];long total=0;int n;
-  while((n=in.read(b))!=-1){out.write(b,0,n);total+=n;if(total>512L*1024*1024)throw new IOException("Unexpectedly large game file");}out.flush();return total;
+  while((n=in.read(b))!=-1){total+=n;if(total>limit)throw new IOException("Unexpectedly large game file");out.write(b,0,n);}out.flush();return total;
  }
  private void removeTree(File f){File[] children=f.listFiles();if(children!=null)for(File child:children)removeTree(child);f.delete();}
 }

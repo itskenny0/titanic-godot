@@ -31,13 +31,13 @@ The `--static` Linux tarball statically links the Go gameplay library and C++ ru
 
 Run the portable Godot tests by copying `tests/runtime.gd` to `godot/runtime-test.gd` and launching Godot with `--path godot -s res://runtime-test.gd`. `tests/integration.gd` additionally needs owned game files and `--game-data=/path/to/gamedata --integration-test`. Do not include game data or saves in Git. Public packages contain the patch chooser and checksums. The player downloads or imports the M3tox FULL ZIP on first start. Use `--bundle-patches` with either exporter if you have prepared the files using `python3 tools/fetch-patches.py`.
 
-The Go tests include synthetic fixtures captured from the pinned reference engine. With owned game files, run `TAOOT_GAME_DATA=/path/to/gamedata go test ./internal/...` for startup, navigation, and save/load integration. Set `TAOOT_MOD_DATA` to the extracted Extended Mod directory to check its startup too. The Godot integration test uses actual game data and the UI bridge; `Dummy` audio checks do not verify sound on a device.
+CI uses synthetic fixtures, including tiny generated ISOs; it needs no commercial game files. Set `TAOOT_ISO_DIR` locally to check your own disc images. The gameplay fixtures follow the pinned reference engine. With owned game files, run `TAOOT_GAME_DATA=/path/to/gamedata go test ./internal/...` for startup, navigation, and save/load integration. Set `TAOOT_MOD_DATA` to the extracted Extended Mod directory to check its startup too. The Godot integration test uses actual game data and the UI bridge; `Dummy` audio checks do not verify sound on a device.
 
 ## Personal packages with game files
 
 Run these commands from the repository with Go 1.26.4. Start with an unbundled native Go APK or PortMaster ZIP from a release or your own build. The local Go tool copies only the files in `godot/required_files.json`; it leaves saves, installers, and extra mods out. The builder also downloads and bundles the checksum-pinned patches. Pass `--patch-archive /path/to/TAOOTpatch1.03.FULL.zip` to use a local copy. The chooser stays available offline. Existing outputs are never overwritten.
 
-Pass the installed GOG/Steam game folder, its `LOCAL` folder, or a parent containing extracted `cd1` and `cd2` folders as `--game-data`. Digital packages keep one copy of each required file in `LOCAL`; original disc packages retain separate disc files. For digital input, use a base player built with `LOCAL` support.
+Pass a folder containing both CD ISOs, the installed GOG/Steam game folder, its `LOCAL` folder, or a parent containing extracted `cd1` and `cd2` folders as `--game-data`. ISO filenames must contain `cd1` and `cd2` (case-insensitive). The builder copies only required files out of the ISOs into the package; it leaves the images untouched. Digital packages keep one copy of each required file in `LOCAL`; original disc packages retain separate disc files. For digital input, use a base player built with `LOCAL` support.
 
 ```
 go run ./cmd/personal-build --target portmaster --base dist/titanic-portmaster.zip --game-data gamedata --output titanic-portmaster-personal.zip
