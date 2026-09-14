@@ -2,7 +2,8 @@ package engine
 
 import "strings"
 
-// Files resolves the prepared disc index supplied by Godot. Cached bytes belong
+// Files resolves the disc namespaces supplied by Godot, which may share digital
+// LOCAL paths or refer to distinct original CD files. Cached bytes belong
 // to the provider; asset edits must use df.File.Patch's copy-on-write path.
 type Files struct {
 	Index map[string]string

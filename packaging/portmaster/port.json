@@ -5,9 +5,9 @@
   "items_opt": [],
   "attr": {
     "title": "Titanic: Adventure Out of Time",
-    "desc": "Godot player for the original game. Supply your own prepared cd1 and cd2 game data. Optional M3tox mods are supported.",
+    "desc": "Godot player for the original game. Supply your own GOG/Steam game folder or extracted cd1 and cd2 discs. Optional M3tox mods are supported.",
     "desc_md": null,
-    "inst": "Copy prepared cd1 and cd2 into ports/titanic/gamedata. See README.txt. Left stick moves and selects dialogue; A confirms; B goes back; right stick controls the pointer; L1 slows it; L2/R2 cycle targets; Start opens the menu. Download patches on first start or select their FULL ZIP.",
+    "inst": "Copy GOG/Steam files with their LOCAL folder, or extracted cd1 and cd2, into ports/titanic/gamedata. See README.txt. Left stick moves and selects dialogue; A confirms; B goes back; right stick controls the pointer; L1 slows it; L2/R2 cycle targets; Start opens the menu. Download patches on first start or select their FULL ZIP.",
     "inst_md": null,
     "genres": ["adventure"],
     "porter": ["itskenny0"],

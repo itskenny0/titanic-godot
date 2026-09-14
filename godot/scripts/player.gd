@@ -144,7 +144,7 @@ func boot_configured_game():
 			smoke = true
 	if root.empty():
 		var base = OS.get_executable_path().get_base_dir()
-		for candidate in ["user://gamedata", base.plus_file("gamedata"), ProjectSettings.globalize_path("res://../gamedata")]:
+		for candidate in ["user://gamedata", base.plus_file("gamedata"), base, ProjectSettings.globalize_path("res://../gamedata")]:
 			if not files.discover(candidate).empty():
 				root = candidate
 				break
@@ -960,6 +960,7 @@ func panel(title):
 	p.rect_position = (layout_size - Vector2(420, 310)) / 2
 	p.rect_min_size = Vector2(420, 310)
 	p.add_font_override("font", get_font_for("14px Arial"))
+	p.connect("resized", self, "center_panel", [p])
 	add_child(p)
 	var margin = MarginContainer.new()
 	for side in ["left", "right", "top", "bottom"]:
@@ -979,6 +980,9 @@ func panel(title):
 	if runtime == null:
 		status.hide()
 	return box
+
+func center_panel(p):
+	p.rect_position = (layout_size - p.rect_size) / 2
 
 func button(box, title, method, args = []):
 	var b = Button.new()
@@ -1054,7 +1058,7 @@ func show_setup():
 	send({"action": "pause", "on": true})
 	var box = panel("Titanic: Game files")
 	var label = Label.new()
-	label.text = "Choose prepared cd1 and cd2 folders.\nUse tools/prepare-game-data.py for a LOCAL install.\nChanging files restarts the game; save first."
+	label.text = "Choose your GOG / Steam game folder or LOCAL folder,\nor a folder containing extracted cd1 and cd2 discs.\nChanging files restarts the game; save first."
 	label.add_font_override("font", get_font_for("13px Arial"))
 	box.add_child(label)
 	button(box, "Choose game folder", "choose_data", [0]).grab_focus()
@@ -1086,7 +1090,7 @@ func choose_data(disc):
 	if OS.get_name() == "Android" and Engine.has_singleton("TitanicFiles"):
 		android_selected_disc = disc
 		var box = panel("Importing game files")
-		text_scroller(box, "Choose your prepared game folder. Copying the files can take a few minutes. Keep Titanic open until it finishes.", 210)
+		text_scroller(box, "Choose your GOG / Steam game folder, LOCAL folder, or the folder containing cd1 and cd2. Copying can take a few minutes. Keep Titanic open until it finishes.", 210)
 		Engine.get_singleton("TitanicFiles").import_game(ProjectSettings.globalize_path("user://"))
 		return
 	file_dialog(FileDialog.MODE_OPEN_DIR, "data_selected", [disc])
@@ -1098,7 +1102,7 @@ func data_selected(path, disc):
 		return
 	var roots = files.discover(path) if disc == 0 else [config.get_value("pending", "disc1", ""), path]
 	if roots.size() != 2 or not prepare_index(roots):
-		show_note(files.error if not files.error.empty() else "Select a parent containing cd1 and cd2.")
+		show_note(files.error if not files.error.empty() else "Select your GOG / Steam game folder, LOCAL folder, or a parent containing cd1 and cd2.")
 		return
 	config.set_value("game", "root", path if disc == 0 else "")
 	config.set_value("game", "disc1", roots[0])

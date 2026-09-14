@@ -1,14 +1,10 @@
 # Setup and mods
 
-Use your own English PC game files. The player reads two extracted discs, each with its original DATA and MOVIES folders. It also accepts the known GOG `1.0 tour fix` LOCAL layout after preparation:
+Use your own English PC game files. Select the installed GOG/Steam game folder or its `LOCAL` folder directly. The player reads those files in place, without conversion or duplicate disc folders. It also accepts original discs extracted into separate `cd1` and `cd2` folders, retaining each disc's DATA and MOVIES directories.
 
-```sh
-python3 tools/prepare-game-data.py --source /path/to/game --output /path/to/prepared
-```
+You can select the folder in Game files / mods or pass `--game-data=/path/to/game`. Keep it available while playing. Android's document picker imports the files into app storage. Install or extract your purchased game first; the player does not open installers or ISO images.
 
-The helper checks all 440 digital files against the Mac port's checksum profile, then creates separate `cd1` and `cd2` folders. Original disc data uses a 536-path inventory and container checks. It never overwrites an existing output directory. Select that prepared folder in the player, or use `--game-data=/path/to/prepared`. Game files remain where you selected them; keep that folder available.
-
-Opening an unrecognized or already modified LOCAL install is rejected. Prepare clean files first, then enable mods. This prevents an unknown installation from silently receiving the wrong disc mapping.
+The player checks the required files before starting. Enable patches or external mods through the player to keep your originals intact.
 
 ## Mods
 

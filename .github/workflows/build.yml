@@ -68,6 +68,11 @@ jobs:
           grep -q 'PORTABLE TESTS PASS' .build/portable.log
       - name: Check PortMaster launcher
         run: python3 tests/portmaster-launcher.py
+      - name: Check digital and original disc layouts
+        run: |
+          cp tests/game_files.gd godot/game-files-test.gd
+          timeout 45 xvfb-run -a .tools/Godot_v3.5.2-stable_x11.64 --path godot --audio-driver Dummy -s res://game-files-test.gd
+          xvfb-run -a python3 tools/test-godot4.py --godot "$PWD/.tools/Godot_v4.3-stable_linux.x86_64" --test game_files
       - name: Check handheld and touch layouts
         run: |
           cp tests/ui.gd godot/ui-test.gd

@@ -77,7 +77,7 @@ public final class TitanicFiles extends GodotPlugin {
     File file=new File(target,name);
     if(dir){if(!file.mkdir())throw new IOException("Cannot create "+name);copyTree(tree,childId,file,depth+1,count);}
     else {
-     if(++count[0]>2000)throw new IOException("Too many files; choose the prepared game folder");
+     if(++count[0]>2000)throw new IOException("Too many files; choose the game folder or its LOCAL folder");
      Uri document=DocumentsContract.buildDocumentUriUsingTree(tree,childId);
      try(InputStream in=getActivity().getContentResolver().openInputStream(document);OutputStream out=new FileOutputStream(file)){count[1]+=transfer(in,out);}
      if(count[1]>4L*1024*1024*1024)throw new IOException("Import exceeds 4 GiB");

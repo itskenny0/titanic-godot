@@ -37,7 +37,7 @@ The Go tests include synthetic fixtures captured from the pinned reference engin
 
 Run these commands from the repository with Go 1.26.4. Start with an unbundled native Go APK or PortMaster ZIP from a release or your own build. The local Go tool copies only the files in `godot/required_files.json`; it leaves saves, installers, and extra mods out. The builder also downloads and bundles the checksum-pinned patches. Pass `--patch-archive /path/to/TAOOTpatch1.03.FULL.zip` to use a local copy. The chooser stays available offline. Existing outputs are never overwritten.
 
-For a GOG install, first prepare the disc folders using `python3 tools/prepare-game-data.py --source /path/to/installed-game --output gamedata`. If you already have prepared `cd1` and `cd2` folders, use their parent as `--game-data`.
+Pass the installed GOG/Steam game folder, its `LOCAL` folder, or a parent containing extracted `cd1` and `cd2` folders as `--game-data`. Digital packages keep one copy of each required file in `LOCAL`; original disc packages retain separate disc files. For digital input, use a base player built with `LOCAL` support.
 
 ```
 go run ./cmd/personal-build --target portmaster --base dist/titanic-portmaster.zip --game-data gamedata --output titanic-portmaster-personal.zip
@@ -47,7 +47,7 @@ go run ./cmd/personal-build --target android --base dist/titanic-android-arm64-r
 
 Android needs Java 17 and Android SDK Build Tools 35 or newer. The tool aligns and signs the APK with the shared debug key, preserving `cat.kenny.taoot`. Release code and debug-key signing are separate choices. An existing `titanic-android-arm64-debug.apk` also works as a base. Add `--strip-tool /path/to/llvm-strip` to either command to remove native debug symbols while keeping the exports needed by Godot and Go. The NDK includes this tool.
 
-Install the APK normally, or extract the ZIP into the handheld's ports folder. Android reads its bundled assets directly without an import or a second extracted copy. PortMaster uses the included disc folders and its usual FRT 3.5.2 runtime. Saves still live outside the game assets. Keep these packages private; the filenames above are ignored by Git, and this mode is not part of any GitHub workflow.
+Install the APK normally, or extract the ZIP into the handheld's ports folder. Android reads its bundled assets directly without an import or a second extracted copy. PortMaster reads the included game folder with its usual FRT 3.5.2 runtime. Saves still live outside the game assets. Keep these packages private; the filenames above are ignored by Git, and this mode is not part of any GitHub workflow.
 
 ## Smaller Android release builds
 

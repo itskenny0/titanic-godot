@@ -124,6 +124,128 @@ func TestPersonalPortMaster(t *testing.T) {
 	}
 }
 
+func digitalFixture(t *testing.T) (Options, map[string][]byte) {
+	t.Helper()
+	o, originals := fixture(t)
+	digital := filepath.Join(t.TempDir(), "game")
+	local := filepath.Join(digital, "LoCaL")
+	if err := os.MkdirAll(local, 0700); err != nil {
+		t.Fatal(err)
+	}
+	expected := map[string][]byte{}
+	for name, data := range originals {
+		base := filepath.Base(name)
+		if err := os.WriteFile(filepath.Join(local, strings.ToUpper(base)), data, 0600); err != nil {
+			t.Fatal(err)
+		}
+		expected["LOCAL/"+base] = data
+	}
+	// A file needed on both discs must occur only once in the digital package.
+	b, _ := os.ReadFile(o.Manifest)
+	var required map[string][]string
+	json.Unmarshal(b, &required)
+	for _, disc := range []string{"1", "2"} {
+		required[disc] = append(required[disc], "movies/shared.mov")
+	}
+	b, _ = json.Marshal(required)
+	os.WriteFile(o.Manifest, b, 0600)
+	expected["LOCAL/shared.mov"] = []byte("shared digital movie")
+	os.WriteFile(filepath.Join(local, "SHARED.MOV"), expected["LOCAL/shared.mov"], 0600)
+	os.WriteFile(filepath.Join(local, "my-save.ti"), []byte("precious save"), 0600)
+	os.WriteFile(filepath.Join(local, "extra.set"), []byte("unrequested mod"), 0600)
+	// The install-root BOOTFILE is not the LOCAL version used by gameplay.
+	os.WriteFile(filepath.Join(digital, "BOOTFILE"), []byte("launcher file"), 0600)
+	o.GameData = digital
+	return o, expected
+}
+
+func TestPersonalDigital(t *testing.T) {
+	for _, direct := range []bool{false, true} {
+		t.Run(fmt.Sprintf("select_LOCAL_%v", direct), func(t *testing.T) {
+			o, expected := digitalFixture(t)
+			if direct {
+				o.GameData = filepath.Join(o.GameData, "LoCaL")
+			}
+			if err := build(o, fixturePatchManifest()); err != nil {
+				t.Fatal(err)
+			}
+			z, err := zip.OpenReader(o.Output)
+			if err != nil {
+				t.Fatal(err)
+			}
+			defer z.Close()
+			count := 0
+			for _, entry := range z.File {
+				if !strings.HasPrefix(entry.Name, "titanic/gamedata/") {
+					continue
+				}
+				name := strings.TrimPrefix(entry.Name, "titanic/gamedata/")
+				stream, err := entry.Open()
+				if err != nil {
+					t.Fatal(err)
+				}
+				b, err := io.ReadAll(stream)
+				stream.Close()
+				if err != nil || !bytes.Equal(b, expected[name]) {
+					t.Fatalf("unexpected or changed digital asset %s: %v", name, err)
+				}
+				count++
+			}
+			if count != len(expected) {
+				t.Fatalf("expected %d unique digital assets, got %d", len(expected), count)
+			}
+		})
+	}
+}
+
+func TestDigitalInventoryFailures(t *testing.T) {
+	for _, scenario := range []string{"missing", "empty", "damaged", "ambiguous", "link", "directory"} {
+		t.Run(scenario, func(t *testing.T) {
+			o, _ := digitalFixture(t)
+			local := filepath.Join(o.GameData, "LoCaL")
+			target := filepath.Join(local, "CARGO.SET")
+			switch scenario {
+			case "missing":
+				os.Remove(target)
+			case "empty":
+				os.WriteFile(target, nil, 0600)
+			case "damaged":
+				os.WriteFile(target, []byte("truncated container"), 0600)
+			case "ambiguous":
+				os.WriteFile(filepath.Join(local, "cargo.set"), []byte("conflict"), 0600)
+			case "link":
+				os.Rename(target, target+".original")
+				os.Symlink(target+".original", target)
+			case "directory":
+				os.Remove(target)
+				os.Mkdir(target, 0700)
+			}
+			if _, err := inventory(o.GameData, o.Manifest); err == nil {
+				t.Fatal("accepted invalid digital data")
+			}
+		})
+	}
+}
+
+func TestOwnedDigitalInventory(t *testing.T) {
+	root := os.Getenv("TAOOT_DIGITAL_DATA")
+	if root == "" {
+		t.Skip("set TAOOT_DIGITAL_DATA to an owned GOG/Steam installation")
+	}
+	assets, err := inventory(root, "../../godot/required_files.json")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(assets) != 440 {
+		t.Fatalf("expected 440 unique files, got %d", len(assets))
+	}
+	for _, a := range assets {
+		if !strings.HasPrefix(a.name, "LOCAL/") {
+			t.Fatalf("digital file repackaged as disc data: %s", a.name)
+		}
+	}
+}
+
 func TestInventoryFailures(t *testing.T) {
 	for _, scenario := range []string{"missing", "empty", "damaged", "ambiguous", "link", "traversal", "save"} {
 		t.Run(scenario, func(t *testing.T) {

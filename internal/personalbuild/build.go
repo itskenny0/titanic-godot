@@ -63,7 +63,7 @@ func inventory(root, manifest string) ([]asset, error) {
 		return nil, err
 	}
 	if !info.IsDir() {
-		return nil, fmt.Errorf("game data must be a prepared folder containing cd1 and cd2")
+		return nil, fmt.Errorf("game data must be a GOG/Steam folder, LOCAL folder, or parent containing cd1 and cd2")
 	}
 	data, err := os.ReadFile(manifest)
 	if err != nil {
@@ -76,8 +76,14 @@ func inventory(root, manifest string) ([]asset, error) {
 	if len(required) != 2 || len(required["1"]) == 0 || len(required["2"]) == 0 {
 		return nil, fmt.Errorf("invalid required-file manifest")
 	}
+	roots, digital, err := gameRoots(root)
+	if err != nil {
+		return nil, err
+	}
 	var result []asset
 	seen := map[string]bool{}
+	packed := map[string]bool{}
+	sources := map[string]string{}
 	for _, disc := range []string{"1", "2"} {
 		for _, relative := range required[disc] {
 			if !safePath(relative) || relative != strings.ToLower(relative) || strings.HasSuffix(relative, ".ti") {
@@ -88,7 +94,11 @@ func inventory(root, manifest string) ([]asset, error) {
 				return nil, fmt.Errorf("duplicate asset: %s", name)
 			}
 			seen[name] = true
-			source, err := resolve(root, name)
+			sourceName := relative
+			if digital {
+				sourceName = path.Base(relative)
+			}
+			source, err := resolve(roots[disc], sourceName)
 			if err != nil {
 				return nil, err
 			}
@@ -99,14 +109,21 @@ func inventory(root, manifest string) ([]asset, error) {
 			if !info.Mode().IsRegular() || info.Size() == 0 {
 				return nil, fmt.Errorf("empty or nonregular game asset: %s", source)
 			}
-			result = append(result, asset{name, source, info.Size(), info})
+			sources[name] = source
+			if digital {
+				name = "LOCAL/" + sourceName
+			}
+			if !packed[name] {
+				result = append(result, asset{name, source, info.Size(), info})
+				packed[name] = true
+			}
 		}
 	}
-	// Check the same identifying DreamFactory containers as prepare-game-data.py.
+	// Check identifying DreamFactory containers in either source layout.
 	for _, name := range []string{"cd1/data/bootfile", "cd1/data/bedsit1.set", "cd1/data/main.stg", "cd1/data/ctl.stg", "cd2/data/a14.set", "cd2/data/deckbd.set", "cd2/data/cargo.set"} {
-		source, err := resolve(root, name)
-		if err != nil {
-			return nil, err
+		source := sources[name]
+		if source == "" {
+			return nil, fmt.Errorf("missing identifying game file: %s", name)
 		}
 		f, err := os.Open(source)
 		if err != nil {
@@ -133,6 +150,40 @@ func inventory(root, manifest string) ([]asset, error) {
 	}
 	sort.Slice(result, func(i, j int) bool { return result[i].name < result[j].name })
 	return result, nil
+}
+
+// Digital installs share one LOCAL directory. Original CDs retain separate
+// versions of same-named files, including in personal packages.
+func gameRoots(root string) (map[string]string, bool, error) {
+	entries, err := os.ReadDir(root)
+	if err != nil {
+		return nil, false, err
+	}
+	names := map[string]bool{}
+	for _, entry := range entries {
+		names[strings.ToLower(entry.Name())] = true
+	}
+	for _, pair := range [][2]string{{"cd1", "cd2"}, {"titanic1", "titanic2"}} {
+		if names[pair[0]] && names[pair[1]] {
+			roots := map[string]string{}
+			for i, name := range pair {
+				p, err := resolve(root, name)
+				if err != nil {
+					return nil, false, err
+				}
+				roots[fmt.Sprint(i+1)] = p
+			}
+			return roots, false, nil
+		}
+	}
+	if names["local"] {
+		local, err := resolve(root, "local")
+		return map[string]string{"1": local, "2": local}, true, err
+	}
+	if names["bootfile"] && names["bedsit1.set"] {
+		return map[string]string{"1": root, "2": root}, true, nil
+	}
+	return nil, false, fmt.Errorf("select a GOG/Steam game folder, LOCAL folder, or parent containing cd1 and cd2")
 }
 
 func safePath(name string) bool {

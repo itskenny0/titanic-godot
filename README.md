@@ -15,7 +15,7 @@ Android supports both gamepad and touchscreen play.
 ## Play quickly (PortMaster)
 - Acquire cd1.iso and cd2.iso or the GOG or Steam release files. If you acquired the ISOs, extract each into folders cd1 and cd2.
 - Download the portmaster zip from releases
-- add the cd1 and cd2 folders or the Steam/GOG game files to the gamefiles directory.
+- add the cd1 and cd2 folders or the Steam/GOG game files to the `titanic/gamedata` directory.
 - copy it to the ports location for your handheld
 
 F10 to access the engine menu. For the rest, read more below.
@@ -24,7 +24,7 @@ F10 to access the engine menu. For the rest, read more below.
 
 A Godot player with a native Go engine for *Titanic: Adventure Out of Time* (1996), based on [titanic-mac](https://github.com/axx-archive/titanic-mac) and [dreamREfactory](https://github.com/dhobi/dreamrefactory). Bring your own game files.
 
-Build with the commands in [BUILDING.md](BUILDING.md), then choose your prepared `cd1` and `cd2` folders. [Setup and mods](docs/SETUP.md) covers digital installs and M3tox's fixes, lounge unlock, and extended-content mod. On first start, download the M3tox 1.0.3 FULL patches, choose their ZIP, or play without them. Saves live outside the app; replaced saves are archived.
+Build with the commands in [BUILDING.md](BUILDING.md), then choose your GOG/Steam game folder, its `LOCAL` folder, or extracted `cd1` and `cd2` folders. [Setup and mods](docs/SETUP.md) covers digital installs and M3tox's fixes, lounge unlock, and extended-content mod. On first start, download the M3tox 1.0.3 FULL patches, choose their ZIP, or play without them. Saves live outside the app; replaced saves are archived.
 
 Use the arrow keys to move and the mouse to interact. On a handheld, use the left stick or D-pad for movement, dialogue replies and menus, then A to confirm. The right stick controls the pointer; L1 slows it, and L2/R2 cycle clickable targets. B goes back or skips speech. Start opens the menu. Controller settings lets you remap buttons and D-pad directions or restore the defaults. See [PortMaster controls](docs/PORTMASTER.md). Touchscreens support tapping, dragging and a virtual joystick. An onscreen keyboard handles text entry with touch or a controller.
 

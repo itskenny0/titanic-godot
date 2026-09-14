@@ -1,6 +1,6 @@
 # PortMaster
 
-Extract `titanic-portmaster.zip` into your ports folder. Put prepared `cd1` and `cd2` folders in `ports/titanic/gamedata`. The ZIP contains the Godot pack, ARM libraries, and a first-start patch chooser. Download or import the M3tox 1.0.3 FULL ZIP there. Personal packages include the patches. The full game is not included. PortMaster downloads the shared `frt_3.5.2.squashfs` runtime.
+Extract `titanic-portmaster.zip` into your ports folder. Copy your GOG/Steam game files, keeping the `LOCAL` folder, into `ports/titanic/gamedata`. Extracted `cd1` and `cd2` folders also work there. The ZIP contains the Godot pack, ARM libraries, and a first-start patch chooser. Download or import the M3tox 1.0.3 FULL ZIP there. Personal packages include the patches. The full game is not included. PortMaster downloads the shared `frt_3.5.2.squashfs` runtime.
 
 | Control | Action |
 | --- | --- |
@@ -19,7 +19,7 @@ FRT's PortMaster build disables native joypad input. `titanic.gptk` therefore ma
 
 Dialogue replies get a visible selection border. Use directions and A to answer without aiming the pointer. The same controls work in the game menus, save lists and on-screen keyboard. In rooms, L2 and R2 select visible targets; the right stick remains available for puzzles and dragging. The pointer hides during button navigation and returns when you move the right stick or a mouse. Open Controller settings from the voyage menu to remap actions or view the controls. Changes are saved automatically; Reset defaults restores the original layout. PortMaster remaps the keys emitted by gptokeyb, so A/R1 and B/Select change together. D-pad changes also affect the left stick. R3 clicking and L1 pointer speed remain in `titanic.gptk`. The UI fits a 640x480 handheld screen, including devices such as the R36S.
 
-Saves stay in the port's `saves/Retanic` directory. Keep that directory when upgrading. To use mods, extract them into a directory on the handheld and select it from Game files / mods. Prepare clean game data before adding mods.
+Saves stay in the port's `saves/Retanic` directory. Keep that directory when upgrading. To use mods, extract them into a directory on the handheld and select it from Game files / mods. Keep clean game data and select mods separately.
 
 The launcher uses the screen resolution reported by PortMaster, with a 640x480 fallback. The original game picture is 512x384 and scales to fit. Game images are not recompressed for handhelds. Personal packages include the M3tox patches, but you still choose which ones to enable in Game files / mods. Select All to apply sharper navigation in every patched area. Patch choices are saved separately on each device.
 

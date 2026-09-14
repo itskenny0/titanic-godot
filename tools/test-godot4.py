@@ -2,9 +2,12 @@
 """Run the shared UI or owned-data integration test on the generated frontend."""
 from pathlib import Path
 import argparse, re, subprocess
-p=argparse.ArgumentParser();p.add_argument('--godot',required=True);p.add_argument('--test',choices=['ui','integration','controller','idle','patches'],required=True);p.add_argument('--game-data');p.add_argument('--resolution',default='640x480');p.add_argument('--touch',action='store_true');p.add_argument('--patches',default='none');a=p.parse_args()
+p=argparse.ArgumentParser();p.add_argument('--godot',required=True);p.add_argument('--test',choices=['ui','integration','controller','idle','patches','game_files'],required=True);p.add_argument('--game-data');p.add_argument('--resolution',default='640x480');p.add_argument('--touch',action='store_true');p.add_argument('--patches',default='none');a=p.parse_args()
 root=Path(__file__).resolve().parents[1];project=root/'.build/godot4-project'
 s=(root/'tests'/f'{a.test}.gd').read_text()
+if a.test == 'game_files':
+ s=s.replace('extends SceneTree', 'extends SceneTree\nconst File = preload("res://scripts/file_compat.gd")\nconst Directory = preload("res://scripts/directory_compat.gd")')
+ s=s.replace('PoolByteArray', 'PackedByteArray').replace('OS.get_ticks_usec()', 'Time.get_ticks_usec()').replace('.plus_file(', '.path_join(')
 s=re.sub(r'JSON.parse\(([^\n]+)\).result',r'JSON.parse_string(\1)',s)
 s=s.replace('JSON.print(', 'JSON.stringify(').replace('.instance()', '.instantiate()').replace('player.ready', 'player.game_ready')
 s=s.replace('yield(self, "idle_frame")','await process_frame').replace('yield(VisualServer, "frame_post_draw")','await RenderingServer.frame_post_draw').replace('yield(create_timer(0.3), "timeout")','await create_timer(0.3).timeout')

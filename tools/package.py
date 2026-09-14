@@ -3,7 +3,7 @@
 from pathlib import Path
 import argparse,shutil,subprocess,tarfile,zipfile,plistlib,os
 ROOT=Path(__file__).resolve().parents[1]
-p=argparse.ArgumentParser();p.add_argument('kind',choices=['linux','mac','windows','portmaster']);p.add_argument('--binary');p.add_argument('--arch',default='x86_64');p.add_argument('--pack',default='dist/titanic.pck');p.add_argument('--version',default='0.3.2');p.add_argument('--static',action='store_true');a=p.parse_args()
+p=argparse.ArgumentParser();p.add_argument('kind',choices=['linux','mac','windows','portmaster']);p.add_argument('--binary');p.add_argument('--arch',default='x86_64');p.add_argument('--pack',default='dist/titanic.pck');p.add_argument('--version',default='0.3.5');p.add_argument('--static',action='store_true');a=p.parse_args()
 name=f'titanic-{a.kind}-{a.arch}'+('-static' if a.static else '')
 stage=ROOT/'.build/packages'/name
 if stage.exists():shutil.rmtree(stage)
@@ -32,7 +32,7 @@ if a.kind=='portmaster':
  (game/'native').mkdir();(game/'gamedata').mkdir();(game/'mods').mkdir()
  for arch in ['aarch64','armhf']:shutil.copy2(ROOT/f'godot/native/libtitanic.{arch}.so',game/'native'/f'libtitanic.{arch}.so')
  licenses(game/'licenses')
- (game/'gamedata/PUT_GAME_FILES_HERE.txt').write_text('Copy prepared cd1 and cd2 folders here. See README.txt.\n')
+ (game/'gamedata/PUT_GAME_FILES_HERE.txt').write_text('Copy GOG/Steam game files with their LOCAL folder, or extracted cd1 and cd2 folders here. See README.txt.\n')
  shutil.copy2(ROOT/'docs/PORTMASTER.md',game/'README.txt')
  zipped(dist/'titanic-portmaster.zip')
 elif a.kind=='mac':

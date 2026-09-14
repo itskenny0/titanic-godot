@@ -13,7 +13,7 @@ func main() {
 	var options personalbuild.Options
 	flag.StringVar(&options.Target, "target", "", "android or portmaster")
 	flag.StringVar(&options.Base, "base", "", "unbundled native Go APK or PortMaster ZIP")
-	flag.StringVar(&options.GameData, "game-data", "", "prepared folder containing cd1 and cd2")
+	flag.StringVar(&options.GameData, "game-data", "", "GOG/Steam game folder, LOCAL folder, or parent containing cd1 and cd2")
 	flag.StringVar(&options.Output, "output", "", "new personal APK or ZIP (never overwritten)")
 	flag.StringVar(&options.Manifest, "manifest", "godot/required_files.json", "required game-file manifest")
 	flag.StringVar(&options.BuildTools, "android-build-tools", "", "Android SDK Build Tools 35+ directory (or use PATH)")

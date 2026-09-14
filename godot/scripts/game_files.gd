@@ -1,5 +1,5 @@
 extends Reference
-# Paths are indexed per disc. Same-name files on different discs stay separate.
+# Original discs keep separate paths; digital LOCAL files serve both namespaces.
 var error = ""
 var index = {}
 
@@ -47,26 +47,42 @@ func validate(disc1, disc2):
 	# Reuse listings only within this validation, so changed folders are checked
 	# again next time. Slow SD cards otherwise read each directory for every file.
 	var directories = {}
+	var digital = disc1 == disc2
+	var pending = {}
 	for disc in [1, 2]:
 		var root = disc1 if disc == 1 else disc2
 		for relative in required[str(disc)]:
-			var path = resolve_case(root, relative, directories)
+			var path = resolve_case(root, relative.get_file() if digital else relative, directories)
 			if path.empty() or file.open(path, File.READ) != OK:
-				error = "Disc %d is missing %s. Select prepared cd1 and cd2 folders." % [disc, relative]
+				error = "Game folder is missing " + relative.get_file() if digital else "Disc %d is missing %s." % [disc, relative]
 				return false
 			var length = file.get_len()
 			file.close()
 			if length == 0:
 				error = "Empty game file: " + path
 				return false
-			index[str(disc) + "/" + relative.get_file().to_lower()] = path
-	return error.empty()
+			pending[str(disc) + "/" + relative.get_file().to_lower()] = path
+	if not error.empty():
+		return false
+	index = pending
+	return true
 
 func discover(root):
+	error = ""
 	var names = scan(root)
+	if not error.empty():
+		return []
 	for pair in [["cd1", "cd2"], ["titanic1", "titanic2"]]:
 		if names.has(pair[0]) and names.has(pair[1]):
 			return [root.plus_file(names[pair[0]]), root.plus_file(names[pair[1]])]
+	# Android imports the contents of a selected folder, so recognize a directly
+	# selected LOCAL directory by its files rather than its directory name.
+	if names.has("local"):
+		var local = root.plus_file(names["local"])
+		if Directory.new().open(local) == OK:
+			return [local, local]
+	if names.has("bootfile") and names.has("bedsit1.set"):
+		return [root, root]
 	return []
 
 func mod_files(root, depth = 0):
