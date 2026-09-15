@@ -49,25 +49,7 @@ Put the finished `hdpack` folder beside the player to enable it automatically. Y
 <details>
 <summary>More comparisons: rooms, faces and UI</summary>
 
-### Life preserver
-
-| Original | Nearest-neighbor 2x |
-| --- | --- |
-| <a href="docs/images/hd/life-original.png"><img src="docs/images/hd/life-original.png" width="480" alt="Life preserver: Original"></a> | <a href="docs/images/hd/life-nearest.png"><img src="docs/images/hd/life-nearest.png" width="480" alt="Life preserver: Nearest-neighbor 2x"></a> |
-
-### Life preserver: transparent inventory sprite
-
-| Original | Riven without override | Nearest-neighbor 2x |
-| --- | --- | --- |
-| <a href="docs/images/hd/life-cutout-original.png"><img src="docs/images/hd/life-cutout-original.png" width="320" alt="Original transparent life preserver"></a> | <a href="docs/images/hd/life-cutout-riven.png"><img src="docs/images/hd/life-cutout-riven.png" width="320" alt="Riven transparent life preserver"></a> | <a href="docs/images/hd/life-cutout-nearest.png"><img src="docs/images/hd/life-cutout-nearest.png" width="320" alt="Nearest-neighbor transparent life preserver"></a> |
-
 [In-game view with nearest-neighbor UI and Riven scenery](docs/images/hd/boat-hd.png).
-
-### HELP button
-
-| Original | Nearest-neighbor 2x |
-| --- | --- |
-| <a href="docs/images/hd/help-original.png"><img src="docs/images/hd/help-original.png" width="480" alt="HELP button: Original"></a> | <a href="docs/images/hd/help-nearest.png"><img src="docs/images/hd/help-nearest.png" width="480" alt="HELP button: Nearest-neighbor 2x"></a> |
 
 ### Grand Staircase
 
