@@ -48,9 +48,9 @@ jobs:
           sudo apt-get update -qq
           sudo apt-get install -y xvfb libasound2 libgl1
           mkdir -p .tools
-          curl -fL https://github.com/godotengine/godot/releases/download/3.5.2-stable/Godot_v3.5.2-stable_x11.64.zip -o .tools/godot3.zip
+          curl --retry 5 --retry-delay 3 --retry-max-time 180 -fL https://github.com/godotengine/godot/releases/download/3.5.2-stable/Godot_v3.5.2-stable_x11.64.zip -o .tools/godot3.zip
           unzip -q .tools/godot3.zip -d .tools
-          curl -fL https://github.com/godotengine/godot/releases/download/4.3-stable/Godot_v4.3-stable_linux.x86_64.zip -o .tools/godot4.zip
+          curl --retry 5 --retry-delay 3 --retry-max-time 180 -fL https://github.com/godotengine/godot/releases/download/4.3-stable/Godot_v4.3-stable_linux.x86_64.zip -o .tools/godot4.zip
           unzip -q .tools/godot4.zip -d .tools
       - name: Export both frontends
         run: |

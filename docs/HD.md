@@ -29,10 +29,12 @@ To include M3tox's patch variants, prepare the pinned patches first:
 ```sh
 python3 tools/fetch-patches.py
 go run ./cmd/hd-pack --game-data originalgame --output .build/hd-personal --mods godot/patches/files --characters
-.tools/hd-venv/bin/python tools/upscale-hd.py --input .build/hd-personal --output .build/hd-personal/pack --workers 4 --threads 2
+.tools/hd-venv/bin/python tools/upscale-hd.py --input .build/hd-personal --output .build/hd-personal/pack --workers 4 --threads 2 --nearest '*/house.shp:life/*'
 ```
 
 Omit `--mods godot/patches/files` if you only want the original artwork. This does not change which patches are active in the game.
+
+This example uses nearest-neighbor 2x for the life preserver, matching the README screenshot. See [per-asset selections](#keep-selected-assets-pixel-exact) below to change which images use it.
 
 The first upscale run downloads the checksum-verified [FSDedither Riven](https://openmodeldb.info/models/4x-FSDedither-Riven) model by Jacob. It was trained to remove dithering from game artwork and was selected after comparing room, UI and character samples. It can take hours on a CPU. Lower `--workers` if memory is tight. More workers can help on larger computers; leave some CPU capacity for other programs.
 
@@ -58,7 +60,7 @@ The finished pack is `.build/hd-personal/pack`. It contains a manifest and image
 
 ## Use the pack
 
-Start with an unbundled APK or PortMaster ZIP built from an HD-capable version of this repository. For packs exported with `--characters`, build the base player from this checkout using [BUILDING.md](../BUILDING.md); the v0.3.7 player supports room and UI replacements but predates HD character support. The personal builder checks compatibility before packaging.
+Start with an unbundled APK or PortMaster ZIP from v0.3.8 or newer, or build one using [BUILDING.md](../BUILDING.md). The v0.3.7 player supports room and UI replacements but predates HD character support. The personal builder checks compatibility before packaging.
 
 Place the base APK or ZIP in `dist`, using the filename below, or replace `--base` with its actual path. Add the pack to a personal package:
 

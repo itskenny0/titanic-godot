@@ -78,7 +78,7 @@ python3 -m venv .tools/hd-venv
 .tools/hd-venv/bin/pip install numpy==2.2.6 Pillow==11.3.0
 .tools/hd-venv/bin/pip install torch==2.8.0 --index-url https://download.pytorch.org/whl/cpu
 go run ./cmd/hd-pack --game-data originalgame --output .build/hd-personal --mods godot/patches/files --characters
-.tools/hd-venv/bin/python tools/upscale-hd.py --input .build/hd-personal --output .build/hd-personal/pack
+.tools/hd-venv/bin/python tools/upscale-hd.py --input .build/hd-personal --output .build/hd-personal/pack --nearest '*/house.shp:life/*'
 ```
 
 Prepare the pinned patches with `python3 tools/fetch-patches.py` before exporting if you want their artwork included. The upscaler downloads checksum-verified FSDedither Riven weights. Use `--model compact` to reproduce the first HD pack. It uses CPU workers and can take hours; adjust `--workers` and `--threads` to suit your computer. Run the same command again to resume. Add `--resume` to the Go export command to reuse existing images and rebuild its inventory with the selected options. The default pack includes the sharp room views used by the player, omitting their unused soft counterparts. Cinematics and navigation motion keep their original artwork; `--motion` also exports navigation frames and makes a much larger pack. Add `--characters` to export complete dialogue character poses, including their mouth and eye animation. Cinematic video and special effects retain the original rendering. Godot menus and text already render at the display resolution.

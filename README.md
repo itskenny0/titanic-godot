@@ -38,11 +38,11 @@ CI builds Windows x64 and ARM64 portable packages, macOS Intel and Apple Silicon
 
 ## HD artwork
 
-The same Grand Staircase save, with original artwork and the optional FSDedither Riven pack. [Make your own pack](docs/HD.md).
+The same Grand Staircase save, with original artwork and the optional HD pack. Rooms and most assets use FSDedither Riven; the life preserver uses nearest-neighbor 2x to preserve its transparent edges. [Make your own pack](docs/HD.md).
 
-| Original | FSDedither Riven |
+| Original | HD: Riven with nearest-neighbor preserver |
 | --- | --- |
-| <a href="docs/images/hd/boat-original.png"><img src="docs/images/hd/boat-original.png" width="480" alt="In-game: Grand Staircase: Original"></a> | <a href="docs/images/hd/boat-riven.png"><img src="docs/images/hd/boat-riven.png" width="480" alt="In-game: Grand Staircase: FSDedither Riven"></a> |
+| <a href="docs/images/hd/boat-original.png"><img src="docs/images/hd/boat-original.png" width="480" alt="In-game: Grand Staircase: Original"></a> | <a href="docs/images/hd/boat-nearest.png"><img src="docs/images/hd/boat-nearest.png" width="480" alt="In-game: Grand Staircase: Riven scenery with nearest-neighbor life preserver"></a> |
 
 <details>
 <summary>More comparisons: rooms, faces and UI</summary>
@@ -55,7 +55,7 @@ The same Grand Staircase save, with original artwork and the optional FSDedither
 
 ### Life preserver: transparent inventory sprite
 
-| Original | FSDedither Riven | Nearest-neighbor 2x |
+| Original | Riven without override | Nearest-neighbor 2x |
 | --- | --- | --- |
 | <a href="docs/images/hd/life-cutout-original.png"><img src="docs/images/hd/life-cutout-original.png" width="320" alt="Original transparent life preserver"></a> | <a href="docs/images/hd/life-cutout-riven.png"><img src="docs/images/hd/life-cutout-riven.png" width="320" alt="Riven transparent life preserver"></a> | <a href="docs/images/hd/life-cutout-nearest.png"><img src="docs/images/hd/life-cutout-nearest.png" width="320" alt="Nearest-neighbor transparent life preserver"></a> |
 
