@@ -38,20 +38,22 @@ CI builds Windows x64 and ARM64 portable packages, macOS Intel and Apple Silicon
 
 ## HD artwork
 
-The same Grand Staircase save, with original artwork and the optional HD pack. Rooms and most assets use FSDedither Riven; the life preserver uses nearest-neighbor 2x to preserve its transparent edges. [Make your own pack](docs/HD.md).
+The same Grand Staircase save, with original artwork and the optional HD pack. World and character artwork use FSDedither Riven; all UI artwork uses nearest-neighbor 2x to preserve its pixels and transparent edges. [Make your own pack](docs/HD.md).
 
-| Original | HD: Riven with nearest-neighbor preserver |
+Put the finished `hdpack` folder beside the player to enable it automatically. You can turn it off in **Game files / mods**; that choice stays saved.
+
+| Original | HD: Riven world, nearest-neighbor UI |
 | --- | --- |
-| <a href="docs/images/hd/boat-original.png"><img src="docs/images/hd/boat-original.png" width="480" alt="In-game: Grand Staircase: Original"></a> | <a href="docs/images/hd/boat-nearest.png"><img src="docs/images/hd/boat-nearest.png" width="480" alt="In-game: Grand Staircase: Riven scenery with nearest-neighbor life preserver"></a> |
+| <a href="docs/images/hd/boat-original.png"><img src="docs/images/hd/boat-original.png" width="480" alt="In-game: Grand Staircase: Original"></a> | <a href="docs/images/hd/boat-hd.png"><img src="docs/images/hd/boat-hd.png" width="480" alt="In-game: Grand Staircase: Riven scenery with nearest-neighbor UI"></a> |
 
 <details>
 <summary>More comparisons: rooms, faces and UI</summary>
 
 ### Life preserver
 
-| Original | FSDedither Riven |
+| Original | Nearest-neighbor 2x |
 | --- | --- |
-| <a href="docs/images/hd/life-original.png"><img src="docs/images/hd/life-original.png" width="480" alt="Life preserver: Original"></a> | <a href="docs/images/hd/life-riven.png"><img src="docs/images/hd/life-riven.png" width="480" alt="Life preserver: FSDedither Riven"></a> |
+| <a href="docs/images/hd/life-original.png"><img src="docs/images/hd/life-original.png" width="480" alt="Life preserver: Original"></a> | <a href="docs/images/hd/life-nearest.png"><img src="docs/images/hd/life-nearest.png" width="480" alt="Life preserver: Nearest-neighbor 2x"></a> |
 
 ### Life preserver: transparent inventory sprite
 
@@ -59,13 +61,13 @@ The same Grand Staircase save, with original artwork and the optional HD pack. R
 | --- | --- | --- |
 | <a href="docs/images/hd/life-cutout-original.png"><img src="docs/images/hd/life-cutout-original.png" width="320" alt="Original transparent life preserver"></a> | <a href="docs/images/hd/life-cutout-riven.png"><img src="docs/images/hd/life-cutout-riven.png" width="320" alt="Riven transparent life preserver"></a> | <a href="docs/images/hd/life-cutout-nearest.png"><img src="docs/images/hd/life-cutout-nearest.png" width="320" alt="Nearest-neighbor transparent life preserver"></a> |
 
-[In-game view with the nearest-neighbor preserver and Riven scenery](docs/images/hd/boat-nearest.png).
+[In-game view with nearest-neighbor UI and Riven scenery](docs/images/hd/boat-hd.png).
 
 ### HELP button
 
-| Original | FSDedither Riven |
+| Original | Nearest-neighbor 2x |
 | --- | --- |
-| <a href="docs/images/hd/help-original.png"><img src="docs/images/hd/help-original.png" width="480" alt="HELP button: Original"></a> | <a href="docs/images/hd/help-riven.png"><img src="docs/images/hd/help-riven.png" width="480" alt="HELP button: FSDedither Riven"></a> |
+| <a href="docs/images/hd/help-original.png"><img src="docs/images/hd/help-original.png" width="480" alt="HELP button: Original"></a> | <a href="docs/images/hd/help-nearest.png"><img src="docs/images/hd/help-nearest.png" width="480" alt="HELP button: Nearest-neighbor 2x"></a> |
 
 ### Grand Staircase
 

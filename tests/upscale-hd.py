@@ -34,7 +34,7 @@ class NearestTests(unittest.TestCase):
             (root/'catalog.json').write_text(json.dumps(catalog))
             command = [sys.executable, str(SCRIPT), '--input', str(root),
                        '--output', str(root/'pack'), '--models', str(root/'models'),
-                       '--workers', '1', '--nearest', '*/house.shp:life/*']
+                       '--workers', '1']
             subprocess.run(command, check=True, capture_output=True, timeout=30)
             manifest = json.loads((root/'pack/manifest.json').read_text())
             entry = manifest['images'][key]
@@ -59,6 +59,22 @@ class NearestTests(unittest.TestCase):
         self.assertEqual(upscaler.nearest_keys(images, ['B'*64]), {'b'*64})
         with self.assertRaisesRegex(ValueError, 'No artwork matches'):
             upscaler.nearest_keys(images, ['*/house.shp:typo/*'])
+
+    def test_default_covers_ui_but_keeps_world_closeups_and_characters_on_ai(self):
+        def asset(file, kind='ui'):
+            return {'sources': [{'file': file, 'kind': kind, 'name': 'example'}]}
+        images = {
+            'house': asset('LOCAL/HOUSE.SHP'),
+            'inventory': asset('cd2/inven.shp'),
+            'panel': asset('LOCAL/main.stg'),
+            'map': asset('LOCAL/map.stg'),
+            'menu': asset('LOCAL/playmode.mov'),
+            'puzzle': asset('LOCAL/enigma.stg'),
+            'closeup': asset('LOCAL/gsdome.mov'),
+            'room': asset('LOCAL/gstair3.set', 'room'),
+            'character': asset('LOCAL/penny2.pup', 'character'),
+        }
+        self.assertEqual(upscaler.ui_keys(images), {'house', 'inventory', 'panel', 'map', 'menu'})
 
     def test_changing_selection_invalidates_only_affected_png_and_webp(self):
         with tempfile.TemporaryDirectory() as temporary:

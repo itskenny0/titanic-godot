@@ -223,7 +223,7 @@ func start_runtime(save_path = ""):
 		return
 	var error = ""
 	runtime.execute("profile", JSON.print({"on": OS.is_debug_build()}))
-	error = runtime.execute("boot", JSON.print({"index": game_index, "save": save_path, "hd_pack": hd_pack_path if config.get_value("graphics", "hd_enabled", true) else "", "testing": "--integration-test" in OS.get_cmdline_args()}))
+	error = runtime.execute("boot", JSON.print({"index": game_index, "save": save_path, "hd_pack": active_hd_pack(), "testing": "--integration-test" in OS.get_cmdline_args()}))
 	if not error.empty():
 		show_note(error)
 		return
@@ -237,6 +237,9 @@ func find_hd_pack():
 	var game_dir = OS.get_environment("RETANIC_GAME_DIR")
 	if not game_dir.empty():
 		candidates.append(game_dir.plus_file("hdpack"))
+	var appimage = OS.get_environment("APPIMAGE")
+	if not appimage.empty():
+		candidates.append(appimage.get_base_dir().plus_file("hdpack"))
 	if OS.get_name() in ["OSX", "macOS"]:
 		candidates.append(base.get_base_dir().get_base_dir().get_base_dir().plus_file("hdpack"))
 	for arg in OS.get_cmdline_args():
@@ -246,6 +249,9 @@ func find_hd_pack():
 		if File.new().file_exists(candidate.plus_file("manifest.json")):
 			return candidate
 	return ""
+
+func active_hd_pack():
+	return hd_pack_path if config.get_value("graphics", "hd_enabled", true) else ""
 
 func toggle_hd_artwork():
 	var enabled = not config.get_value("graphics", "hd_enabled", true)

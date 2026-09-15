@@ -1,6 +1,6 @@
 # Make your own HD artwork
 
-This is a local build for your own copy of Titanic. FSDedither Riven makes 2x versions of room views, sprites, buttons, inventory art and puzzle screens. Your original files stay untouched.
+This is a local build for your own copy of Titanic. FSDedither Riven makes 2x versions of room views, world sprites, characters and puzzle screens. Buttons, inventory art, maps and menus use exact nearest-neighbor 2x, preserving their original pixels and transparency. Your original files stay untouched.
 
 ## Before and after
 
@@ -29,32 +29,32 @@ To include M3tox's patch variants, prepare the pinned patches first:
 ```sh
 python3 tools/fetch-patches.py
 go run ./cmd/hd-pack --game-data originalgame --output .build/hd-personal --mods godot/patches/files --characters
-.tools/hd-venv/bin/python tools/upscale-hd.py --input .build/hd-personal --output .build/hd-personal/pack --workers 4 --threads 2 --nearest '*/house.shp:life/*'
+.tools/hd-venv/bin/python tools/upscale-hd.py --input .build/hd-personal --output .build/hd-personal/pack --workers 4 --threads 2
 ```
 
 Omit `--mods godot/patches/files` if you only want the original artwork. This does not change which patches are active in the game.
 
-This example uses nearest-neighbor 2x for the life preserver, matching the README screenshot. See [per-asset selections](#keep-selected-assets-pixel-exact) below to change which images use it.
+UI artwork automatically uses nearest-neighbor 2x, matching the README screenshot. See [per-asset selections](#keep-selected-assets-pixel-exact) below to apply that to other images too.
 
 The first upscale run downloads the checksum-verified [FSDedither Riven](https://openmodeldb.info/models/4x-FSDedither-Riven) model by Jacob. It was trained to remove dithering from game artwork and was selected after comparing room, UI and character samples. It can take hours on a CPU. Lower `--workers` if memory is tight. More workers can help on larger computers; leave some CPU capacity for other programs.
 
-If interrupted, rerun the upscale command. It reuses completed images. To rebuild the extraction inventory with different options, repeat the Go command with `--resume`. Use a fresh upscale output folder when changing models. To reproduce the first pack, use `--model compact --denoise 0.3`. `--denoise` only applies to the compact model.
+If interrupted, rerun the upscale command. It reuses completed images. To rebuild the extraction inventory with different options, repeat the Go command with `--resume`. Use a fresh upscale output folder when changing models. The older model is available with `--model compact --denoise 0.3`. `--denoise` only applies to the compact model.
 
 For a small preview, add `--limit 10` and use a separate output such as `.build/hd-preview`. A preview is not a complete pack.
 
 ### Keep selected assets pixel-exact
 
-Small cutouts, lettering or icons can look worse after AI processing. Add `--nearest` to scale selected images by exactly 2x with nearest-neighbor sampling. Each original pixel becomes a 2x2 block, including transparency. The rest of the pack still uses Riven.
+UI artwork already uses nearest-neighbor scaling. Other small cutouts or lettering can also look worse after AI processing. Add `--nearest` to scale selected world images by exactly 2x with nearest-neighbor sampling. Each original pixel becomes a 2x2 block, including transparency. Other world images still use Riven.
 
-For example, keep every life preserver variant pixel-exact:
+For example, keep the cipher puzzle screen pixel-exact too:
 
 ```sh
-.tools/hd-venv/bin/python tools/upscale-hd.py --input .build/hd-personal --output .build/hd-personal/pack --nearest '*/house.shp:life/*'
+.tools/hd-venv/bin/python tools/upscale-hd.py --input .build/hd-personal --output .build/hd-personal/pack --nearest '*/enigma.stg:*'
 ```
 
 Selectors match `file:name` from `catalog.json`, ignoring case; `*` matches any text. Keep the quotes so your shell does not expand the pattern. You can also pass an image's full hash to select that exact artwork. Repeat `--nearest` for more selections. Identical source pixels share a replacement wherever they appear. A selector that matches nothing reports an error.
 
-Rerun with the same selections to resume. Changing or removing a selection rebuilds only the affected images, including their cached WebP copies. Stop a running upscale before changing its selections. Nearest-neighbor keeps original dithering and jagged edges too; compare the result before choosing it.
+Rerun with the same selections to resume. Changing or removing a selection rebuilds only the affected images, including their cached WebP copies. UI keeps its default nearest-neighbor scaling. Stop a running upscale before changing its selections. Nearest-neighbor keeps original dithering and jagged edges too; compare the result before choosing it.
 
 The finished pack is `.build/hd-personal/pack`. It contains a manifest and images named by their source-pixel hashes. Do not rename them. PNG intermediates are retained for resuming; the manifest chooses the smaller lossless PNG or WebP for each image.
 
@@ -72,7 +72,7 @@ go run ./cmd/personal-build --target portmaster --base dist/titanic-portmaster.z
 
 Android packaging needs Java 17 and Android SDK Build Tools 35 or newer. See [BUILDING.md](../BUILDING.md) for building the base player. The personal builder includes your game files, the selected HD images and the pinned patches. Use `--patch-archive /path/to/TAOOTpatch1.03.FULL.zip` to supply the patch archive without downloading it. Existing output packages are never overwritten.
 
-For a desktop player, copy the finished pack folder beside the executable and name it `hdpack`. On macOS, put it beside `Titanic.app`. On PortMaster, put it at `ports/titanic/hdpack`. Android users should use the personal APK above. The game enables a detected pack automatically. **Game files / mods** has an **HD artwork** switch that takes effect next time you start the game.
+For a desktop player, copy the finished pack folder beside the executable and name it `hdpack`. On macOS, put it beside `Titanic.app`; for an AppImage, beside the `.AppImage` file. On PortMaster, put it at `ports/titanic/hdpack`. Android users should use the personal APK above. The folder should contain `manifest.json` and `images` directly. The game detects and enables it automatically. **Game files / mods** has an **HD artwork** switch that takes effect next time you start the game. If you turn it off, that choice stays saved even while the pack is present.
 
 ## What stays original
 

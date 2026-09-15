@@ -70,6 +70,17 @@ jobs:
           grep -q 'PORTABLE TESTS PASS' .build/portable.log
       - name: Check PortMaster launcher
         run: python3 tests/portmaster-launcher.py
+      - name: Check pixel-exact HD generation and automatic detection
+        run: |
+          python3 -m pip install Pillow==11.3.0
+          python3 tests/upscale-hd.py
+          mkdir -p .build/hd-autodetect/hdpack
+          echo '{}' > .build/hd-autodetect/hdpack/manifest.json
+          cp tests/hd_autodetect.gd godot/hd-autodetect-test.gd
+          export RETANIC_GAME_DIR="$PWD/.build/hd-autodetect"
+          export RETANIC_TEST_HD_PATH="$RETANIC_GAME_DIR/hdpack"
+          timeout 45 xvfb-run -a .tools/Godot_v3.5.2-stable_x11.64 --path godot --audio-driver Dummy -s res://hd-autodetect-test.gd
+          xvfb-run -a python3 tools/test-godot4.py --godot "$PWD/.tools/Godot_v4.3-stable_linux.x86_64" --test hd_autodetect
       - name: Check digital and original disc layouts
         run: |
           cp tests/game_files.gd godot/game-files-test.gd

@@ -90,6 +90,27 @@ def nearest_keys(images, selectors):
         selected.update(matches)
     return selected
 
+def ui_keys(images):
+    """Core UI stays pixel-exact; interactive world closeups still use AI.
+
+    Older catalogs label every stage and interactive movie as 'ui', including
+    scenery and puzzles, so those formats need their actual interface filenames.
+    """
+    stages = {'main.stg', 'ctl.stg', 'inven1.stg', 'inven2.stg', 'map.stg', 'tour.stg'}
+    movies = {'menu.mov', 'playmode.mov', 'playmore.mov', 'credits.mov',
+              'history.mov', 'notebook.mov', 'help1m.mov', 'help1w.mov',
+              'help2m.mov', 'help2w.mov', 'helptm.mov', 'helptw.mov'}
+    def is_ui(source):
+        if source.get('kind') != 'ui':
+            return False
+        name = source['file'].replace('\\', '/').rsplit('/', 1)[-1].casefold()
+        if name.endswith('.stg'):
+            return name in stages
+        if name.endswith('.mov'):
+            return name in movies
+        return True
+    return {key for key, entry in images.items() if any(is_ui(s) for s in entry['sources'])}
+
 def prepare_output(out, settings):
     """Changing nearest selections regenerates only the affected images."""
     out.mkdir(parents=True, exist_ok=True)
@@ -122,7 +143,7 @@ def main():
     p.add_argument('--input',default='.build/hd-personal',help='folder from go run ./cmd/hd-pack')
     p.add_argument('--output',default='.build/hd-personal/pack',help='pack folder, resumable with identical settings')
     p.add_argument('--models',default='.tools/hd-models')
-    p.add_argument('--model',choices=PRESETS,default='riven',help='riven removes dithering; compact reproduces the first HD pack')
+    p.add_argument('--model',choices=PRESETS,default='riven',help='AI model for world and character art; UI always uses nearest-neighbor 2x')
     p.add_argument('--workers',type=int,default=4)
     p.add_argument('--threads',type=int,default=2)
     p.add_argument('--denoise',type=float,help='compact model only, default 0.3')
@@ -136,7 +157,7 @@ def main():
     root=Path(args.input).resolve();out=Path(args.output).resolve();weights=Path(args.models).resolve()
     catalog=json.loads((root/'catalog.json').read_text())
     if catalog['version']!=1:raise ValueError('Unsupported export catalog')
-    nearest=nearest_keys(catalog['images'],args.nearest)
+    nearest=ui_keys(catalog['images']) | nearest_keys(catalog['images'],args.nearest)
     # Menus and the first room are useful for early visual checks.
     def priority(key):
         sources=catalog['images'][key]['sources']

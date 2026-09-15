@@ -2,7 +2,7 @@
 """Run the shared UI or owned-data integration test on the generated frontend."""
 from pathlib import Path
 import argparse, re, subprocess
-p=argparse.ArgumentParser();p.add_argument('--godot',required=True);p.add_argument('--test',choices=['ui','integration','controller','idle','patches','game_files','window_close'],required=True);p.add_argument('--game-data');p.add_argument('--hd-pack');p.add_argument('--resolution',default='640x480');p.add_argument('--touch',action='store_true');p.add_argument('--patches',default='none');p.add_argument('--expect-isos',action='store_true');a=p.parse_args()
+p=argparse.ArgumentParser();p.add_argument('--godot',required=True);p.add_argument('--test',choices=['ui','integration','controller','idle','patches','game_files','window_close','hd_autodetect'],required=True);p.add_argument('--game-data');p.add_argument('--hd-pack');p.add_argument('--resolution',default='640x480');p.add_argument('--touch',action='store_true');p.add_argument('--patches',default='none');p.add_argument('--expect-isos',action='store_true');a=p.parse_args()
 root=Path(__file__).resolve().parents[1];project=root/'.build/godot4-project'
 s=(root/'tests'/f'{a.test}.gd').read_text()
 if a.test == 'game_files':
