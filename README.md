@@ -32,10 +32,79 @@ Build with the commands in [BUILDING.md](BUILDING.md), then use your two ISOs, G
 
 Use the arrow keys to move and the mouse to interact. On a handheld, use the left stick or D-pad for movement, dialogue replies and menus, then A to confirm. The right stick controls the pointer; L1 slows it, and L2/R2 cycle clickable targets. B goes back or skips speech. Start opens the menu. Controller settings lets you remap buttons and D-pad directions or restore the defaults. See [PortMaster controls](docs/PORTMASTER.md). Touchscreens support tapping, dragging and a virtual joystick. An onscreen keyboard handles text entry with touch or a controller.
 
-For a personal APK or PortMaster ZIP with your game files included, use the local Go builder in [BUILDING.md](BUILDING.md#personal-packages-with-game-files). This mode runs locally and is not part of CI. You can also generate a private [2x HD artwork pack](docs/HD.md) for rooms and interface graphics and include it in either package. See the [Android screenshot comparison](docs/HD.md#android-comparison).
+For a personal APK or PortMaster ZIP with your game files included, use the local Go builder in [BUILDING.md](BUILDING.md#personal-packages-with-game-files). This mode runs locally and is not part of CI. You can also generate a [2x HD artwork pack](docs/HD.md) for rooms and interface graphics and include it in either package.
 
 CI builds Windows x64 and ARM64 portable packages, macOS Intel and Apple Silicon apps, Linux packages, a PortMaster ZIP, and an [Android ARM64 APK](docs/ANDROID.md).
 
-Thank you to Daniel Hobi and the dreamREfactory contributors; axx-archive for the Mac port; M3tox for DFET and TAOOT mods; MRXstudios for reverse engineering; the Godot, Go, QuickJS, QuickJS-NG, FRT, PortMaster, SDL, and gptokeyb teams; Xintao Wang and the Real-ESRGAN contributors; the PyTorch, NumPy, Liberation Fonts and Pillow authors; Evan Wallace for esbuild; and the original CyberFlix team. [Credits and licenses](CREDITS.md) lists the projects and authors behind this work.
+## HD artwork
+
+The same Grand Staircase save, with original artwork and the optional FSDedither Riven pack. [Make your own pack](docs/HD.md).
+
+| Original | FSDedither Riven |
+| --- | --- |
+| <a href="docs/images/hd/boat-original.png"><img src="docs/images/hd/boat-original.png" width="480" alt="In-game: Grand Staircase: Original"></a> | <a href="docs/images/hd/boat-riven.png"><img src="docs/images/hd/boat-riven.png" width="480" alt="In-game: Grand Staircase: FSDedither Riven"></a> |
+
+<details>
+<summary>More comparisons: rooms, faces and UI</summary>
+
+### Life preserver
+
+| Original | FSDedither Riven |
+| --- | --- |
+| <a href="docs/images/hd/life-original.png"><img src="docs/images/hd/life-original.png" width="480" alt="Life preserver: Original"></a> | <a href="docs/images/hd/life-riven.png"><img src="docs/images/hd/life-riven.png" width="480" alt="Life preserver: FSDedither Riven"></a> |
+
+### Life preserver: transparent inventory sprite
+
+| Original | FSDedither Riven | Nearest-neighbor 2x |
+| --- | --- | --- |
+| <a href="docs/images/hd/life-cutout-original.png"><img src="docs/images/hd/life-cutout-original.png" width="320" alt="Original transparent life preserver"></a> | <a href="docs/images/hd/life-cutout-riven.png"><img src="docs/images/hd/life-cutout-riven.png" width="320" alt="Riven transparent life preserver"></a> | <a href="docs/images/hd/life-cutout-nearest.png"><img src="docs/images/hd/life-cutout-nearest.png" width="320" alt="Nearest-neighbor transparent life preserver"></a> |
+
+[In-game view with the nearest-neighbor preserver and Riven scenery](docs/images/hd/boat-nearest.png).
+
+### HELP button
+
+| Original | FSDedither Riven |
+| --- | --- |
+| <a href="docs/images/hd/help-original.png"><img src="docs/images/hd/help-original.png" width="480" alt="HELP button: Original"></a> | <a href="docs/images/hd/help-riven.png"><img src="docs/images/hd/help-riven.png" width="480" alt="HELP button: FSDedither Riven"></a> |
+
+### Grand Staircase
+
+| Original | FSDedither Riven |
+| --- | --- |
+| <a href="docs/images/hd/staircase-original.png"><img src="docs/images/hd/staircase-original.png" width="480" alt="Grand Staircase: Original"></a> | <a href="docs/images/hd/staircase-riven.png"><img src="docs/images/hd/staircase-riven.png" width="480" alt="Grand Staircase: FSDedither Riven"></a> |
+
+### Penny Pringle
+
+| Original | FSDedither Riven |
+| --- | --- |
+| <a href="docs/images/hd/penny2-original.png"><img src="docs/images/hd/penny2-original.png" width="480" alt="Penny Pringle: Original"></a> | <a href="docs/images/hd/penny2-riven.png"><img src="docs/images/hd/penny2-riven.png" width="480" alt="Penny Pringle: FSDedither Riven"></a> |
+
+### Colonel Zeitel
+
+| Original | FSDedither Riven |
+| --- | --- |
+| <a href="docs/images/hd/zeit1-original.png"><img src="docs/images/hd/zeit1-original.png" width="480" alt="Colonel Zeitel: Original"></a> | <a href="docs/images/hd/zeit1-riven.png"><img src="docs/images/hd/zeit1-riven.png" width="480" alt="Colonel Zeitel: FSDedither Riven"></a> |
+
+### Jones
+
+| Original | FSDedither Riven |
+| --- | --- |
+| <a href="docs/images/hd/jones2-original.png"><img src="docs/images/hd/jones2-original.png" width="480" alt="Jones: Original"></a> | <a href="docs/images/hd/jones2-riven.png"><img src="docs/images/hd/jones2-riven.png" width="480" alt="Jones: FSDedither Riven"></a> |
+
+### Bedsit
+
+| Original | FSDedither Riven |
+| --- | --- |
+| <a href="docs/images/hd/cabin-original.png"><img src="docs/images/hd/cabin-original.png" width="480" alt="Bedsit: Original"></a> | <a href="docs/images/hd/cabin-riven.png"><img src="docs/images/hd/cabin-riven.png" width="480" alt="Bedsit: FSDedither Riven"></a> |
+
+### Cipher puzzle
+
+| Original | FSDedither Riven |
+| --- | --- |
+| <a href="docs/images/hd/cipher-original.png"><img src="docs/images/hd/cipher-original.png" width="480" alt="Cipher puzzle: Original"></a> | <a href="docs/images/hd/cipher-riven.png"><img src="docs/images/hd/cipher-riven.png" width="480" alt="Cipher puzzle: FSDedither Riven"></a> |
+
+</details>
+
+Thank you to Daniel Hobi and the dreamREfactory contributors; axx-archive for the Mac port; M3tox for DFET and TAOOT mods; MRXstudios for reverse engineering; the Godot, Go, QuickJS, QuickJS-NG, FRT, PortMaster, SDL, and gptokeyb teams; Jacob for FSDedither Riven; Xintao Wang and the Real-ESRGAN and BasicSR contributors; the PyTorch, NumPy, Liberation Fonts and Pillow authors; Evan Wallace for esbuild; and the original CyberFlix team. [Credits and licenses](CREDITS.md) lists the projects and authors behind this work.
 
 Source: GPL-3.0. Public builds do not include the full game. Patch files remain credited to M3tox and their respective rights holders.

@@ -49,7 +49,7 @@ go run ./cmd/personal-build --target android --base dist/titanic-android-arm64-r
 
 Android needs Java 17 and Android SDK Build Tools 35 or newer. The tool aligns and signs the APK with the shared debug key, preserving `cat.kenny.taoot`. Release code and debug-key signing are separate choices. An existing `titanic-android-arm64-debug.apk` also works as a base. Add `--strip-tool /path/to/llvm-strip` to either command to remove native debug symbols while keeping the exports needed by Godot and Go. The NDK includes this tool.
 
-Install the APK normally, or extract the ZIP into the handheld's ports folder. Android reads its bundled assets directly without an import or a second extracted copy. PortMaster reads the included game folder with its usual FRT 3.5.2 runtime. Saves still live outside the game assets. Keep these packages private; the filenames above are ignored by Git, and this mode is not part of any GitHub workflow.
+Install the APK normally, or extract the ZIP into the handheld's ports folder. Android reads its bundled assets directly without an import or a second extracted copy. PortMaster reads the included game folder with its usual FRT 3.5.2 runtime. Saves still live outside the game assets. The filenames above are ignored by Git, and this mode is not part of any GitHub workflow.
 
 ## Smaller Android release builds
 
@@ -71,18 +71,20 @@ The release template keeps GDScript, fonts, text shaping, and the Titanic bridge
 
 See [the HD guide](docs/HD.md) for a step-by-step walkthrough, previews and installation.
 
-The optional 2x pack uses Real-ESRGAN on your computer. The game only loads the finished images, so the Android device does not run an AI model. Export your own rooms, sprites, puzzle screens and interface artwork, then upscale them:
+The optional 2x pack uses FSDedither Riven on your computer. The game only loads the finished images, so the Android device does not run an AI model. Export your own rooms, sprites, puzzle screens and interface artwork, then upscale them:
 
 ```
 python3 -m venv .tools/hd-venv
 .tools/hd-venv/bin/pip install numpy==2.2.6 Pillow==11.3.0
 .tools/hd-venv/bin/pip install torch==2.8.0 --index-url https://download.pytorch.org/whl/cpu
-go run ./cmd/hd-pack --game-data originalgame --output .build/hd-personal --mods godot/patches/files
+go run ./cmd/hd-pack --game-data originalgame --output .build/hd-personal --mods godot/patches/files --characters
 .tools/hd-venv/bin/python tools/upscale-hd.py --input .build/hd-personal --output .build/hd-personal/pack
 ```
 
-Prepare the pinned patches with `python3 tools/fetch-patches.py` before exporting if you want their artwork included. The upscaler downloads checksum-verified Real-ESRGAN weights. It uses CPU workers and can take hours; adjust `--workers` and `--threads` to suit your computer. Run the same command again to resume. Add `--resume` to the Go export command to reuse existing images and rebuild its inventory with the selected options. The default pack includes the sharp room views used by the player, omitting their unused soft counterparts. Cinematics and navigation motion keep their original artwork; `--motion` also exports navigation frames and makes a much larger pack. Dialogue video and special effects retain the original rendering. Godot menus and text already render at the display resolution.
+Prepare the pinned patches with `python3 tools/fetch-patches.py` before exporting if you want their artwork included. The upscaler downloads checksum-verified FSDedither Riven weights. Use `--model compact` to reproduce the first HD pack. It uses CPU workers and can take hours; adjust `--workers` and `--threads` to suit your computer. Run the same command again to resume. Add `--resume` to the Go export command to reuse existing images and rebuild its inventory with the selected options. The default pack includes the sharp room views used by the player, omitting their unused soft counterparts. Cinematics and navigation motion keep their original artwork; `--motion` also exports navigation frames and makes a much larger pack. Add `--characters` to export complete dialogue character poses, including their mouth and eye animation. Cinematic video and special effects retain the original rendering. Godot menus and text already render at the display resolution.
 
-Add the pack to either personal build command with `--hd-pack .build/hd-personal/pack`. The base player must support HD packs. The upscaler keeps the smaller of lossless WebP and PNG for each image. The builder checks image sizes and checksums, then includes the pack alongside the game files and patches. Keep the resulting APK or ZIP private.
+Add the pack to either personal build command with `--hd-pack .build/hd-personal/pack`. The base player must support HD packs. The upscaler keeps the smaller of lossless WebP and PNG for each image. The builder checks image sizes and checksums, then includes the pack alongside the game files and patches.
+
+Use `--nearest '*/house.shp:life/*'` on the upscale command to use exact nearest-neighbor 2x for the life preserver variants while keeping Riven for other images. Repeat the option for more `file:name` patterns or source image hashes from `catalog.json`. Changing these selections regenerates only affected images. See the [HD guide](docs/HD.md#keep-selected-assets-pixel-exact).
 
 For an unbundled player, put the pack in an `hdpack` folder beside the executable, or inside `titanic` on PortMaster. Game files settings lets you switch HD artwork on or off for the next start. Saves, click targets and the original game files stay unchanged. Unmatched images use the original artwork, including when a custom gamma setting changes the palette.

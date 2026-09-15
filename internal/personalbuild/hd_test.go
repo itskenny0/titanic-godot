@@ -104,6 +104,56 @@ func TestPersonalHDRejectsOldPlayer(t *testing.T) {
 	}
 }
 
+func TestPersonalCharacterPackRequiresCharacterSupport(t *testing.T) {
+	root, _ := personalHDFixture(t)
+	path := filepath.Join(root, "manifest.json")
+	data, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var m hdpack.Manifest
+	if err = json.Unmarshal(data, &m); err != nil {
+		t.Fatal(err)
+	}
+	m.Characters = true
+	data, _ = json.Marshal(m)
+	if err = os.WriteFile(path, data, 0600); err != nil {
+		t.Fatal(err)
+	}
+	for _, target := range []string{"android", "portmaster"} {
+		for _, supported := range []bool{false, true} {
+			basePath := filepath.Join(t.TempDir(), "base.zip")
+			f, err := os.Create(basePath)
+			if err != nil {
+				t.Fatal(err)
+			}
+			z := zip.NewWriter(f)
+			marker := "titanic/hdpack-support.json"
+			if target == "android" {
+				marker = "assets/hdpack-support.json"
+			}
+			w, err := z.Create(marker)
+			if err != nil {
+				t.Fatal(err)
+			}
+			fmt.Fprintf(w, `{"version":1,"scale":2,"characters":%t}`, supported)
+			if err = z.Close(); err != nil {
+				t.Fatal(err)
+			}
+			f.Close()
+			base, err := zip.OpenReader(basePath)
+			if err != nil {
+				t.Fatal(err)
+			}
+			err = validateHDPlayer(base, target, root)
+			base.Close()
+			if supported && err != nil || !supported && (err == nil || !strings.Contains(err.Error(), "does not support HD characters")) {
+				t.Fatalf("%s support=%t: %v", target, supported, err)
+			}
+		}
+	}
+}
+
 func TestPersonalHDPreservesGameAndPatches(t *testing.T) {
 	o, _ := fixture(t)
 	o.HDPack, _ = personalHDFixture(t)

@@ -75,9 +75,7 @@ func (d *ScreenDirector) CompositePuppetScreen() error {
 		return err
 	}
 	screen.FrameValid = true
-	if screen.HD != nil {
-		screen.HD.Valid = false
-	} // Puppet composition writes the logical screen directly.
+	d.PuppetView.CompositeHD(screen.HD, screen.Frame)
 	return nil
 }
 func (d *ScreenDirector) paint(ctx *DrawContext) error {

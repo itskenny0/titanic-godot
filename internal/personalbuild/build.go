@@ -465,6 +465,11 @@ func build(options Options, patchManifest patches.Manifest) error {
 			return fmt.Errorf("base is not a native Go %s package: missing %s", options.Target, name)
 		}
 	}
+	if options.HDPack != "" {
+		if err := validateHDPlayer(base, options.Target, options.HDPack); err != nil {
+			return err
+		}
+	}
 	if options.StripTool != "" {
 		if _, err := exec.LookPath(options.StripTool); err != nil {
 			return err

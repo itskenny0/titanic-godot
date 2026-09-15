@@ -39,6 +39,32 @@ func (s *HDSurface) lookup(src []byte, w, h int) *image.NRGBA {
 	}
 	return img
 }
+
+// MaskedArtwork replaces a complete character pose over the logical fallback.
+// Original alpha and subtitle boundaries remain authoritative.
+func (s *HDSurface) MaskedArtwork(source *image.NRGBA, clipY int) {
+	if !s.Valid || source == nil {
+		return
+	}
+	w, h := source.Rect.Dx(), source.Rect.Dy()
+	img := s.lookup(source.Pix, w, h)
+	if img == nil {
+		return
+	}
+	x0, y0 := max(0, source.Rect.Min.X)*2, max(0, source.Rect.Min.Y)*2
+	x1, y1 := min(s.Width, source.Rect.Max.X)*2, min(s.Height, clipY, source.Rect.Max.Y)*2
+	for y := y0; y < y1; y++ {
+		for x := x0; x < x1; x++ {
+			sx, sy := x-source.Rect.Min.X*2, y-source.Rect.Min.Y*2
+			if source.Pix[(sy/2)*source.Stride+(sx/2)*4+3] == 0 {
+				continue
+			}
+			from, to := sy*img.Stride+sx*4, (y*s.Width*2+x)*4
+			copy(s.Pixels[to:to+3], img.Pix[from:from+3])
+			s.Pixels[to+3] = 255
+		}
+	}
+}
 func (s *HDSurface) Blit(src []byte, w, h, x, y int) {
 	if !s.Valid || w <= 0 || h <= 0 || len(src) < w*h*4 {
 		return

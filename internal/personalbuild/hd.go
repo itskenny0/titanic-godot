@@ -4,7 +4,9 @@ import (
 	"archive/zip"
 	"bytes"
 	"crypto/sha256"
+	"encoding/json"
 	"fmt"
+	"io"
 	"os"
 	"path/filepath"
 	"sort"
@@ -12,6 +14,52 @@ import (
 
 	"github.com/itskenny0/titanic-godot/internal/hdpack"
 )
+
+func validateHDPlayer(base *zip.ReadCloser, target, root string) error {
+	path, err := resolve(root, "manifest.json")
+	if err != nil {
+		return err
+	}
+	f, err := os.Open(path)
+	if err != nil {
+		return err
+	}
+	defer f.Close()
+	data, err := io.ReadAll(io.LimitReader(f, (16<<20)+1))
+	if err != nil {
+		return err
+	}
+	if len(data) > 16<<20 {
+		return fmt.Errorf("HD manifest too large")
+	}
+	m, err := hdpack.Parse(data)
+	if err != nil || !m.Characters {
+		return err
+	}
+	marker := "titanic/hdpack-support.json"
+	if target == "android" {
+		marker = "assets/hdpack-support.json"
+	}
+	for _, entry := range base.File {
+		if entry.Name != marker {
+			continue
+		}
+		r, err := entry.Open()
+		if err != nil {
+			return err
+		}
+		var support struct {
+			Characters bool `json:"characters"`
+		}
+		err = json.NewDecoder(io.LimitReader(r, 4096)).Decode(&support)
+		r.Close()
+		if err == nil && support.Characters {
+			return nil
+		}
+		break
+	}
+	return fmt.Errorf("base player does not support HD characters; build a newer base player")
+}
 
 func hdInventory(root string) ([]asset, error) {
 	path, err := resolve(root, "manifest.json")

@@ -11,7 +11,7 @@ stage.mkdir(parents=True)
 dist=ROOT/'dist';dist.mkdir(exist_ok=True)
 def licenses(dest):
  dest.mkdir(parents=True,exist_ok=True)
- for name,src in {'COPYING':ROOT/'LICENSE','CREDITS.md':ROOT/'CREDITS.md','dreamREfactory.txt':ROOT/'vendor/dreamrefactory/LICENSE','Go.txt':ROOT/'packaging/Go-LICENSE.txt','FRT.txt':ROOT/'packaging/FRT-LICENSE.txt','Real-ESRGAN.txt':ROOT/'packaging/Real-ESRGAN-LICENSE.txt','Godot-headers.txt':ROOT/'vendor/godot-headers/LICENSE.md','Liberation-fonts.txt':ROOT/'godot/fonts/LICENSE.txt'}.items():shutil.copy2(src,dest/name)
+ for name,src in {'COPYING':ROOT/'LICENSE','CREDITS.md':ROOT/'CREDITS.md','dreamREfactory.txt':ROOT/'vendor/dreamrefactory/LICENSE','Go.txt':ROOT/'packaging/Go-LICENSE.txt','FRT.txt':ROOT/'packaging/FRT-LICENSE.txt','Real-ESRGAN.txt':ROOT/'packaging/Real-ESRGAN-LICENSE.txt','BasicSR.txt':ROOT/'packaging/BasicSR-LICENSE.txt','Godot-headers.txt':ROOT/'vendor/godot-headers/LICENSE.md','Liberation-fonts.txt':ROOT/'godot/fonts/LICENSE.txt'}.items():shutil.copy2(src,dest/name)
  major='4' if a.kind=='windows' and a.arch=='arm64' else '3'
  godot=ROOT/'.build'/f'godot{major}-{a.kind}-{a.arch}'
  if not godot.exists():godot=ROOT/'.build'/('godot'+major)

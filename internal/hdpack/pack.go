@@ -28,10 +28,11 @@ type Entry struct {
 	SHA256 string `json:"sha256"`
 }
 type Manifest struct {
-	Version int              `json:"version"`
-	Scale   int              `json:"scale"`
-	Model   string           `json:"model"`
-	Images  map[string]Entry `json:"images"`
+	Version    int              `json:"version"`
+	Scale      int              `json:"scale"`
+	Characters bool             `json:"characters,omitempty"`
+	Model      string           `json:"model"`
+	Images     map[string]Entry `json:"images"`
 }
 
 // Key uses the exact displayed source pixels, including palette and alpha.

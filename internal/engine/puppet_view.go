@@ -3,6 +3,7 @@ package engine
 import (
 	"encoding/binary"
 	"fmt"
+	"image"
 	"strconv"
 	"strings"
 
@@ -21,10 +22,14 @@ type puppetFrameKey struct {
 	loc  int
 }
 type PuppetView struct {
-	Session *Session
-	Gamma   *ScreenGamma
-	frames  map[puppetFrameKey]*df.Sprite
-	image   struct {
+	Session   *Session
+	Gamma     *ScreenGamma
+	frames    map[puppetFrameKey]*df.Sprite
+	character struct {
+		key string
+		art *image.NRGBA
+	}
+	image struct {
 		key                   string
 		rgba, pixels, palette []byte
 	}
@@ -115,6 +120,7 @@ func (v *PuppetView) Composite(dest []byte, backdrop *PuppetBackdrop) error {
 				key.WriteByte(',')
 			}
 			key.WriteString(strconv.Itoa(l.Frame))
+			fmt.Fprintf(&key, "/%d/%d", l.X, l.Y)
 		}
 	}
 	var pixels, palette []byte

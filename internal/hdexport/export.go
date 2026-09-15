@@ -4,6 +4,7 @@ package hdexport
 
 import (
 	"bytes"
+	"encoding/binary"
 	"encoding/json"
 	"fmt"
 	"image"
@@ -36,6 +37,7 @@ type Catalog struct {
 type Exporter struct {
 	Root          string
 	Motion        bool
+	Characters    bool
 	StagePalettes map[string][]byte
 	Catalog       Catalog
 	gamma         *engine.ScreenGamma
@@ -68,6 +70,10 @@ func (e *Exporter) image(pixels, opaque, palette []byte, w, h int, source Source
 			}
 		}
 	}
+	return e.rgba(rgba, w, h, source)
+}
+
+func (e *Exporter) rgba(rgba []byte, w, h int, source Source) error {
 	key := hdpack.Key(w, h, rgba)
 	if prior := e.Catalog.Images[key]; prior != nil {
 		for _, existing := range prior.Sources {
@@ -117,6 +123,47 @@ func (e *Exporter) image(pixels, opaque, palette []byte, w, h int, source Source
 }
 func (e *Exporter) Add(name string, data []byte) error {
 	switch strings.ToLower(filepath.Ext(name)) {
+	case ".pup":
+		if !e.Characters {
+			return nil
+		}
+		pup, err := df.ReadPuppet(data)
+		if err != nil {
+			return err
+		}
+		palette := e.gamma.DisplayPalette(df.PaletteRGBA(pup.PaletteRaw, 256, binary.LittleEndian))
+		frames := map[int]*df.Sprite{}
+		readFrame := func(loc int) (*df.Sprite, error) {
+			if f := frames[loc]; f != nil {
+				return f, nil
+			}
+			f, err := df.DecodeSprite(pup.File.Data(loc))
+			if err != nil {
+				return nil, err
+			}
+			frames[loc] = &f
+			return &f, nil
+		}
+		seen := map[string]bool{}
+		for _, ident := range pup.DialogueOrder {
+			line := pup.Dialogue[ident]
+			for i, pose := range pup.AnimLogic(line.AnimLogicLocation) {
+				key := engine.PuppetPoseKey(line.Stance, &pose)
+				if seen[key] {
+					continue
+				}
+				seen[key] = true
+				art, err := engine.PuppetArtwork(pup, line.Stance, &pose, palette, readFrame)
+				if err != nil {
+					return err
+				}
+				if art != nil {
+					if err = e.rgba(art.Pix, art.Rect.Dx(), art.Rect.Dy(), Source{name, "character", fmt.Sprintf("%s/frame%d", ident, i)}); err != nil {
+						return err
+					}
+				}
+			}
+		}
 	case ".set":
 		set, err := df.ReadSet(data)
 		if err != nil {
@@ -257,7 +304,7 @@ func (e *Exporter) Finish() error {
 	}
 	return os.WriteFile(filepath.Join(e.Root, "catalog.json"), append(b, '\n'), 0600)
 }
-func Export(game, manifest, out, mods string, motion, resume bool) error {
+func Export(game, manifest, out, mods string, motion, resume, characters bool) error {
 	sources, err := personalbuild.GameSources(game, manifest)
 	if err != nil {
 		return err
@@ -283,6 +330,7 @@ func Export(game, manifest, out, mods string, motion, resume bool) error {
 			return err
 		}
 	}
+	e.Characters = characters
 	e.StagePalettes = map[string][]byte{}
 	for _, source := range sources {
 		if strings.EqualFold(filepath.Ext(source.Name), ".stg") {
@@ -300,7 +348,7 @@ func Export(game, manifest, out, mods string, motion, resume bool) error {
 	}
 	for _, s := range sources {
 		ext := strings.ToLower(filepath.Ext(s.Name))
-		if ext != ".set" && ext != ".stg" && ext != ".shp" && ext != ".mov" {
+		if ext != ".set" && ext != ".stg" && ext != ".shp" && ext != ".mov" && !(characters && ext == ".pup") {
 			continue
 		}
 		fmt.Println("Exporting", s.Name)
@@ -324,7 +372,7 @@ func Export(game, manifest, out, mods string, motion, resume bool) error {
 				return nil
 			}
 			ext := strings.ToLower(filepath.Ext(p))
-			if ext != ".set" && ext != ".stg" && ext != ".shp" && ext != ".mov" {
+			if ext != ".set" && ext != ".stg" && ext != ".shp" && ext != ".mov" && !(characters && ext == ".pup") {
 				return nil
 			}
 			data, err := os.ReadFile(p)
@@ -338,6 +386,6 @@ func Export(game, manifest, out, mods string, motion, resume bool) error {
 			return err
 		}
 	}
-	fmt.Printf("Exported %d unique room and interface images. Keep these files private.\n", len(e.Catalog.Images))
+	fmt.Printf("Exported %d unique artwork images.\n", len(e.Catalog.Images))
 	return e.Finish()
 }
