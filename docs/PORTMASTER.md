@@ -1,6 +1,16 @@
 # PortMaster
 
-Extract `titanic-portmaster.zip` into your ports folder. Put both CD ISOs inside `ports/titanic`, in its `gamedata` folder, or beside `Titanic.sh`. Their filenames must contain `cd1` and `cd2` (case-insensitive), with an `.iso` extension. FRT reads them directly without mounting or extraction. GOG/Steam game files with their `LOCAL` folder and extracted `cd1` and `cd2` folders also work in `gamedata`. The ZIP contains the Godot pack, ARM libraries, and a first-start patch chooser. Download or import the M3tox 1.0.3 FULL ZIP there. Personal packages include the patches. The full game is not included. PortMaster downloads the shared `frt_3.5.2.squashfs` runtime.
+Extract `titanic-portmaster.zip` into your ports folder. Put both CD ISOs inside `ports/titanic`, in its `gamedata` folder, or beside `Titanic.sh`. Their filenames must contain `cd1` and `cd2` (case-insensitive), with an `.iso` extension. FRT reads them directly without mounting or extraction. GOG/Steam game files with their `LOCAL` folder and extracted `cd1` and `cd2` folders also work in `gamedata`. The ZIP contains the Godot pack, ARM libraries, and a first-start patch chooser. Download or import the M3tox 1.0.3 FULL ZIP there. Personal packages include the patches. The full game is not included. The ZIP includes Godot/FRT 3.5.2 for ARM64 and armhf. The console does not need to download a runtime.
+
+## Installing patches without internet
+
+1. On a computer, download M3tox's [TAOOT 1.0.3 FULL patch ZIP](https://github.com/M3tox/TAOOT/releases/download/v1.0.3/TAOOTpatch1.03.FULL.zip).
+2. Copy `TAOOTpatch1.03.FULL.zip` to `ports/titanic` on the console's SD card. Keep it zipped.
+3. Start Titanic. In the first-start patch selector, choose **Choose patch ZIP** and select that file. For an existing setup, press Start, open **Game files / mods**, then **M3tox patches**.
+4. Wait for the import to finish, then choose the fixes you want. **All** includes the sharper navigation patches. Choose **Continue** on first start, or **Apply and restart** in an existing setup. Save your game before changing patches during play.
+
+The player checks the archive and installs the patches locally. After a successful import, you can delete the copied ZIP to recover space. Your choices and installed patches remain on the console. A personal package already includes these patches, so it only needs the selection step. PortMaster itself must already be installed.
+
 
 For Steam/GOG, the expected path is `ports/titanic/gamedata/LOCAL/BOOTFILE`. The launcher prefers lowercase `titanic` and `gamedata`, but accepts other capitalization when those names are absent.
 

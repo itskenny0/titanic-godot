@@ -21,7 +21,7 @@ import (
 )
 
 type Options struct {
-	Target, Base, GameData, Output, Manifest, BuildTools, Keystore, StripTool, PatchArchive string
+	Target, Base, GameData, Output, Manifest, BuildTools, Keystore, StripTool, PatchArchive, HDPack string
 }
 
 type asset struct {
@@ -448,6 +448,18 @@ func build(options Options, patchManifest patches.Manifest) error {
 	if options.Target == "android" {
 		required = []string{"AndroidManifest.xml", "assets/_cl_", "assets/required_files.json", "lib/arm64-v8a/libtitanic_go.so"}
 	}
+	if options.HDPack != "" {
+		marker := "titanic/hdpack-support.json"
+		if options.Target == "android" {
+			marker = "assets/hdpack-support.json"
+		}
+		required = append(required, marker)
+		for name := range entries {
+			if strings.Contains(name, "/hdpack/") {
+				return fmt.Errorf("base already contains an HD pack")
+			}
+		}
+	}
 	for _, name := range required {
 		if !entries[name] {
 			return fmt.Errorf("base is not a native Go %s package: missing %s", options.Target, name)
@@ -511,8 +523,20 @@ func build(options Options, patchManifest patches.Manifest) error {
 	if closeErr != nil {
 		return closeErr
 	}
+	if options.HDPack != "" {
+		if err := bundleHD(unsigned, options.Target, options.HDPack); err != nil {
+			return fmt.Errorf("bundling HD pack: %w", err)
+		}
+	}
 	result := unsigned
 	if options.Target == "android" {
+		info, err := os.Stat(unsigned)
+		if err != nil {
+			return err
+		}
+		if info.Size() >= 1<<32 {
+			return fmt.Errorf("personal APK exceeds Android's 4 GiB ZIP limit; use a smaller HD pack")
+		}
 		aligned, signed := filepath.Join(stage, "aligned.apk"), filepath.Join(stage, "signed.apk")
 		if err := runTool(zipalign, "-P", "16", "-f", "4", unsigned, aligned); err != nil {
 			return err

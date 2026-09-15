@@ -46,6 +46,10 @@ func step():
 			if phase == 0:
 				if s.get("movie", "") == "playmode.mov":
 					print("MAIN MENU: ", JSON.print(s.regions))
+					if "--expect-hd" in OS.get_cmdline_args():
+						if s.get("hd_hits", 0) == 0 or player.frame_image.get_width() != 1024:
+							failure = true
+							print("FAIL: main menu must use HD artwork")
 					player.send({"action": "pointer", "kind": "press", "x": 266, "y": 254})
 					player.send({"action": "pointer", "kind": "release", "x": 266, "y": 254})
 					phase = 1
@@ -83,6 +87,10 @@ func step():
 					if value != "saved correctly":
 						failure = true
 					print("RESTORED: ", JSON.print(s), " sentinel=", value)
+					if "--expect-hd" in OS.get_cmdline_args():
+						if s.get("hd_hits", 0) == 0 or player.frame_image.get_width() != 1024:
+							failure = true
+							print("FAIL: restored room must use HD artwork")
 					player.frame_image.save_png("user://integration.png")
 					test_command({"op": "fail_tick"})
 					player._process(0.05)

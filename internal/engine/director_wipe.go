@@ -8,6 +8,10 @@ func (d *ScreenDirector) pushTurn(dir string) {
 	if from == nil || to == nil || from.Width != screen.Width || from.Height != screen.Height || to.Width != from.Width || to.Height != from.Height {
 		return
 	}
+	// Turning wipes compose saved logical frames directly.
+	if screen.HD != nil {
+		screen.HD.Valid = false
+	}
 	width, height := from.Width, from.Height
 	travel := math.Max(1, jsRound(float64(float64(width)*w.Span)))
 	per := math.Floor(travel/math.Max(1, w.Steps)) + 1

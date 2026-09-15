@@ -75,6 +75,9 @@ func (d *ScreenDirector) CompositePuppetScreen() error {
 		return err
 	}
 	screen.FrameValid = true
+	if screen.HD != nil {
+		screen.HD.Valid = false
+	} // Puppet composition writes the logical screen directly.
 	return nil
 }
 func (d *ScreenDirector) paint(ctx *DrawContext) error {
@@ -225,6 +228,9 @@ func (d *ScreenDirector) compositeXRay(pal []byte) error {
 	if xr == nil || !xr.Aimed {
 		return nil
 	}
+	if d.Screen.HD != nil {
+		d.Screen.HD.Valid = false
+	}
 	hidden := d.Session.StageCtrl.FlatImage(xr.Hidden)
 	mask := d.Session.Props.Get(xr.Mask)
 	if hidden == nil || mask == nil {
@@ -278,10 +284,10 @@ func (d *ScreenDirector) compositeWorld(data, palette []byte, cam *WorldCamera) 
 		}
 		jobs := []job{}
 		for _, e := range s.Actors.DrawList(*cam) {
-			jobs = append(jobs, job{e.Proj.Depth, func() error { return s.Actors.CompositeOne(e, data, w, h, palette, *cam, occ) }})
+			jobs = append(jobs, job{e.Proj.Depth, func() error { return s.Actors.CompositeOne(e, data, w, h, palette, *cam, occ, d.Screen.HD) }})
 		}
 		for _, e := range s.Props.WorldDrawList(*cam) {
-			jobs = append(jobs, job{e.Proj.Depth, func() error { return s.Props.CompositeWorldOne(e, data, w, h, palette, *cam, occ) }})
+			jobs = append(jobs, job{e.Proj.Depth, func() error { return s.Props.CompositeWorldOne(e, data, w, h, palette, *cam, occ, d.Screen.HD) }})
 		}
 		sort.SliceStable(jobs, func(i, j int) bool { return jobs[i].depth > jobs[j].depth })
 		for _, j := range jobs {
@@ -289,18 +295,18 @@ func (d *ScreenDirector) compositeWorld(data, palette []byte, cam *WorldCamera) 
 				return err
 			}
 		}
-		if err := s.Actors.CompositeScreen(data, w, h, palette); err != nil {
+		if err := s.Actors.CompositeScreen(data, w, h, palette, d.Screen.HD); err != nil {
 			return err
 		}
-		return s.Props.Composite(data, w, h, palette, math.Inf(-1), nil, animating || s.ViewShowing(), occ)
+		return s.Props.Composite(data, w, h, palette, math.Inf(-1), nil, animating || s.ViewShowing(), occ, d.Screen.HD)
 	}
 	if cam != nil {
-		if err := s.Actors.Composite(data, w, h, palette, *cam, occ); err != nil {
+		if err := s.Actors.Composite(data, w, h, palette, *cam, occ, d.Screen.HD); err != nil {
 			return err
 		}
 	}
-	if err := s.Actors.CompositeScreen(data, w, h, palette); err != nil {
+	if err := s.Actors.CompositeScreen(data, w, h, palette, d.Screen.HD); err != nil {
 		return err
 	}
-	return s.Props.Composite(data, w, h, palette, math.Inf(-1), cam, animating || s.ViewShowing(), occ)
+	return s.Props.Composite(data, w, h, palette, math.Inf(-1), cam, animating || s.ViewShowing(), occ, d.Screen.HD)
 }

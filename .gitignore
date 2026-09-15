@@ -28,3 +28,8 @@ godot/notices/
 *.zip
 *.[iI][sS][oO]
 /.titanic-personal-*/
+
+# Locally generated artwork derived from owned game data.
+/hdpack/
+/hd-work/
+godot/hdpack/

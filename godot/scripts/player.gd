@@ -7,6 +7,7 @@ var files = GameFiles.new()
 var saves = SaveStore.new()
 var config = ConfigFile.new()
 var game_index = {}
+var hd_pack_path = ""
 var game_origin = Vector2.ZERO
 var layout_size = Vector2(512, 384)
 var frame_image = Image.new()
@@ -216,18 +217,42 @@ func start_runtime(save_path = ""):
 	queued_dialogs.clear()
 	current_dialog = -1
 	close_modal()
+	hd_pack_path = find_hd_pack()
 	runtime = create_runtime()
 	if runtime == null:
 		return
 	var error = ""
 	runtime.execute("profile", JSON.print({"on": OS.is_debug_build()}))
-	error = runtime.execute("boot", JSON.print({"index": game_index, "save": save_path, "testing": "--integration-test" in OS.get_cmdline_args()}))
+	error = runtime.execute("boot", JSON.print({"index": game_index, "save": save_path, "hd_pack": hd_pack_path if config.get_value("graphics", "hd_enabled", true) else "", "testing": "--integration-test" in OS.get_cmdline_args()}))
 	if not error.empty():
 		show_note(error)
 		return
 	status.show()
 	status.text = "Preparing your voyage…"
 	save_reminder_pending = save_path.empty() and not config.get_value("tips", "save_reminder_seen", false)
+
+func find_hd_pack():
+	var base = OS.get_executable_path().get_base_dir()
+	var candidates = ["res://hdpack", "user://hdpack", base.plus_file("hdpack")]
+	var game_dir = OS.get_environment("RETANIC_GAME_DIR")
+	if not game_dir.empty():
+		candidates.append(game_dir.plus_file("hdpack"))
+	if OS.get_name() in ["OSX", "macOS"]:
+		candidates.append(base.get_base_dir().get_base_dir().get_base_dir().plus_file("hdpack"))
+	for arg in OS.get_cmdline_args():
+		if arg.begins_with("--hd-pack="):
+			return arg.substr(10)
+	for candidate in candidates:
+		if File.new().file_exists(candidate.plus_file("manifest.json")):
+			return candidate
+	return ""
+
+func toggle_hd_artwork():
+	var enabled = not config.get_value("graphics", "hd_enabled", true)
+	config.set_value("graphics", "hd_enabled", enabled)
+	config.save("user://settings.cfg")
+	# Apply on next startup; preserve unsaved progress in the running game.
+	show_setup()
 
 func show_save_reminder():
 	save_reminder_pending = false
@@ -402,9 +427,11 @@ func _process(delta):
 				show_note("The game stopped. Open Menu to load a saved game.\n\n" + error.split("\n")[0])
 			return
 		var bytes = runtime.buffer("frame")
-		if bytes.size() == 512 * 384 * 4:
-			frame_image.create_from_data(512, 384, false, Image.FORMAT_RGBA8, bytes)
-			if not has_frame:
+		if bytes.size() == 512 * 384 * 4 or bytes.size() == 1024 * 768 * 4:
+			var scale = 2 if bytes.size() == 1024 * 768 * 4 else 1
+			var resized = not has_frame or frame_image.get_width() != 512 * scale
+			frame_image.create_from_data(512 * scale, 384 * scale, false, Image.FORMAT_RGBA8, bytes)
+			if resized:
 				frame_texture.create_from_image(frame_image, 0)
 				has_frame = true
 			else:
@@ -1153,6 +1180,8 @@ func show_setup():
 	button(box, "Choose game folder", "choose_data", [0]).grab_focus()
 	button(box, "Choose discs separately", "choose_data", [1])
 	button(box, "M3tox patches", "show_patch_picker", [false])
+	if not hd_pack_path.empty():
+		button(box, "HD artwork: %s (next start)" % ("On" if config.get_value("graphics", "hd_enabled", true) else "Off"), "toggle_hd_artwork")
 	button(box, "Choose external mod folder", "choose_mods")
 	button(box, "Disable external mods", "disable_mods")
 	button(box, "Back", "leave_setup")

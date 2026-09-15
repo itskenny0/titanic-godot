@@ -8,6 +8,7 @@ const repaintEvery = 60
 
 type ScreenRect struct{ X, Y, W, H float64 }
 type ScreenPresenter struct {
+	HD             *HDSurface
 	Width, Height  int
 	Frame          []byte
 	FrameValid     bool
@@ -28,6 +29,9 @@ func (s *ScreenPresenter) ScratchFor(n int) []byte {
 	return s.scratch
 }
 func (s *ScreenPresenter) ClearFrame() {
+	if s.HD != nil {
+		s.HD.Clear()
+	}
 	clear(s.Frame)
 	for i := 3; i < len(s.Frame); i += 4 {
 		s.Frame[i] = 255
@@ -52,6 +56,9 @@ func (s *ScreenPresenter) ShouldPaint(sig *DrawSignature) bool {
 	return true
 }
 func (s *ScreenPresenter) BlitAt(src []byte, w, h, x, y int) {
+	if s.HD != nil {
+		s.HD.Blit(src, w, h, x, y)
+	}
 	x0, y0 := max(0, x), max(0, y)
 	x1, y1 := min(s.Width, x+w), min(s.Height, y+h)
 	if x1 <= x0 || y1 <= y0 {

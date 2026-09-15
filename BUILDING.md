@@ -19,6 +19,8 @@ xvfb-run -a python3 tools/export-pack.py --godot /path/to/godot3 --output dist/t
 python3 tools/package.py linux --arch x86_64 --binary dist/runtime-linux-x86_64
 ```
 
+PortMaster packaging downloads and verifies the FRT runtimes pinned in `packaging/portmaster/runtime.json`, then includes both architectures in the ZIP. `python3 tools/fetch-frt.py` can populate the local cache before an offline packaging run. The launcher prefers its bundled runtime and does not download one on the console.
+
 Each desktop target gets its own Godot source directory. Do not build different platforms concurrently in the same Godot tree: generated headers are shared.
 
 Linux needs the Godot X11, OpenGL, ALSA, PulseAudio, and udev development packages. Windows cross builds use LLVM MinGW 20240619. macOS builds require Xcode command line tools; the player requires macOS 12 or later. See `.github/workflows/build.yml` for complete commands for every package, including Android and PortMaster.
@@ -64,3 +66,23 @@ XDG_CONFIG_HOME="$PWD/.build/android-editor-settings" python3 tools/export-andro
 ```
 
 The release template keeps GDScript, fonts, text shaping, and the Titanic bridge. It disables other optional modules, 3D, and Vulkan, uses size optimization and ThinLTO, and runs R8 on Java/Kotlin with keep rules for JNI and the document picker. Go builds use their normal compiler optimizations plus `-s -w` to remove symbol and debug tables. Game and patch assets make up most of the package size.
+
+## Personal HD artwork
+
+See [the HD guide](docs/HD.md) for a step-by-step walkthrough, previews and installation.
+
+The optional 2x pack uses Real-ESRGAN on your computer. The game only loads the finished images, so the Android device does not run an AI model. Export your own rooms, sprites, puzzle screens and interface artwork, then upscale them:
+
+```
+python3 -m venv .tools/hd-venv
+.tools/hd-venv/bin/pip install numpy==2.2.6 Pillow==11.3.0
+.tools/hd-venv/bin/pip install torch==2.8.0 --index-url https://download.pytorch.org/whl/cpu
+go run ./cmd/hd-pack --game-data originalgame --output .build/hd-personal --mods godot/patches/files
+.tools/hd-venv/bin/python tools/upscale-hd.py --input .build/hd-personal --output .build/hd-personal/pack
+```
+
+Prepare the pinned patches with `python3 tools/fetch-patches.py` before exporting if you want their artwork included. The upscaler downloads checksum-verified Real-ESRGAN weights. It uses CPU workers and can take hours; adjust `--workers` and `--threads` to suit your computer. Run the same command again to resume. Add `--resume` to the Go export command to reuse existing images and rebuild its inventory with the selected options. The default pack includes the sharp room views used by the player, omitting their unused soft counterparts. Cinematics and navigation motion keep their original artwork; `--motion` also exports navigation frames and makes a much larger pack. Dialogue video and special effects retain the original rendering. Godot menus and text already render at the display resolution.
+
+Add the pack to either personal build command with `--hd-pack .build/hd-personal/pack`. The base player must support HD packs. The upscaler keeps the smaller of lossless WebP and PNG for each image. The builder checks image sizes and checksums, then includes the pack alongside the game files and patches. Keep the resulting APK or ZIP private.
+
+For an unbundled player, put the pack in an `hdpack` folder beside the executable, or inside `titanic` on PortMaster. Game files settings lets you switch HD artwork on or off for the next start. Saves, click targets and the original game files stay unchanged. Unmatched images use the original artwork, including when a custom gamma setting changes the palette.

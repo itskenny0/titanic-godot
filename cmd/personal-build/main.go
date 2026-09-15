@@ -20,6 +20,7 @@ func main() {
 	flag.StringVar(&options.Keystore, "keystore", "packaging/android/debug.keystore", "shared Android debug keystore")
 	flag.StringVar(&options.StripTool, "strip-tool", "", "optional llvm-strip path to remove native debug symbols")
 	flag.StringVar(&options.PatchArchive, "patch-archive", "", "M3tox 1.0.3 FULL ZIP (downloads the pinned archive when omitted)")
+	flag.StringVar(&options.HDPack, "hd-pack", "", "optional locally generated HD pack folder")
 	flag.Parse()
 	if flag.NArg() != 0 {
 		fmt.Fprintln(os.Stderr, "unexpected positional arguments")

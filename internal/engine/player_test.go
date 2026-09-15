@@ -7,6 +7,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/itskenny0/titanic-godot/internal/df"
+	"github.com/itskenny0/titanic-godot/internal/hdpack"
 	"github.com/itskenny0/titanic-godot/internal/script"
 )
 
@@ -150,7 +152,7 @@ func TestNativePlayerIntegration(t *testing.T) {
 	p := NewPlayer(bridge)
 	defer p.Close()
 	p.Now = func() time.Time { return time.Date(2026, 9, 13, 12, 34, 56, 0, time.UTC) }
-	if err := p.Boot(PlayerConfig{Index: files.Index}); err != nil {
+	if err := p.Boot(PlayerConfig{Index: files.Index, HDPack: os.Getenv("TAOOT_HD_PACK")}); err != nil {
 		t.Fatal(err)
 	}
 	audioEnds := map[uint64]float64{}
@@ -206,6 +208,23 @@ func TestNativePlayerIntegration(t *testing.T) {
 	until("date", func() bool { return p.State()["movie"] == "datebed.mov" })
 	p.Command(PlayerCommand{Action: "key", Key: ".", Special: true})
 	until("room", func() bool { return p.State()["set"] == "bedsit1" && !p.Host.Director.InputLocked() })
+	if os.Getenv("TAOOT_HD_PACK") != "" {
+		hd := p.Host.Screen().HD
+		if hd == nil || !hd.Valid || hd.Hits == 0 {
+			d := p.Host.Director
+			if f := d.roomFrame(); f != nil {
+				rgba := make([]byte, f.Width*f.Height*4)
+				df.IndexedRGBA(f.Pixels, d.room.RoomPalette(), rgba)
+				t.Log("room key", hdpack.Key(f.Width, f.Height, rgba))
+			}
+			t.Fatal("HD pack was not used", p.State())
+		}
+		frame := p.Frame()
+		if len(frame) != 1024*768*4 {
+			t.Fatalf("HD frame has %d bytes", len(frame))
+		}
+		t.Logf("HD replacements used: %d", hd.Hits)
+	}
 	s := p.Host.Session
 	s.Interp.Globals.Set("player_sentinel", script.Str("saved correctly"))
 	p.Command(PlayerCommand{Action: "save"})

@@ -6,6 +6,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/itskenny0/titanic-godot/internal/hdpack"
 	"github.com/itskenny0/titanic-godot/internal/save"
 )
 
@@ -18,6 +19,7 @@ type PlayerBridge interface {
 	Measure(string, string) (float64, error)
 }
 type PlayerConfig struct {
+	HDPack  string            `json:"hd_pack"`
 	Index   map[string]string `json:"index"`
 	Save    string            `json:"save"`
 	Testing bool              `json:"testing"`
@@ -115,6 +117,15 @@ func (p *Player) Boot(config PlayerConfig) error {
 	p.Testing = config.Testing
 	files := NewFiles(config.Index, p.read)
 	p.Host = NewGameHost(files, p.Audio, HostUI{Log: func(text string) { p.emit("log", map[string]any{"text": text}) }, HUD: func(text string) { p.emit("status", map[string]any{"text": text}) }, ShowStage: func() { p.emit("stage", nil) }})
+	if config.HDPack != "" {
+		pack, err := hdpack.Open(config.HDPack, p.read, func(text string) { p.emit("log", map[string]any{"text": text}) })
+		if err != nil {
+			p.emit("log", map[string]any{"text": fmt.Sprintf("HD pack unavailable: %v; using original artwork", err)})
+		} else {
+			p.Host.Screen().HD = NewHDSurface(pack, ScreenWidth, ScreenHeight)
+			p.emit("log", map[string]any{"text": fmt.Sprintf("HD pack: %d images, 2x display, 24 MiB image cache", len(pack.Manifest.Images))})
+		}
+	}
 	s := p.Host.Session
 	s.PictureMode = "sharp"
 	s.HasRealFrames = true
@@ -440,7 +451,11 @@ func (p *Player) Frame() []byte {
 		return nil
 	}
 	p.renderVersion = p.Context.Version
-	return p.Host.Screen().Frame
+	screen := p.Host.Screen()
+	if screen.HD != nil && screen.HD.Valid && screen.HD.Hits > screen.HD.FrameStartHits {
+		return screen.HD.Pixels
+	}
+	return screen.Frame
 }
 func (p *Player) Overlay() []DrawCommand {
 	if p.Context.Commands == nil {
@@ -472,5 +487,9 @@ func (p *Player) State() map[string]any {
 	for _, c := range d.Choices() {
 		choices = append(choices, map[string]any{"text": c.Text, "id": c.ID})
 	}
-	return map[string]any{"ready": p.Ready, "set": s.CurrentSetFile, "scene": s.CurrentSceneName(), "view": s.CurrentViewName(), "disc": p.Host.Files.ActiveDisc(), "movie": movie, "choices": choices, "regions": regions, "frame": s.Clock.FrameCounter, "paused": p.Paused, "inputLocked": d.InputLocked(), "viewShowing": s.ViewShowing(), "frozen": s.Clock.Frozen()}
+	hdHits := uint64(0)
+	if d.Screen.HD != nil {
+		hdHits = d.Screen.HD.Hits
+	}
+	return map[string]any{"hd_hits": hdHits, "ready": p.Ready, "set": s.CurrentSetFile, "scene": s.CurrentSceneName(), "view": s.CurrentViewName(), "disc": p.Host.Files.ActiveDisc(), "movie": movie, "choices": choices, "regions": regions, "frame": s.Clock.FrameCounter, "paused": p.Paused, "inputLocked": d.InputLocked(), "viewShowing": s.ViewShowing(), "frozen": s.Clock.Frozen()}
 }

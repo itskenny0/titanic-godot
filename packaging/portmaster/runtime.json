@@ -1,0 +1,15 @@
+{
+  "version": "3.5.2",
+  "repository": "https://github.com/PortsMaster/PortMaster-New",
+  "revision": "36d6443724dea44fe6874087eef592bea682edfe",
+  "files": {
+    "frt_3.5.2.aarch64.squashfs": {
+      "size": 12775424,
+      "sha256": "b7599230407793a5befcad6f544694f298bca61ed9c7a4f686af1ed5c430f45e"
+    },
+    "frt_3.5.2.armhf.squashfs": {
+      "size": 12808192,
+      "sha256": "8cad23906eb3b203ce8677c5c2896bd56a6360f904edbbff05b5132d969bf4d0"
+    }
+  }
+}

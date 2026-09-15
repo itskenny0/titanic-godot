@@ -208,7 +208,7 @@ func (r *ActorRuntime) ScreenDrawList() ([]*ActorInstance, error) {
 	sort.SliceStable(out, func(i, j int) bool { return out[i].Dist > out[j].Dist })
 	return out, nil
 }
-func (r *ActorRuntime) CompositeScreen(rgba []byte, w, h int, palette []byte) error {
+func (r *ActorRuntime) CompositeScreen(rgba []byte, w, h int, palette []byte, hd ...*HDSurface) error {
 	list, err := r.ScreenDrawList()
 	if err != nil {
 		return err
@@ -218,24 +218,24 @@ func (r *ActorRuntime) CompositeScreen(rgba []byte, w, h int, palette []byte) er
 		if err != nil {
 			return err
 		}
-		compositeSprite(rect, rgba, w, h, palette, w, h, nil, 0)
+		compositeSprite(rect, rgba, w, h, palette, w, h, nil, 0, hd...)
 	}
 	return nil
 }
-func (r *ActorRuntime) Composite(rgba []byte, w, h int, palette []byte, cam WorldCamera, occ *Occlusion) error {
+func (r *ActorRuntime) Composite(rgba []byte, w, h int, palette []byte, cam WorldCamera, occ *Occlusion, hd ...*HDSurface) error {
 	for _, e := range r.DrawList(cam) {
-		if err := r.CompositeOne(e, rgba, w, h, palette, cam, occ); err != nil {
+		if err := r.CompositeOne(e, rgba, w, h, palette, cam, occ, hd...); err != nil {
 			return err
 		}
 	}
 	return nil
 }
-func (r *ActorRuntime) CompositeOne(e ActorDrawEntry, rgba []byte, w, h int, palette []byte, cam WorldCamera, occ *Occlusion) error {
+func (r *ActorRuntime) CompositeOne(e ActorDrawEntry, rgba []byte, w, h int, palette []byte, cam WorldCamera, occ *Occlusion, hd ...*HDSurface) error {
 	rect, err := r.Rect(e, cam)
 	if err != nil {
 		return err
 	}
-	compositeSprite(rect, rgba, w, h, palette, cam.ClipW, cam.ClipH, occ, occlusionLevel(e.Proj.Depth, e.A.Zclip, occ))
+	compositeSprite(rect, rgba, w, h, palette, cam.ClipW, cam.ClipH, occ, occlusionLevel(e.Proj.Depth, e.A.Zclip, occ), hd...)
 	return nil
 }
 func (r *ActorRuntime) ActorAt(x, y int, cam *WorldCamera, occ *Occlusion) (*ActorInstance, error) {

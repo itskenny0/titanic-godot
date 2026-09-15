@@ -8,8 +8,8 @@ name="Pack"
 platform="%s"
 runnable=true
 export_filter="all_resources"
-include_filter="required_files.json,fonts/LICENSE.txt,patches/*,patches/files/*,notices/*"
-exclude_filter="native/*,integration.gd,*-test.gd%s"
+include_filter="required_files.json,hdpack-support.json,fonts/LICENSE.txt,patches/*,patches/files/*,notices/*"
+exclude_filter="hdpack/*,native/*,integration.gd,*-test.gd%s"
 export_path=""
 script_export_mode=0
 [preset.0.options]

@@ -329,18 +329,18 @@ func (r *PropRuntime) PropAtPoint(x, y float64, cam *WorldCamera, persistentOnly
 	}
 	return nil, nil
 }
-func (r *PropRuntime) CompositeWorldOne(e PropDrawEntry, rgba []byte, w, h int, palette []byte, cam WorldCamera, occ *Occlusion) error {
+func (r *PropRuntime) CompositeWorldOne(e PropDrawEntry, rgba []byte, w, h int, palette []byte, cam WorldCamera, occ *Occlusion, hd ...*HDSurface) error {
 	rect, err := r.WorldRect(e, cam)
 	if err != nil {
 		return err
 	}
-	compositeSprite(rect, rgba, w, h, palette, cam.ClipW, cam.ClipH, occ, occlusionLevel(e.Proj.Depth, e.P.Zclip, occ))
+	compositeSprite(rect, rgba, w, h, palette, cam.ClipW, cam.ClipH, occ, occlusionLevel(e.Proj.Depth, e.P.Zclip, occ), hd...)
 	return nil
 }
-func (r *PropRuntime) Composite(rgba []byte, w, h int, palette []byte, minAnchorY float64, cam *WorldCamera, persistentOnly bool, occ *Occlusion) error {
+func (r *PropRuntime) Composite(rgba []byte, w, h int, palette []byte, minAnchorY float64, cam *WorldCamera, persistentOnly bool, occ *Occlusion, hd ...*HDSurface) error {
 	if cam != nil {
 		for _, e := range r.WorldDrawList(*cam) {
-			if err := r.CompositeWorldOne(e, rgba, w, h, palette, *cam, occ); err != nil {
+			if err := r.CompositeWorldOne(e, rgba, w, h, palette, *cam, occ, hd...); err != nil {
 				return err
 			}
 		}
@@ -353,7 +353,7 @@ func (r *PropRuntime) Composite(rgba []byte, w, h int, palette []byte, minAnchor
 		if err != nil {
 			return err
 		}
-		compositeSprite(rect, rgba, w, h, palette, w, h, nil, 0)
+		compositeSprite(rect, rgba, w, h, palette, w, h, nil, 0, hd...)
 	}
 	return nil
 }

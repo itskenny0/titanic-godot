@@ -130,12 +130,24 @@ printf 'Display backend: DISPLAY=%s WAYLAND_DISPLAY=%s SDL_VIDEODRIVER=%s\n' "${
 printf 'Runtime options: %s\nController mapper: %s\n' "${GODOT_OPTS:-}" "${GPTOKEYB:-unset}"
 cd "$GAMEDIR" || exit 1
 runtime=frt_3.5.2
-godot_file="$controlfolder/libs/$runtime.squashfs"
-if [[ ! -f "$godot_file" ]]; then
-  echo "Downloading missing runtime: $runtime.squashfs"
-  $ESUDO "$controlfolder/harbourmaster" --quiet --no-check runtime_check "$runtime.squashfs"
+runtime_arch=${DEVICE_ARCH:-$(uname -m)}
+case "$runtime_arch" in
+  aarch64|arm64) runtime_arch=aarch64 ;;
+  armhf|armv7l|armv6l) runtime_arch=armhf ;;
+  *) echo "Unsupported handheld architecture: $runtime_arch"; exit 1 ;;
+esac
+godot_file="$GAMEDIR/runtime/$runtime.$runtime_arch.squashfs"
+if [[ -f "$godot_file" ]]; then
+  echo "Using bundled $runtime_arch runtime: $godot_file"
+else
+  godot_file="$controlfolder/libs/$runtime.squashfs"
+  if [[ ! -f "$godot_file" ]]; then
+    echo "Missing bundled $runtime_arch runtime. Extract the complete Titanic ZIP again, including titanic/runtime."
+    echo "No runtime download is needed. An existing PortMaster runtime also works: $godot_file"
+    exit 1
+  fi
+  echo "Using existing PortMaster runtime: $godot_file"
 fi
-[[ -f "$godot_file" ]] || { echo "Missing PortMaster runtime: $godot_file"; exit 1; }
 ls -ln -- "$godot_file"
 godot_dir="$GAMEDIR/.runtime"
 echo "Mounting runtime: $godot_file -> $godot_dir"
@@ -158,7 +170,7 @@ if command -v ldd >/dev/null && command -v timeout >/dev/null; then
   done
 fi
 export FRT_NO_EXIT_SHORTCUTS=FRT_NO_EXIT_SHORTCUTS
-export RETANIC_ARCH="${DEVICE_ARCH:-aarch64}"
+export RETANIC_ARCH="$runtime_arch"
 export RETANIC_NATIVE_DIR="$GAMEDIR/native"
 export RETANIC_PATCH_DIR="$GAMEDIR/patches/files"
 export RETANIC_GAME_DIR="$GAMEDIR"

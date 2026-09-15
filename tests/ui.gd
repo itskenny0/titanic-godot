@@ -35,6 +35,7 @@ func begin():
 	for check_box in player.patch_boxes.values():
 		check(check_box.pressed, "select all")
 	player.patch_select_all(false)
+	player.hd_pack_path = "synthetic-hd-pack"
 	player.show_setup()
 	yield(self, "idle_frame")
 	yield(self, "idle_frame")

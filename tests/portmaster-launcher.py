@@ -86,11 +86,33 @@ raise SystemExit(int(os.environ.get('TEST_RUNTIME_EXIT', '0')))
                                      '--', '--game-data='+str(game/'gamedata')]
             assert state['helper'] == (str(game/'.runtime/frt_3.5.2') if modern else '')
             log = (game/'log.txt').read_text()
+            assert 'Using existing PortMaster runtime:' in log
             for expected in ['Logging: verbose', 'Storage and permissions:', 'Selected game-data path:', 'Controller mapper PID:', 'Firmware: test', 'architecture: '+arch, 'gamedata/LOCAL',
                              'BOOTFILE', 'BEDSIT1.SET', 'Runtime command:',
                              'Runtime stdout fixture', 'Runtime stderr fixture',
                              'FRT exit status: 0', 'Titanic launcher exit status: 0']:
                 assert expected in log, (expected, log)
+            # Bundled runtimes start without harbourmaster or a shared download.
+            runtime = game/'runtime'/f'frt_3.5.2.{arch}.squashfs'
+            runtime.parent.mkdir()
+            runtime.write_bytes(b'fixture squashfs')
+            (control/'libs/frt_3.5.2.squashfs').unlink()
+            offline = subprocess.run(['bash', str(launcher)], cwd='/', env=env,
+                                     capture_output=True, text=True, timeout=15)
+            assert offline.returncode == 0, offline.stdout+offline.stderr
+            log = (game/'log.txt').read_text()
+            assert f'Using bundled {arch} runtime: {runtime}' in log
+            assert 'Downloading' not in log
+            runtime.unlink()
+            missing = subprocess.run(['bash', str(launcher)], cwd='/', env=env,
+                                     capture_output=True, text=True, timeout=15)
+            assert missing.returncode == 1, missing.stdout+missing.stderr
+            assert 'Extract the complete Titanic ZIP again' in (game/'log.txt').read_text()
+            runtime.write_bytes(b'fixture squashfs')
+            restored = subprocess.run(['bash', str(launcher)], cwd='/', env=env,
+                                     capture_output=True, text=True, timeout=15)
+            assert restored.returncode == 0, restored.stdout+restored.stderr
+            log = (game/'log.txt').read_text()
             # Startup failures keep their status, diagnostics and previous run.
             if modern and arch == 'aarch64':
                 failed = subprocess.run(['bash', str(launcher)], cwd='/',

@@ -116,7 +116,10 @@ func (r *SpriteRect) sample(x, y float64) int {
 }
 
 // RGB writes intentionally preserve the destination alpha, as the original does.
-func compositeSprite(r *SpriteRect, rgba []byte, w, h int, palette []byte, clipW, clipH int, occ *Occlusion, level float64) {
+func compositeSprite(r *SpriteRect, rgba []byte, w, h int, palette []byte, clipW, clipH int, occ *Occlusion, level float64, hd ...*HDSurface) {
+	if len(hd) > 0 && hd[0] != nil {
+		hd[0].Sprite(r, palette, clipW, clipH, occ, level)
+	}
 	if r == nil || r.K <= 0 || w <= 0 || h <= 0 || len(rgba)/4/w < h {
 		return
 	}

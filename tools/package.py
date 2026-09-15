@@ -3,7 +3,7 @@
 from pathlib import Path
 import argparse,shutil,subprocess,tarfile,zipfile,plistlib,os
 ROOT=Path(__file__).resolve().parents[1]
-p=argparse.ArgumentParser();p.add_argument('kind',choices=['linux','mac','windows','portmaster']);p.add_argument('--binary');p.add_argument('--arch',default='x86_64');p.add_argument('--pack',default='dist/titanic.pck');p.add_argument('--version',default='0.3.6');p.add_argument('--static',action='store_true');a=p.parse_args()
+p=argparse.ArgumentParser();p.add_argument('kind',choices=['linux','mac','windows','portmaster']);p.add_argument('--binary');p.add_argument('--arch',default='x86_64');p.add_argument('--pack',default='dist/titanic.pck');p.add_argument('--version',default='0.3.7');p.add_argument('--static',action='store_true');a=p.parse_args()
 name=f'titanic-{a.kind}-{a.arch}'+('-static' if a.static else '')
 stage=ROOT/'.build/packages'/name
 if stage.exists():shutil.rmtree(stage)
@@ -11,7 +11,7 @@ stage.mkdir(parents=True)
 dist=ROOT/'dist';dist.mkdir(exist_ok=True)
 def licenses(dest):
  dest.mkdir(parents=True,exist_ok=True)
- for name,src in {'COPYING':ROOT/'LICENSE','CREDITS.md':ROOT/'CREDITS.md','dreamREfactory.txt':ROOT/'vendor/dreamrefactory/LICENSE','Go.txt':ROOT/'packaging/Go-LICENSE.txt','Godot-headers.txt':ROOT/'vendor/godot-headers/LICENSE.md','Liberation-fonts.txt':ROOT/'godot/fonts/LICENSE.txt'}.items():shutil.copy2(src,dest/name)
+ for name,src in {'COPYING':ROOT/'LICENSE','CREDITS.md':ROOT/'CREDITS.md','dreamREfactory.txt':ROOT/'vendor/dreamrefactory/LICENSE','Go.txt':ROOT/'packaging/Go-LICENSE.txt','FRT.txt':ROOT/'packaging/FRT-LICENSE.txt','Real-ESRGAN.txt':ROOT/'packaging/Real-ESRGAN-LICENSE.txt','Godot-headers.txt':ROOT/'vendor/godot-headers/LICENSE.md','Liberation-fonts.txt':ROOT/'godot/fonts/LICENSE.txt'}.items():shutil.copy2(src,dest/name)
  major='4' if a.kind=='windows' and a.arch=='arm64' else '3'
  godot=ROOT/'.build'/f'godot{major}-{a.kind}-{a.arch}'
  if not godot.exists():godot=ROOT/'.build'/('godot'+major)
@@ -29,8 +29,15 @@ if a.kind=='portmaster':
  shutil.copy2(ROOT/'packaging/portmaster/titanic.gptk',game/'titanic.gptk')
  shutil.copy2(ROOT/'packaging/icons/titanic.png',game/'icon.png')
  shutil.copy2(ROOT/'packaging/portmaster/port.json',game/'port.json')
+ shutil.copy2(ROOT/'godot/hdpack-support.json',game/'hdpack-support.json')
  (game/'native').mkdir();(game/'gamedata').mkdir();(game/'mods').mkdir()
  for arch in ['aarch64','armhf']:shutil.copy2(ROOT/f'godot/native/libtitanic.{arch}.so',game/'native'/f'libtitanic.{arch}.so')
+ subprocess.run(['python3',str(ROOT/'tools/fetch-frt.py')],check=True)
+ (game/'runtime').mkdir()
+ for arch in ['aarch64','armhf']:
+  runtime=f'frt_3.5.2.{arch}.squashfs'
+  shutil.copy2(ROOT/'.build/frt-runtime'/runtime,game/'runtime'/runtime)
+ shutil.copy2(ROOT/'packaging/portmaster/runtime.json',game/'runtime/manifest.json')
  licenses(game/'licenses')
  (game/'gamedata/PUT_GAME_FILES_HERE.txt').write_text('Drop both cd1 and cd2 ISO images here, or copy GOG/Steam files with LOCAL or extracted discs. See README.txt.\n')
  shutil.copy2(ROOT/'docs/PORTMASTER.md',game/'README.txt')
