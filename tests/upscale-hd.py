@@ -8,6 +8,8 @@ import subprocess
 import sys
 import tempfile
 import unittest
+from types import SimpleNamespace
+from unittest.mock import patch
 
 from PIL import Image
 
@@ -49,6 +51,24 @@ class NearestTests(unittest.TestCase):
             modified = output.stat().st_mtime_ns
             subprocess.run(command, check=True, capture_output=True, timeout=30)
             self.assertEqual(output.stat().st_mtime_ns, modified)
+            # A UI-only pack needs no GPU or model even through the serial MPS
+            # path, and changing execution device can reuse completed images.
+            subprocess.run(command+['--device', 'mps'], check=True, capture_output=True, timeout=30)
+            self.assertEqual(output.stat().st_mtime_ns, modified)
+
+    def test_unavailable_metal_is_reported_instead_of_silently_using_cpu(self):
+        torch = SimpleNamespace(backends=SimpleNamespace(mps=SimpleNamespace(is_available=lambda: False)))
+        with patch.dict(sys.modules, {'torch': torch}):
+            with self.assertRaisesRegex(ValueError, 'Metal .* unavailable'):
+                upscaler.check_device('mps', True)
+            upscaler.check_device('cpu', True)
+            upscaler.check_device('mps', False)
+
+    def test_metal_rejects_parallel_gpu_model_copies(self):
+        result = subprocess.run([sys.executable, str(SCRIPT), '--device', 'mps', '--workers', '4'],
+                                capture_output=True, text=True, timeout=30)
+        self.assertEqual(result.returncode, 2)
+        self.assertIn('uses one process', result.stderr)
 
     def test_selection_is_specific_and_rejects_mistakes(self):
         images = {

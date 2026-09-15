@@ -71,7 +71,7 @@ The release template keeps GDScript, fonts, text shaping, and the Titanic bridge
 
 See [the HD guide](docs/HD.md) for a step-by-step walkthrough, previews and installation.
 
-The optional 2x pack uses FSDedither Riven for world and character artwork on your computer, and nearest-neighbor scaling for UI artwork. The game only loads the finished images, so the Android device does not run an AI model. Export your own rooms, sprites, puzzle screens and interface artwork, then upscale them:
+The optional 2x pack uses FSDedither Riven for world and character artwork on your computer, and nearest-neighbor scaling for UI artwork. The game only loads the finished images, so the Android device does not run an AI model. The commands below use Linux CPU workers. On Apple Silicon, install the Mac PyTorch wheel and pass `--device mps`; see the [Metal instructions](docs/HD.md#apple-silicon-macs). Export your own rooms, sprites, puzzle screens and interface artwork, then upscale them:
 
 ```
 python3 -m venv .tools/hd-venv

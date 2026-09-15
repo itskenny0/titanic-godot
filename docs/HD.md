@@ -8,7 +8,7 @@ See the [original and FSDedither Riven screenshots in the README](../README.md#h
 
 ## Prepare
 
-Use a checkout of this repository, Go 1.26.4, Python 3.11 or newer, and a computer with several GB of free memory. Allow tens of GB of free disk space for a full character pack and its intermediate images. The commands below use Linux, including WSL on Windows. Other systems need a compatible PyTorch installation and the corresponding Python environment paths.
+Use a checkout of this repository, Go 1.26.4, Python 3.11 or newer, and a computer with several GB of free memory. Allow tens of GB of free disk space for a full character pack and its intermediate images. The commands below use Linux, including WSL on Windows. For an Apple Silicon Mac, use the [Metal instructions](#apple-silicon-macs) below.
 
 Put your two CD ISOs in one folder, or use your GOG/Steam installation. Extracted `cd1` and `cd2` folders also work. In these examples, `originalgame` is that folder; replace it with your own path.
 
@@ -21,6 +21,25 @@ python3 -m venv .tools/hd-venv
 ```
 
 These commands install the CPU version. The console or phone does not need Python, PyTorch, a GPU or an AI model.
+
+### Apple Silicon Macs
+
+Use native arm64 Python 3.11 to 3.13. Create the environment above, then install the Mac wheel from PyPI instead of using the Linux CPU index:
+
+```sh
+.tools/hd-venv/bin/python -m pip install numpy==2.2.6 Pillow==11.3.0 torch==2.8.0
+.tools/hd-venv/bin/python -c 'import torch; print("Metal available:", torch.backends.mps.is_available())'
+```
+
+The check should print `True`. After exporting the artwork with the Go command below, use:
+
+```sh
+.tools/hd-venv/bin/python tools/upscale-hd.py --input .build/hd-personal --output .build/hd-personal/pack --device mps
+```
+
+This moves the model and image tensors to the Mac GPU through [PyTorch's Metal backend](https://docs.pytorch.org/docs/2.8/notes/mps.html). It uses one process; CPU worker counts do not apply. If Metal is unavailable, the script reports an error rather than silently running on the CPU. `--device cpu` remains available. Completed images can be reused when switching devices with the same model and settings.
+
+Start with `--limit 25 --output .build/hd-mac-preview` to measure your Mac's speed before starting the full pack. GPU support has not yet been benchmarked on a real Mac for this project.
 
 ## Extract and upscale
 

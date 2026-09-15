@@ -14,14 +14,15 @@ import urllib.request
 sys.path.insert(0, str(Path(__file__).resolve().parent / 'hd'))
 from models import PRESETS, load_model
 
-def initialize(weights, denoise, threads, preset, needs_model=True):
+def initialize(weights, denoise, threads, preset, needs_model=True, device='cpu'):
     if not needs_model:
         return
     import torch
-    global model, network_scale
+    global model, network_scale, inference_device
     torch.set_num_threads(threads)
     torch.set_num_interop_threads(1)
-    model = load_model(preset, weights, denoise)
+    inference_device = device
+    model = load_model(preset, weights, denoise).to(device)
     network_scale = PRESETS[preset]['scale']
 
 def upscale(task):
@@ -45,12 +46,12 @@ def upscale(task):
             import numpy as np
             import torch
             rgb = np.array(rgba.convert('RGB'), dtype=np.float32)/255
-            tensor = torch.from_numpy(rgb.transpose(2,0,1)).unsqueeze(0).contiguous(memory_format=torch.channels_last)
+            tensor = torch.from_numpy(rgb.transpose(2,0,1)).unsqueeze(0).contiguous(memory_format=torch.channels_last).to(inference_device)
             w,h = size
             if network_scale == 2 and (w%2 or h%2):
                 tensor = torch.nn.functional.pad(tensor, (0,w%2,0,h%2), mode='replicate')
             with torch.inference_mode():
-                result = model(tensor)[:,:,:h*network_scale,:w*network_scale].squeeze(0).clamp_(0,1).numpy().transpose(1,2,0)
+                result = model(tensor)[:,:,:h*network_scale,:w*network_scale].squeeze(0).clamp_(0,1).cpu().numpy().transpose(1,2,0)
             image = Image.fromarray(np.rint(result*255).astype(np.uint8))
             image = image.resize((size[0]*2,size[1]*2), Image.Resampling.LANCZOS)
             # Keep the authored alpha mask exact. No invented holes or clickable edges.
@@ -138,18 +139,38 @@ def prepare_output(out, settings):
     temporary.write_text(json.dumps(settings, indent=2)+'\n')
     temporary.replace(stamp)
 
+def check_device(device, needs_model):
+    if device == 'mps' and needs_model:
+        import torch
+        if not torch.backends.mps.is_available():
+            raise ValueError('Metal (MPS) is unavailable. Use native arm64 Python and an MPS-enabled PyTorch on your Mac, or select --device cpu.')
+
+def process_tasks(tasks, weights, denoise, threads, preset, needs_model, device, workers):
+    args = (weights, denoise, threads, preset, needs_model, device)
+    if device == 'mps':
+        # One Metal context in the main process. Forked GPU contexts and several
+        # model copies add memory pressure without helping this per-image workload.
+        initialize(*args)
+        yield from map(upscale, tasks)
+    else:
+        with ProcessPoolExecutor(max_workers=workers, initializer=initialize, initargs=args) as pool:
+            yield from pool.map(upscale, tasks, chunksize=1)
+
 def main():
     p=argparse.ArgumentParser(description=__doc__)
     p.add_argument('--input',default='.build/hd-personal',help='folder from go run ./cmd/hd-pack')
     p.add_argument('--output',default='.build/hd-personal/pack',help='pack folder, resumable with identical settings')
     p.add_argument('--models',default='.tools/hd-models')
     p.add_argument('--model',choices=PRESETS,default='riven',help='AI model for world and character art; UI always uses nearest-neighbor 2x')
-    p.add_argument('--workers',type=int,default=4)
+    p.add_argument('--device',choices=['cpu','mps'],default='cpu',help='cpu workers or the Apple Silicon GPU through Metal (MPS)')
+    p.add_argument('--workers',type=int,help='CPU processes, default 4; Metal uses one process')
     p.add_argument('--threads',type=int,default=2)
     p.add_argument('--denoise',type=float,help='compact model only, default 0.3')
     p.add_argument('--limit',type=int,default=0,help='optional preview image count')
     p.add_argument('--nearest',action='append',default=[],metavar='SELECTOR',help='use exact nearest-neighbor 2x for a pixel hash or file:name glob; repeat to select more assets')
     args=p.parse_args()
+    if args.workers is None:args.workers=1 if args.device=='mps' else 4
+    if args.device=='mps' and args.workers!=1:p.error('--device mps uses one process; omit --workers or set it to 1')
     if args.model == 'compact' and args.denoise is None:args.denoise=0.3
     if args.model != 'compact' and args.denoise is not None:p.error('--denoise only applies to --model compact')
     if args.workers<1 or args.threads<1 or args.denoise is not None and not 0<=args.denoise<=1 or args.limit<0:p.error('invalid worker, thread, denoise or limit setting')
@@ -165,6 +186,8 @@ def main():
     keys=sorted(catalog['images'],key=priority)
     if args.limit:keys=keys[:args.limit]
     needs_model=any(key not in nearest for key in keys)
+    try:check_device(args.device,needs_model)
+    except ValueError as error:p.error(str(error))
     weights.mkdir(parents=True,exist_ok=True)
     for name,(url,digest) in (spec['files'].items() if needs_model else []):
         dest=weights/name
@@ -189,11 +212,10 @@ def main():
     if nearest:manifest['nearest']=sorted(nearest.intersection(keys))
     if any(s['kind']=='character' for key in keys for s in catalog['images'][key]['sources']):
         manifest['characters']=True
-    print(f'Processing {len(keys)} images: {len(nearest.intersection(keys))} nearest-neighbor, {len(set(keys)-nearest)} {spec["name"]}',flush=True)
-    with ProcessPoolExecutor(max_workers=args.workers,initializer=initialize,initargs=(str(weights),args.denoise,args.threads,args.model,needs_model)) as pool:
-        for i,(key,entry) in enumerate(pool.map(upscale,tasks,chunksize=1),1):
-            manifest['images'][key]=entry
-            if i%25==0 or i==len(tasks):print(f'Upscaled {i}/{len(tasks)} images',flush=True)
+    print(f'Processing {len(keys)} images: {len(nearest.intersection(keys))} nearest-neighbor, {len(set(keys)-nearest)} {spec["name"]}; device={args.device}, workers={args.workers}',flush=True)
+    for i,(key,entry) in enumerate(process_tasks(tasks,str(weights),args.denoise,args.threads,args.model,needs_model,args.device,args.workers),1):
+        manifest['images'][key]=entry
+        if i%25==0 or i==len(tasks):print(f'Upscaled {i}/{len(tasks)} images',flush=True)
     temporary=out/'manifest.tmp'
     temporary.write_text(json.dumps(manifest,separators=(',',':'))+'\n');temporary.replace(out/'manifest.json')
     print(f'Personal HD pack: {out}',flush=True)
