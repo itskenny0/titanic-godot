@@ -18,7 +18,7 @@ The LNGHALL lounge unlock needs LOUNGE1C.SET on both discs. The loader maps the 
 
 Arrow keys move. The mouse interacts and chooses dialogue; hold the left button to drag. Space operates the original door shortcut. Escape skips animations. F10 opens the player menu, F11 toggles fullscreen, and F12 opens the on-screen keyboard. Ctrl/Cmd+S saves, Ctrl/Cmd+O loads. F1-F9 retain the Mac player's brightness/color shortcuts. Closing the window opens the engine menu; a second click leaves it open. Four or more close requests spanning at least 2.5 seconds force an exit, provided the clicks stay within 2.5 seconds of each other.
 
-The original life-preserver menu remains available. Save while exploring, after conversations and animations finish. The player pauses when it loses focus. Save before quitting; there is no autosave.
+The original life-preserver menu remains available. Save while exploring, after conversations and animations finish. The player pauses when it loses focus. Cutscenes during play queue an autosave once exploration resumes and manual saving is allowed. The newest 25 checkpoints are labelled **Autosave** in blue in the load list and live in `Saves/Autosaves`, separate from manual saves. Autosave creation and cleanup never overwrite or delete manual saves. Older checkpoints are deleted three seconds after the new file is written, giving slow storage a quiet interval; extra files left by a shutdown are cleaned up on the next launch. **Game files / mods** lets you turn checkpoints off. Save manually between cutscenes and before quitting if you want to keep that progress.
 
 Saves use Godot's `user://Saves` under the custom `Retanic` user directory. `Save Archives` sits beside it. The menu can import and export `.ti` files and open the save folder. Original Windows saves and Mac restoration saves are accepted. New saves retain the Mac restoration's complete-state trailer; compatibility with the 1996 Windows executable is not promised.
 
@@ -36,3 +36,7 @@ The first launch lists M3tox's v1.0.3 FULL patches. Download the FULL ZIP from G
 Each of the first five files also includes sharper navigation images for its location. Those changes cannot be split without editing the patch itself. The other-locations choice does not enable the separate lounge-unlock mod. Descriptions follow [M3tox's README](https://github.com/M3tox/TAOOT/blob/6019b87c9f5dacf83f9257770ea54a2822cb46c7/README.md).
 
 The player verifies the archive SHA-256 and all 56 files before installing them in its private cache. Your original game files stay intact, and patches work offline afterward. An external mod folder takes precedence when filenames overlap. Personal builds include the patches and need no download.
+
+Touch taps and controller clicks can reach small room hotspots and dialogue choices from slightly outside their edges. Exact hits take priority; puzzle screens and mouse input retain their original coordinates.
+
+Switching apps, losing window focus or suspending Android pauses the game and audio. Returning resumes from the same point, unless you had already paused in a menu. Release the sticks before moving again after an interruption.

@@ -29,11 +29,15 @@ var drawn_pointer_name = ""
 var modal
 var menu
 var status
-var save_reminder = null
-var save_reminder_pending = false
+var checkpoint_toast = null
+var checkpoint_toast_serial = 0
 var current_dialog = -1
 var queued_dialogs = []
 var focused = true
+var app_suspended = false
+var resume_frame = false
+var last_process_ms = 0
+var controller_neutral_required = false
 var manual_pause = false
 var close_first_ms = -1
 var close_last_ms = -1
@@ -203,7 +207,6 @@ func prepare_index(roots):
 	return true
 
 func start_runtime(save_path = ""):
-	save_reminder_pending = false
 	if is_instance_valid(close_request_dialog):
 		close_request_dialog.queue_free()
 	close_request_dialog = null
@@ -223,13 +226,13 @@ func start_runtime(save_path = ""):
 		return
 	var error = ""
 	runtime.execute("profile", JSON.print({"on": OS.is_debug_build()}))
-	error = runtime.execute("boot", JSON.print({"index": game_index, "save": save_path, "hd_pack": active_hd_pack(), "testing": "--integration-test" in OS.get_cmdline_args()}))
+	error = runtime.execute("boot", JSON.print({"index": game_index, "save": save_path, "hd_pack": active_hd_pack(), "disable_autosave": not config.get_value("saves", "autosave_enabled", true), "testing": "--integration-test" in OS.get_cmdline_args()}))
 	if not error.empty():
 		show_note(error)
 		return
 	status.show()
 	status.text = "Preparing your voyage…"
-	save_reminder_pending = save_path.empty() and not config.get_value("tips", "save_reminder_seen", false)
+	send({"action": "pause", "on": interrupted()})
 
 func find_hd_pack():
 	var base = OS.get_executable_path().get_base_dir()
@@ -260,35 +263,47 @@ func toggle_hd_artwork():
 	# Apply on next startup; preserve unsaved progress in the running game.
 	show_setup()
 
-func show_save_reminder():
-	save_reminder_pending = false
-	save_reminder = Control.new()
-	save_reminder.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	save_reminder.rect_position = game_origin + Vector2(16, 16)
-	save_reminder.rect_size = Vector2(480, 56)
+func show_checkpoint_toast(text):
+	if is_instance_valid(checkpoint_toast):
+		checkpoint_toast.queue_free()
+	checkpoint_toast_serial += 1
+	checkpoint_toast = Control.new()
+	checkpoint_toast.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	checkpoint_toast.rect_position = game_origin + Vector2(16, 16)
+	checkpoint_toast.rect_size = Vector2(480, 48)
+	var background = ColorRect.new()
+	background.name = "Background"
+	background.color = Color(0, 0, 0, 0.25)
+	background.rect_size = checkpoint_toast.rect_size
+	background.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	checkpoint_toast.add_child(background)
 	var label = Label.new()
-	label.text = "This game has no autosave! Don't forget to save regularly!"
+	label.text = text
 	label.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	label.rect_position = Vector2(12, 8)
+	label.rect_position = Vector2(12, 4)
 	label.rect_size = Vector2(456, 40)
 	label.autowrap = true
 	label.align = Label.ALIGN_CENTER
 	label.valign = Label.VALIGN_CENTER
 	label.add_font_override("font", get_font_for("14px Arial"))
 	label.add_color_override("font_color", Color.white)
-	label.add_color_override("font_shadow_color", Color.black)
-	label.add_constant_override("shadow_offset_x", 1)
-	label.add_constant_override("shadow_offset_y", 1)
-	save_reminder.add_child(label)
-	add_child(save_reminder)
-	config.set_value("tips", "save_reminder_seen", true)
-	config.save("user://settings.cfg")
-	get_tree().create_timer(5.0).connect("timeout", self, "hide_save_reminder")
+	checkpoint_toast.add_child(label)
+	add_child(checkpoint_toast)
+	get_tree().create_timer(5.0).connect("timeout", self, "hide_checkpoint_toast", [checkpoint_toast_serial])
 
-func hide_save_reminder():
-	if is_instance_valid(save_reminder):
-		save_reminder.queue_free()
-	save_reminder = null
+func hide_checkpoint_toast(serial):
+	if serial != checkpoint_toast_serial:
+		return
+	if is_instance_valid(checkpoint_toast):
+		checkpoint_toast.queue_free()
+	checkpoint_toast = null
+
+func toggle_autosave():
+	var enabled = not config.get_value("saves", "autosave_enabled", true)
+	config.set_value("saves", "autosave_enabled", enabled)
+	config.save("user://settings.cfg")
+	send({"action": "autosave_enabled", "on": enabled})
+	show_setup()
 
 func create_runtime():
 	var runtime = null
@@ -349,6 +364,9 @@ func bridge_call(method, args_json, bytes):
 				path = saves.path_for(path.substr(5))
 			return files.read_asset(path)
 		"write":
+			if args.path.begins_with("autosave:"):
+				var saved = saves.write_autosave(args.path.substr(9), bytes)
+				return JSON.print({"ok": true} if saved else {"error": saves.error})
 			if not args.path.begins_with("save:"):
 				return JSON.print({"error": "Invalid save destination"})
 			var ok = saves.write(args.path.substr(5), bytes)
@@ -404,6 +422,10 @@ func draw_cursor():
 		cursor_layer.draw_circle(pointer + Vector2(15, 4), 3, Color("f7e6a4"))
 
 func send(command):
+	if command.get("action", "") == "pause":
+		command.on = command.on or interrupted()
+	if interrupted() and command.get("action", "") in ["key", "pointer"]:
+		return
 	if runtime_failed and command.get("action", "") in ["key", "pointer"]:
 		return
 	if runtime != null:
@@ -414,6 +436,22 @@ func send(command):
 			print("PERF command ", command.get("action", ""), " ", elapsed / 1000.0, " ms")
 
 func _process(delta):
+	var now = OS.get_ticks_msec()
+	# Some handheld backends do not send lifecycle notifications on suspend.
+	# Discard the first elapsed interval and stale controls after a long gap.
+	if last_process_ms > 0 and now - last_process_ms > 2000:
+		send({"action": "pause", "on": true})
+		clear_interrupted_input()
+		send({"action": "pause", "on": manual_pause or interrupted()})
+		resume_frame = true
+	last_process_ms = now
+	if resume_frame:
+		delta = 0.0
+		resume_frame = false
+	var cleanup_error = saves.service_autosaves()
+	if not cleanup_error.empty():
+		show_checkpoint_toast(cleanup_error)
+		print("AUTOSAVE CLEANUP: ", cleanup_error)
 	poll_patches(delta)
 	process_touch(delta)
 	process_controller(delta)
@@ -442,8 +480,6 @@ func _process(delta):
 				has_frame = true
 			else:
 				frame_texture.set_data(frame_image)
-			if save_reminder_pending:
-				show_save_reminder()
 			overlays = JSON.parse(runtime.query("overlay")).result
 			update()
 		var present_finished = OS.get_ticks_usec()
@@ -518,11 +554,16 @@ func handle_event(event):
 		"audio_pause":
 			audio_paused = event.on
 			for player in sounds.values():
-				player.stream_paused = audio_paused
+				player.stream_paused = audio_paused or interrupted() or manual_pause
 		"quit":
 			get_tree().quit()
 		"restart":
 			pending_restart = event.get("save", "")
+		"autosaving":
+			show_checkpoint_toast("Checkpoint reached - saving ...")
+		"autosave_failed":
+			show_checkpoint_toast("Autosave failed: " + event.text)
+			print("AUTOSAVE ERROR: ", event.text)
 		"saved":
 			print("Saved: ", event.name)
 
@@ -547,7 +588,7 @@ func play_sound(event):
 	player.connect("finished", self, "sound_finished", [event.id])
 	sounds[event.id] = player
 	player.play()
-	player.stream_paused = audio_paused
+	player.stream_paused = audio_paused or interrupted() or manual_pause
 
 func sound_finished(id):
 	stop_sound(id)
@@ -559,14 +600,50 @@ func stop_sound(id):
 		sounds[id].queue_free()
 		sounds.erase(id)
 
+func interrupted():
+	return app_suspended or not focused
+
+func update_audio_pause():
+	for player in sounds.values():
+		player.stream_paused = audio_paused or interrupted() or manual_pause
+
+func clear_interrupted_input():
+	pointer_pressed = false
+	controller_held.clear()
+	controller_triggers = [false, false]
+	controller_neutral_required = true
+	nav_timer = 0.0
+	last_nav = ""
+	touch_nav_direction = ""
+	touch_nav_timer = 0.0
+	if touch_strip != null:
+		touch_strip.get_node("joystick").reset()
+	for action in ["up", "down", "left", "right", "space", "escape", "menu", "keyboard"]:
+		if InputMap.has_action("touch_" + action):
+			Input.action_release("touch_" + action)
+
+func lifecycle_changed():
+	if interrupted():
+		clear_interrupted_input()
+	else:
+		resume_frame = true
+	send({"action": "pause", "on": manual_pause or interrupted()})
+	# Do this immediately: Android may suspend before the next event poll.
+	update_audio_pause()
+
 func _notification(what):
 	if what == MainLoop.NOTIFICATION_WM_FOCUS_OUT:
-		controller_held.clear()
 		focused = false
-		send({"action": "pause", "on": true})
+		lifecycle_changed()
 	elif what == MainLoop.NOTIFICATION_WM_FOCUS_IN:
 		focused = true
-		send({"action": "pause", "on": manual_pause})
+		lifecycle_changed()
+	elif what == MainLoop.NOTIFICATION_APP_PAUSED:
+		app_suspended = true
+		lifecycle_changed()
+	elif what == MainLoop.NOTIFICATION_APP_RESUMED:
+		app_suspended = false
+		lifecycle_changed()
 	elif what == MainLoop.NOTIFICATION_WM_GO_BACK_REQUEST:
 		if virtual_keyboard != null:
 			close_keyboard()
@@ -605,6 +682,8 @@ func window_close_requested(now):
 	return false
 
 func _input(event):
+	if interrupted():
+		return
 	if controller_binding_input(event):
 		get_tree().set_input_as_handled()
 		return
@@ -636,7 +715,7 @@ func _input(event):
 			get_tree().set_input_as_handled()
 
 func _unhandled_input(event):
-	if modal != null or not ready:
+	if modal != null or not ready or interrupted():
 		return
 	if event is InputEventMouseMotion:
 		send({"action": "pointer", "kind": "move", "x": pointer.x, "y": pointer.y})
@@ -646,7 +725,7 @@ func _unhandled_input(event):
 		if not event.pressed and not pointer_pressed:
 			return
 		pointer_pressed = event.pressed
-		send({"action": "pointer", "kind": "press" if event.pressed else "release", "x": pointer.x, "y": pointer.y, "shift": event.shift})
+		send({"action": "pointer", "kind": "press" if event.pressed else "release", "x": pointer.x, "y": pointer.y, "shift": event.shift, "radius": interaction_radius(event)})
 	elif event is InputEventKey and event.pressed:
 		if event.scancode == KEY_F12:
 			show_keyboard(null)
@@ -661,6 +740,13 @@ func _unhandled_input(event):
 		var key = keys.get(event.scancode, char(event.unicode).to_lower() if event.unicode > 0 else "")
 		if not key.empty():
 			send({"action": "key", "key": key, "special": event.scancode == KEY_ESCAPE or event.control})
+
+func interaction_radius(event):
+	if event.device == -1:
+		return 14.0
+	if controller_pointer_event or not OS.get_environment("RETANIC_ARCH").empty():
+		return 10.0
+	return 0.0
 
 func mouse_button(pressed):
 	var event = InputEventMouseButton.new()
@@ -690,6 +776,8 @@ func dispatch_pointer(event):
 	viewport.set_handle_input_locally(local_handling)
 
 func process_controller(delta):
+	if interrupted():
+		return
 	if not remap_action.empty():
 		if OS.get_ticks_msec() >= remap_deadline:
 			cancel_controller_remap()
@@ -701,6 +789,11 @@ func process_controller(delta):
 		controller_poll = 0.1
 	var pad = -1 if pads.empty() else pads[0]
 	var motion = Vector2.ZERO if pad < 0 else Vector2(Input.get_joy_axis(pad, JOY_AXIS_2), Input.get_joy_axis(pad, JOY_AXIS_3))
+	if controller_neutral_required:
+		var left = Vector2.ZERO if pad < 0 else Vector2(Input.get_joy_axis(pad, JOY_AXIS_0), Input.get_joy_axis(pad, JOY_AXIS_1))
+		if motion.length() > 0.2 or left.length() > 0.4:
+			return
+		controller_neutral_required = false
 	var deadzone = 0.2
 	if motion.length() > deadzone:
 		controller_selection = -1
@@ -1186,6 +1279,7 @@ func show_setup():
 	button(box, "Choose game folder", "choose_data", [0]).grab_focus()
 	button(box, "Choose discs separately", "choose_data", [1])
 	button(box, "M3tox patches", "show_patch_picker", [false])
+	button(box, "Autosave checkpoints: %s" % ("On" if config.get_value("saves", "autosave_enabled", true) else "Off"), "toggle_autosave")
 	if not hd_pack_path.empty():
 		button(box, "HD artwork: %s (next start)" % ("On" if config.get_value("graphics", "hd_enabled", true) else "Off"), "toggle_hd_artwork")
 	button(box, "Choose external mod folder", "choose_mods")
@@ -1289,7 +1383,7 @@ func submit_text(kind):
 	var text = save_name.text.strip_edges()
 	if text.empty():
 		return
-	if kind == "save" and File.new().file_exists(saves.path_for(text)):
+	if kind == "save" and File.new().file_exists(saves.manual_path_for(text)):
 		var box = panel("Replace existing save?")
 		button(box, "Replace and archive previous version", "reply_dialog", [text]).grab_focus()
 		button(box, "Cancel", "reply_dialog", [null])
@@ -1320,7 +1414,13 @@ func show_save_list(action):
 	scroll.add_child(list)
 	var first = null
 	for name in saves.list_saves():
-		var b = button(list, name, "save_selected", [name, action])
+		var b = button(list, saves.display_name(name), "save_selected", [name, action])
+		b.clip_text = true
+		b.hint_tooltip = saves.display_name(name)
+		b.set_meta("autosave", saves.is_autosave(name))
+		if saves.is_autosave(name):
+			for state in ["font_color", "font_color_hover", "font_color_pressed", "font_color_focus"]:
+				b.add_color_override(state, Color("b5d8ef"))
 		if first == null:
 			first = b
 	button(box, "Cancel", "reply_dialog", [null]).grab_focus()
@@ -1335,7 +1435,7 @@ func save_selected(name, action):
 			Engine.get_singleton("TitanicFiles").export_save(ProjectSettings.globalize_path(saves.path_for(name)))
 			return
 		var d = file_dialog(FileDialog.MODE_SAVE_FILE, "export_selected", [name], "*.ti ; Titanic saved game")
-		d.current_file = name
+		d.current_file = name.get_file()
 
 func save_tools():
 	resume_game()
@@ -1420,8 +1520,8 @@ func update_touch_layout(_device = 0, _connected = false):
 		layout_size = desired
 		get_tree().set_screen_stretch(SceneTree.STRETCH_MODE_2D, SceneTree.STRETCH_ASPECT_KEEP, layout_size)
 	status.rect_position = game_origin + Vector2(20, 160)
-	if is_instance_valid(save_reminder):
-		save_reminder.rect_position = game_origin + Vector2(16, 16)
+	if is_instance_valid(checkpoint_toast):
+		checkpoint_toast.rect_position = game_origin + Vector2(16, 16)
 	for child in get_children():
 		if child is PanelContainer:
 			child.rect_position = (layout_size - child.rect_size) / 2
@@ -1489,7 +1589,7 @@ func touch_direction(direction):
 
 func process_touch(delta):
 	touch_strip.visible = touch_enabled and modal == null
-	if not touch_enabled or modal != null:
+	if not touch_enabled or modal != null or interrupted():
 		touch_nav_direction = ""
 		touch_nav_timer = 0.0
 		return

@@ -65,8 +65,8 @@ func TestPlayerDialogPauseOwnershipAndCancellation(t *testing.T) {
 	}
 	p.Command(PlayerCommand{Action: "pause", On: true})
 	p.Command(PlayerCommand{Action: "reply", ID: event["id"].(uint64), Value: false})
-	if result || len(p.dialogs) != 0 || s.Clock.Frozen() {
-		t.Fatal("dialog did not resolve and release its own freeze")
+	if result || len(p.dialogs) != 1 || !s.Clock.Frozen() {
+		t.Fatal("dialog advanced while application was paused")
 	}
 	before := p.now
 	if err := p.Tick(100); err != nil {
@@ -76,6 +76,10 @@ func TestPlayerDialogPauseOwnershipAndCancellation(t *testing.T) {
 		t.Fatal("paused game clock advanced")
 	}
 	p.Command(PlayerCommand{Action: "pause", On: false})
+	p.pump(false)
+	if len(p.dialogs) != 0 || s.Clock.Frozen() {
+		t.Fatal("dialog failed to resolve after resume")
+	}
 	s.Clock.Freeze()
 	s.Track("already frozen dialog", false, func(*Task) error { return s.OnNoteDialog("Note") })
 	p.pump(false)
@@ -227,6 +231,14 @@ func TestNativePlayerIntegration(t *testing.T) {
 	}
 	s := p.Host.Session
 	s.Interp.Globals.Set("player_sentinel", script.Str("saved correctly"))
+	// Simulate a completed cinematic after reaching real, saveable gameplay.
+	step()
+	p.checkpointMovieFinished()
+	autosaveKey := "autosave:bedsit1 2026-09-13-12-34-56"
+	until("checkpoint", func() bool { return len(bridge.written[autosaveKey]) > 0 })
+	if playerEvent(events, "autosaved") == nil || s.Clock.Frozen() {
+		t.Fatal("checkpoint did not complete or resume game")
+	}
 	p.Command(PlayerCommand{Action: "save"})
 	collect()
 	event := playerEvent(events, "dialog")
@@ -259,22 +271,49 @@ func TestNativePlayerIntegration(t *testing.T) {
 		t.Fatal("imported save bytes or Windows basename changed")
 	}
 	// Boot a fresh runtime from the saved bytes, as the Godot restart event does.
-	other := NewPlayer(bridge)
-	defer other.Close()
-	if err := other.Boot(PlayerConfig{Index: files.Index, Save: "save:Native.TI"}); err != nil {
-		t.Fatal(err)
-	}
-	for i := 0; i < 300 && other.Host.Director.InputLocked(); i++ {
-		if err := other.Tick(50); err != nil {
+	for _, savedKey := range []string{"save:Native.TI", autosaveKey} {
+		other := NewPlayer(bridge)
+		defer other.Close()
+		if err := other.Boot(PlayerConfig{Index: files.Index, Save: savedKey}); err != nil {
 			t.Fatal(err)
 		}
-	}
-	value, _ := other.Host.Session.Interp.Globals.Get("player_sentinel")
-	if value.String() != "saved correctly" || other.State()["view"] != before {
-		t.Fatal("fresh runtime did not restore save", other.State(), value)
-	}
-	if errEvent := playerEvent(other.Events(), "error"); errEvent != nil {
-		t.Fatal(errEvent)
+		for i := 0; i < 300 && other.Host.Director.InputLocked(); i++ {
+			if err := other.Tick(50); err != nil {
+				t.Fatal(err)
+			}
+		}
+		value, _ := other.Host.Session.Interp.Globals.Get("player_sentinel")
+		if value.String() != "saved correctly" || other.State()["view"] != before {
+			t.Fatal("fresh runtime did not restore save", other.State(), value)
+		}
+		if errEvent := playerEvent(other.Events(), "error"); errEvent != nil {
+			t.Fatal(errEvent)
+		}
 	}
 	t.Log(fmt.Sprintf("Native player commands, save dialog, import and restart passed (%d save bytes)", len(data)))
+}
+
+func TestPlayerAudioCompletionDoesNotAdvanceSuspendedScripts(t *testing.T) {
+	p := checkpointPlayer(t, &testPlayerBridge{})
+	sound := &df.Audio{SampleRate: 10, Samples: []float32{1}}
+	handle := p.Audio.Play(VoiceChannel, sound, PlayOptions{})
+	id := p.Audio.DrainEvents()[0].ID
+	resumed := false
+	p.Host.Session.Track("speech", false, func(task *Task) error { task.Wait(handle.Done); resumed = true; return nil })
+	p.pump(false)
+	p.Command(PlayerCommand{Action: "pause", On: true})
+	p.Command(PlayerCommand{Action: "pause", On: true})
+	p.Command(PlayerCommand{Action: "audio_done", ID: id})
+	p.Tick(60000)
+	if resumed {
+		t.Fatal("speech script advanced in background")
+	}
+	p.Command(PlayerCommand{Action: "pause", On: false})
+	p.pump(false)
+	if !resumed {
+		t.Fatal("speech failed to resume")
+	}
+	if p.Host.Session.Clock.Frozen() {
+		t.Fatal("duplicate pause left clock frozen")
+	}
 }

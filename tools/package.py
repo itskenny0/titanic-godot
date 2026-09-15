@@ -3,7 +3,7 @@
 from pathlib import Path
 import argparse,shutil,subprocess,tarfile,zipfile,plistlib,os
 ROOT=Path(__file__).resolve().parents[1]
-p=argparse.ArgumentParser();p.add_argument('kind',choices=['linux','mac','windows','portmaster']);p.add_argument('--binary');p.add_argument('--arch',default='x86_64');p.add_argument('--pack',default='dist/titanic.pck');p.add_argument('--version',default='0.3.8');p.add_argument('--static',action='store_true');a=p.parse_args()
+p=argparse.ArgumentParser();p.add_argument('kind',choices=['linux','mac','windows','portmaster']);p.add_argument('--binary');p.add_argument('--arch',default='x86_64');p.add_argument('--pack',default='dist/titanic.pck');p.add_argument('--version',default='0.4.0');p.add_argument('--static',action='store_true');a=p.parse_args()
 name=f'titanic-{a.kind}-{a.arch}'+('-static' if a.static else '')
 stage=ROOT/'.build/packages'/name
 if stage.exists():shutil.rmtree(stage)

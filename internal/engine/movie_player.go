@@ -34,12 +34,14 @@ type activeMovie struct {
 	interval, lastTick, segmentStart    float64
 	cuesFired                           map[int]bool
 }
-type movieSequence struct{ done bool }
+type movieSequence struct{ done, cutscene bool }
 type MoviePlayer struct {
 	Session            *Session
 	Gamma              *ScreenGamma
 	Log                func(string)
 	OnFinished         func()
+	OnStarted          func(string)
+	OnCutsceneFinished func()
 	EscapeSkipsSegment bool
 	active             *activeMovie
 	callStack          []movieReturn
@@ -103,19 +105,34 @@ func (p *MoviePlayer) Play(task *Task, file string, start int) error {
 	}
 	ok, err := p.load(file, start)
 	if err != nil || !ok {
+		if p.sequence != nil {
+			p.sequence.cutscene = false
+		}
 		p.finish(false)
 		return err
 	}
 	if chained {
 		return nil
 	}
-	seq := &movieSequence{}
+	seq := &movieSequence{cutscene: movieIsCutscene(p.active.mov)}
 	p.sequence = seq
 	if task != nil {
 		task.Wait(func() bool { return seq.done })
 	}
 	return nil
 }
+
+func movieIsCutscene(mov *df.Movie) bool {
+	frames := 0
+	for i := range mov.Segments {
+		if df.MovieHasRegions(&mov.Segments[i]) {
+			return false
+		}
+		frames += len(mov.Segments[i].Frames)
+	}
+	return frames > 1
+}
+
 func (p *MoviePlayer) load(name string, start int) (bool, error) {
 	key := strings.ToLower(name)
 	p.played.Set(key, true)
@@ -131,6 +148,12 @@ func (p *MoviePlayer) load(name string, start int) (bool, error) {
 	}
 	if len(mov.Segments) == 0 || len(mov.Segments[0].Frames) == 0 {
 		return false, nil
+	}
+	if p.OnStarted != nil {
+		p.OnStarted(key)
+	}
+	if p.sequence != nil && movieIsCutscene(mov) {
+		p.sequence.cutscene = true
 	}
 	return p.enterSegment(mov, key, 0, start)
 }
@@ -426,6 +449,9 @@ func (p *MoviePlayer) Tick(now float64) (*MovieImage, error) {
 }
 func (p *MoviePlayer) Abandon() {
 	if p.active != nil || p.sequence != nil {
+		if p.sequence != nil {
+			p.sequence.cutscene = false
+		}
 		p.finish(true)
 	}
 }
@@ -460,5 +486,8 @@ func (p *MoviePlayer) finish(dismissed bool) {
 	p.sequence = nil
 	if seq != nil {
 		seq.done = true
+		if seq.cutscene && p.OnCutsceneFinished != nil {
+			p.OnCutsceneFinished()
+		}
 	}
 }

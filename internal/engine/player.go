@@ -19,16 +19,18 @@ type PlayerBridge interface {
 	Measure(string, string) (float64, error)
 }
 type PlayerConfig struct {
-	HDPack  string            `json:"hd_pack"`
-	Index   map[string]string `json:"index"`
-	Save    string            `json:"save"`
-	Testing bool              `json:"testing"`
+	DisableAutosave bool              `json:"disable_autosave"`
+	HDPack          string            `json:"hd_pack"`
+	Index           map[string]string `json:"index"`
+	Save            string            `json:"save"`
+	Testing         bool              `json:"testing"`
 }
 type PlayerCommand struct {
 	Action             string `json:"action"`
 	Kind               string `json:"kind"`
 	Key                any    `json:"key"`
 	X, Y               float64
+	Radius             float64 `json:"radius"`
 	Shift, Special, On bool
 	ID                 uint64 `json:"id"`
 	Value              any    `json:"value"`
@@ -39,22 +41,25 @@ type playerDialog struct {
 	value any
 }
 type Player struct {
-	Bridge                     PlayerBridge
-	Host                       *GameHost
-	Audio                      *HostAudio
-	Context                    *DrawContext
-	Ready, Paused              bool
-	Testing                    bool
-	Now                        func() time.Time
-	pauseOwned, busy           bool
-	now                        float64
-	renderVersion              uint64
-	events                     []any
-	nextDialog                 uint64
-	dialogs                    map[uint64]*playerDialog
-	testFailTick               bool
-	profiling                  bool
-	profileTick, profileRender time.Duration
+	Bridge                                               PlayerBridge
+	Host                                                 *GameHost
+	Audio                                                *HostAudio
+	Context                                              *DrawContext
+	Ready, Paused                                        bool
+	Testing                                              bool
+	Now                                                  func() time.Time
+	pauseOwned, busy                                     bool
+	pointerOffsetX, pointerOffsetY                       float64
+	now                                                  float64
+	renderVersion                                        uint64
+	events                                               []any
+	nextDialog                                           uint64
+	dialogs                                              map[uint64]*playerDialog
+	testFailTick                                         bool
+	profiling                                            bool
+	profileTick, profileRender                           time.Duration
+	autosaveDisabled, checkpointArmed, checkpointPending bool
+	checkpointQuiet                                      float64
 }
 
 func NewPlayer(bridge PlayerBridge) *Player {
@@ -115,6 +120,7 @@ func (p *Player) Boot(config PlayerConfig) error {
 		return fmt.Errorf("player already booted")
 	}
 	p.Testing = config.Testing
+	p.autosaveDisabled = config.DisableAutosave
 	files := NewFiles(config.Index, p.read)
 	p.Host = NewGameHost(files, p.Audio, HostUI{Log: func(text string) { p.emit("log", map[string]any{"text": text}) }, HUD: func(text string) { p.emit("status", map[string]any{"text": text}) }, ShowStage: func() { p.emit("stage", nil) }})
 	if config.HDPack != "" {
@@ -144,6 +150,8 @@ func (p *Player) Boot(config PlayerConfig) error {
 	s.OnSaveGame = func(data []byte, _ string) error { p.fail(p.save(data)); return nil }
 	s.OnLoadGame = func(string) ([]byte, error) { data, err := p.chooseSave(); p.fail(err); return data, nil }
 	p.Host.Director.OnCursor = func(name string) { p.emit("cursor", map[string]any{"name": name}) }
+	p.Host.Director.Movies.OnStarted = p.checkpointMovieStarted
+	p.Host.Director.Movies.OnCutsceneFinished = p.checkpointMovieFinished
 	s.Track("coldBoot", false, func(*Task) error {
 		p.Host.Preload()
 		p.Ready = true
@@ -203,6 +211,7 @@ func (p *Player) Tick(dt float64) error {
 	if err := p.Host.Director.Render(p.Context); err != nil {
 		return err
 	}
+	p.serviceCheckpoint(dt)
 	if p.profiling {
 		p.profileTick += renderStart.Sub(began)
 		p.profileRender += time.Since(renderStart)
@@ -296,18 +305,27 @@ func (p *Player) Command(c PlayerCommand) error {
 		if d := p.dialogs[c.ID]; d != nil {
 			d.value, d.ready = c.Value, true
 		}
-		p.pump(false)
+		if !p.Paused {
+			p.pump(false)
+		}
 		return nil
 	}
 	if c.Action == "audio_done" {
 		p.Audio.Finish(c.ID)
-		p.pump(false)
+		if !p.Paused {
+			p.pump(false)
+		}
 		return nil
 	}
 	if p.Host == nil {
 		return nil
 	}
 	s, d := p.Host.Session, p.Host.Director
+	if c.Action == "autosave_enabled" {
+		p.autosaveDisabled = !c.On
+		p.checkpointPending, p.checkpointQuiet = false, 0
+		return nil
+	}
 	if c.Action == "pause" {
 		if c.On == p.Paused {
 			return nil
@@ -319,6 +337,7 @@ func (p *Player) Command(c PlayerCommand) error {
 				s.Clock.Freeze()
 			}
 			s.PointerDown = false
+			p.pointerOffsetX, p.pointerOffsetY = 0, 0
 			d.Release(-1, -1)
 		} else {
 			if p.pauseOwned {
@@ -333,6 +352,17 @@ func (p *Player) Command(c PlayerCommand) error {
 	}
 	switch c.Action {
 	case "pointer":
+		if c.Kind == "press" {
+			x, y := p.assistedPoint(c.X, c.Y, c.Radius)
+			p.pointerOffsetX, p.pointerOffsetY = x-c.X, y-c.Y
+		}
+		if c.Kind == "press" || s.PointerDown {
+			c.X += p.pointerOffsetX
+			c.Y += p.pointerOffsetY
+		}
+		if c.Kind == "release" {
+			p.pointerOffsetX, p.pointerOffsetY = 0, 0
+		}
 		s.ShiftDown = c.Shift
 		s.SetPointer(c.X, c.Y)
 		if c.Kind == "press" {
@@ -342,6 +372,7 @@ func (p *Player) Command(c PlayerCommand) error {
 			}
 		} else if c.Kind == "release" {
 			s.PointerDown = false
+			p.pointerOffsetX, p.pointerOffsetY = 0, 0
 			d.Release(c.X, c.Y)
 		} else if !s.PointerDown {
 			s.Track("hover", true, func(*Task) error { _, err := d.Hover(c.X, c.Y); return err })
@@ -385,10 +416,10 @@ func (p *Player) Command(c PlayerCommand) error {
 	return nil
 }
 func (p *Player) menuCommand(c PlayerCommand) error {
-	s, d := p.Host.Session, p.Host.Director
+	s := p.Host.Session
 	switch c.Action {
 	case "save":
-		if s.CurrentSetFile == "" || d.InputLocked() || !s.ViewShowing() {
+		if !p.canSaveGame() {
 			return fmt.Errorf("finish the conversation or animation, then save while exploring")
 		}
 		return p.frozen(func() error {

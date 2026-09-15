@@ -8,6 +8,6 @@
   <description><p>A Godot player using dreamREfactory, with mouse and controller input, archived saves, and optional M3tox mods. Original game data is required.</p></description>
   <launchable type="desktop-id">io.github.itskenny0.Titanic.desktop</launchable>
   <url type="homepage">https://github.com/itskenny0/titanic-godot</url>
-  <releases><release version="0.3.8" date="2026-09-15"/><release version="0.3.7" date="2026-09-15"/><release version="0.3.6" date="2026-09-14"/><release version="0.3.5" date="2026-09-14"/><release version="0.3.2" date="2026-09-13"/><release version="0.3.1" date="2026-09-13"/><release version="0.3.0" date="2026-09-13"/></releases>
+  <releases><release version="0.4.0" date="2026-09-15"/><release version="0.3.8" date="2026-09-15"/><release version="0.3.7" date="2026-09-15"/><release version="0.3.6" date="2026-09-14"/><release version="0.3.5" date="2026-09-14"/><release version="0.3.2" date="2026-09-13"/><release version="0.3.1" date="2026-09-13"/><release version="0.3.0" date="2026-09-13"/></releases>
   <content_rating type="oars-1.1"/>
 </component>

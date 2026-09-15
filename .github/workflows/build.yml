@@ -89,8 +89,16 @@ jobs:
           cp tests/window_close.gd godot/window-close-test.gd
           timeout 45 xvfb-run -a .tools/Godot_v3.5.2-stable_x11.64 --path godot --audio-driver Dummy -s res://window-close-test.gd -- --ui-test
           xvfb-run -a python3 tools/test-godot4.py --godot "$PWD/.tools/Godot_v4.3-stable_linux.x86_64" --test window_close
+      - name: Check suspend, resume and input targeting
+        run: |
+          cp tests/interruptions.gd godot/interruptions-test.gd
+          timeout 45 xvfb-run -a .tools/Godot_v3.5.2-stable_x11.64 --path godot --audio-driver Dummy -s res://interruptions-test.gd -- --ui-test
+          xvfb-run -a python3 tools/test-godot4.py --godot "$PWD/.tools/Godot_v4.3-stable_linux.x86_64" --test interruptions
       - name: Check handheld and touch layouts
         run: |
+          cp tests/autosave.gd godot/autosave-test.gd
+          timeout 60 xvfb-run -a .tools/Godot_v3.5.2-stable_x11.64 --path godot --audio-driver Dummy --resolution 640x480 -s res://autosave-test.gd -- --ui-test
+          xvfb-run -a python3 tools/test-godot4.py --godot "$PWD/.tools/Godot_v4.3-stable_linux.x86_64" --test autosave --resolution 480x800 --touch
           cp tests/ui.gd godot/ui-test.gd
           cp tests/controls.gd godot/controls-test.gd
           cp tests/controller.gd godot/controller-test.gd
