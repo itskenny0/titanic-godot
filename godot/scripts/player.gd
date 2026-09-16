@@ -14,7 +14,7 @@ var adaptive = AdaptiveLayout.new()
 var adaptive_panel_style = UIStyle.plate(Color("1b202140"),Color("645b4660"),6)
 var adaptive_button_style = UIStyle.plate(Color("24292960"),Color("4f504580"),4)
 var adaptive_hover_style = UIStyle.plate(Color("35372f90"),Color("9b875dc0"),4)
-var touch_surround_style = UIStyle.plate(Color("191e20"),Color("5b5340"),6)
+var touch_surround_style = UIStyle.plate(Color(0,0,0),Color(0,0,0),0)
 var adaptive_active = false
 var adaptive_available = false
 var prefer_classic_now = false
@@ -616,7 +616,7 @@ func draw_cursor():
 	var cursor = display_pointer if adaptive_active else pointer
 	var color = Color("f7e6a4") if pointer_name in ["touch", "hand", "fist"] else Color.white
 	var points = PoolVector2Array([cursor, cursor + Vector2(0, 15), cursor + Vector2(4, 11), cursor + Vector2(8, 18), cursor + Vector2(11, 16), cursor + Vector2(7, 9), cursor + Vector2(13, 9)])
-	cursor_layer.draw_colored_polygon(points, Color.black)
+	cursor_layer.draw_colored_polygon(points, Color(0,0,0))
 	cursor_layer.draw_polyline(PoolVector2Array([cursor + Vector2(1, 2), cursor + Vector2(1, 12), cursor + Vector2(4, 9), cursor + Vector2(9, 16)]), color, 1.5, true)
 	if pointer_name.begins_with("go"):
 		cursor_layer.draw_circle(cursor + Vector2(15, 4), 3, Color("f7e6a4"))
@@ -1000,7 +1000,7 @@ func process_controller(delta):
 		return
 	var pads = Input.get_connected_joypads()
 	controller_poll -= delta
-	if controller_poll <= 0 and (not pads.empty() or not OS.get_environment("RETANIC_ARCH").empty()):
+	if controller_poll <= 0 and (touch_enabled or not pads.empty() or not OS.get_environment("RETANIC_ARCH").empty()):
 		refresh_controller_surface()
 		controller_poll = 0.1
 	var pad = -1 if pads.empty() else pads[0]
@@ -1068,6 +1068,7 @@ func set_controller_surface(surface):
 		old_id = controller_surface.targets[controller_selection].id
 	var changed = JSON.print(controller_surface) != JSON.print(surface)
 	controller_surface = surface
+	update_touch_context()
 	if not changed:
 		return
 	controller_selection = -1
@@ -2091,13 +2092,31 @@ func make_touch_controls():
 
 func touch_door():
 	if ready and modal == null and not touch_editing:
-		send({"action": "key", "key": " "})
+		refresh_controller_surface()
+		if controller_surface.context in ["dialogue","panel","movie"] and not controller_surface.targets.empty():
+			controller_confirm(true)
+			controller_confirm(false)
+		else:
+			send({"action": "key", "key": " "})
+
+func update_touch_context():
+	if not is_instance_valid(touch_strip):
+		return
+	var selecting = controller_surface.context in ["dialogue","panel","movie"] and not controller_surface.targets.empty()
+	var joystick = touch_strip.get_node("joystick")
+	var confirm = touch_strip.get_node("space")
+	if joystick.confirm_mode != selecting:
+		joystick.confirm_mode = selecting
+		joystick.update()
+		confirm.confirm_mode = selecting
+		confirm.get_child(0).text = "Select" if selecting else "Door"
+		confirm.update()
 
 func touch_direction(direction):
 	if ready and modal == null and not touch_editing:
 		touch_nav_direction = direction
 		touch_nav_timer = 0.55
-		send({"action": "key", "key": direction + "arrow"})
+		controller_direction(direction + "arrow")
 
 func process_touch(delta):
 	touch_strip.visible = touch_enabled and modal == null
@@ -2105,9 +2124,10 @@ func process_touch(delta):
 		touch_nav_direction = ""
 		touch_nav_timer = 0.0
 		return
-	for pair in [["space", " "], ["escape", "."]]:
-		if Input.is_action_just_pressed("touch_" + pair[0]):
-			send({"action": "key", "key": pair[1], "special": pair[0] == "escape"})
+	if Input.is_action_just_pressed("touch_space"):
+		touch_door()
+	if Input.is_action_just_pressed("touch_escape"):
+		send({"action": "key", "key": ".", "special": true})
 	if Input.is_action_just_pressed("touch_menu"):
 		show_menu()
 	if Input.is_action_just_pressed("touch_keyboard") and virtual_keyboard == null:
@@ -2122,11 +2142,11 @@ func process_touch(delta):
 		touch_nav_direction = direction
 		touch_nav_timer = 0.55
 		if not direction.empty():
-			send({"action": "key", "key": direction + "arrow"})
+			controller_direction(direction + "arrow")
 	elif not direction.empty():
 		touch_nav_timer -= delta
 		if touch_nav_timer <= 0:
-			send({"action": "key", "key": direction + "arrow"})
+			controller_direction(direction + "arrow")
 			touch_nav_timer = 0.40
 
 func android_import_finished(path, error):

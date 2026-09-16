@@ -3,6 +3,7 @@ signal door_tapped
 signal direction_pressed(direction)
 
 var appearance = "full"
+var confirm_mode = false
 var editing = false
 var radius = 58.0
 var finger = -1
@@ -110,5 +111,8 @@ func _draw():
 	draw_circle(offset, radius * 0.34, Color("514b3b") if direction.empty() else Color("766748"))
 	draw_arc(offset, radius * 0.34, 0, TAU, 48, Color("beaa79"), 1.2, true)
 	var size = radius * 0.25
-	draw_rect(Rect2(offset-Vector2(size*0.35,size*0.55),Vector2(size*0.7,size*1.1)),Color("e2d5b5"),false,1)
-	draw_circle(offset+Vector2(size*0.15,0),1,Color("e2d5b5"))
+	if confirm_mode:
+		draw_polyline(PoolVector2Array([offset+Vector2(-size*0.6,0),offset+Vector2(-size*0.15,size*0.45),offset+Vector2(size*0.65,-size*0.5)]),Color("e2d5b5"),1.5,true)
+	else:
+		draw_rect(Rect2(offset-Vector2(size*0.35,size*0.55),Vector2(size*0.7,size*1.1)),Color("e2d5b5"),false,1)
+		draw_circle(offset+Vector2(size*0.15,0),1,Color("e2d5b5"))

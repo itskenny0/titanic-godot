@@ -2,6 +2,7 @@ extends TouchScreenButton
 const Style = preload("res://scripts/ui_style.gd")
 var plate_normal = Style.plate(Color("252a2b"), Color("847354"), 7)
 var plate_pressed = Style.plate(Color("4b4738"), Color("d4bd84"), 7)
+var confirm_mode = false
 
 func _ready():
 	connect("pressed", self, "update")
@@ -14,8 +15,11 @@ func _draw():
 		for y in [12,18,24]:
 			draw_line(Vector2(17,y), Vector2(35,y), ink, 1.5, true)
 	elif name == "space":
-		draw_rect(Rect2(19,9,15,20), ink, false, 1.5)
-		draw_circle(Vector2(29,20), 1.4, ink)
+		if confirm_mode:
+			draw_polyline(PoolVector2Array([Vector2(17,18),Vector2(23,24),Vector2(35,11)]),ink,1.5,true)
+		else:
+			draw_rect(Rect2(19,9,15,20), ink, false, 1.5)
+			draw_circle(Vector2(29,20), 1.4, ink)
 	elif name == "escape":
 		for x in [18,27]:
 			draw_polyline(PoolVector2Array([Vector2(x,11),Vector2(x+7,18),Vector2(x,25)]), ink, 1.5, true)

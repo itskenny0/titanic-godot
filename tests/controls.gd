@@ -2,6 +2,8 @@ extends SceneTree
 class Recorder:
 	extends Reference
 	var commands = []
+	func query(_method):
+		return '{"context":"room","key":"test","targets":[]}'
 	func execute(method, args = "{}"):
 		if method == "command":
 			commands.append(JSON.parse(args).result)

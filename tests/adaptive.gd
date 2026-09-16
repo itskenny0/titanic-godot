@@ -3,11 +3,12 @@ class Recorder:
 	extends Reference
 	var commands = []
 	var metadata = {"eligible":true,"revision":1,"controls":[]}
+	var surface = {"context":"room","key":"test","targets":[]}
 	func execute(method,args="{}"):
 		if method == "command": commands.append(JSON.parse(args).result)
 		return ""
 	func query(method):
-		if method in ["controls","targets"]: return '{"context":"room","key":"test","targets":[]}'
+		if method in ["controls","targets"]: return JSON.print(surface)
 		return JSON.print(metadata)
 	func buffer(_method):
 		var data = PoolByteArray()
@@ -137,6 +138,28 @@ func begin():
 	screen_drag(stick.position)
 	screen_touch(stick.position,false)
 	check(pointer_command_count(recorder)==3 and not player.pointer_pressed,"world drag may cross controls and still release normally")
+	recorder.metadata.eligible = false
+	recorder.surface = {"context":"dialogue","key":"replies","targets":[
+		{"id":"first","aim_x":256,"aim_y":276,"w":512,"h":24},
+		{"id":"second","aim_x":256,"aim_y":300,"w":512,"h":24}]}
+	player.sync_adaptive_layout()
+	recorder.commands.clear()
+	screen_touch(stick.position+Vector2(0,stick.radius*0.8),true)
+	screen_touch(stick.position+Vector2(0,stick.radius*0.8),false)
+	check(player.controller_selection==1,"touch joystick down selects the next dialogue reply")
+	check(stick.confirm_mode and player.touch_strip.get_node("space").get_child(0).text=="Select","touch controls indicate dialogue confirmation")
+	for command in recorder.commands:
+		check(command.action!="key","dialogue joystick never sends exploration keys")
+	recorder.commands.clear()
+	screen_touch(stick.position,true)
+	screen_touch(stick.position,false)
+	check(recorder.commands.size()==2 and recorder.commands[0].kind=="press" and recorder.commands[1].kind=="release" and recorder.commands[1].y==300,"center tap confirms the selected dialogue reply exactly once")
+	check(player.touch_surround_style.bg_color==Color(0,0,0) and player.touch_surround_style.border_color==Color(0,0,0),"Classic touch surround is solid black")
+	recorder.metadata.eligible = true
+	recorder.surface = {"context":"room","key":"test","targets":[]}
+	player.refresh_controller_surface()
+	player.sync_adaptive_layout()
+	check(not stick.confirm_mode,"joystick center returns to Door in exploration")
 	player.set_controller_surface({"context":"room","key":"test","targets":[{"id":"prop:bag","aim_x":140,"aim_y":290,"w":20,"h":20},{"id":"prop:light","aim_x":180,"aim_y":280,"w":251,"h":120}]})
 	check(player.controller_surface.targets.size()==2,"decorative toolbar removed and quick layout switch reachable")
 	player.focus_controller_target(1)
