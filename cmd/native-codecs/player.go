@@ -210,6 +210,11 @@ func taoot_player_call(handle C.uintptr_t, method, args *C.char, out *C.TaootRes
 		}
 	case "state":
 		value = p.State()
+	case "adaptive_layout":
+		value = p.AdaptiveLayout()
+	case "adaptive_atlas":
+		playerResult(out, p.AdaptiveAtlas(), 2)
+		return
 	case "controls":
 		value = p.ControllerSurface(false)
 	case "targets":

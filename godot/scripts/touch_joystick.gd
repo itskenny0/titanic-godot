@@ -2,6 +2,8 @@ extends Node2D
 signal door_tapped
 signal direction_pressed(direction)
 
+var appearance = "full"
+var editing = false
 var radius = 58.0
 var finger = -1
 var offset = Vector2.ZERO
@@ -62,7 +64,7 @@ func move_stick(point):
 	update()
 
 func _input(event):
-	if not is_visible_in_tree():
+	if editing or not is_visible_in_tree():
 		return
 	if event is InputEventScreenTouch:
 		if event.pressed and finger == -1 and to_local(event.position).length() <= radius:
@@ -94,8 +96,19 @@ func _notification(what):
 		reset()
 
 func _draw():
-	draw_circle(Vector2.ZERO, radius, Color("263a4d"))
-	draw_arc(Vector2.ZERO, radius - 1, 0, TAU, 64, Color("70889d"), 2, true)
-	for axis in [Vector2.UP, Vector2.DOWN, Vector2.LEFT, Vector2.RIGHT]:
-		draw_circle(axis * radius * 0.80, max(2, radius * 0.045), Color("aec4d5"))
-	draw_circle(offset, radius * 0.34, Color("91adc2") if direction.empty() else Color("d3e3ef"))
+	if appearance == "hidden" and not editing:
+		return
+	if appearance == "full" or editing:
+		draw_circle(Vector2.ZERO, radius, Color("202728"))
+		draw_arc(Vector2.ZERO, radius - 1, 0, TAU, 64, Color("8f7d59"), 1.5, true)
+		draw_arc(Vector2.ZERO, radius * 0.65, 0, TAU, 64, Color("42463f"), 1, true)
+		for axis in [Vector2.UP, Vector2.DOWN, Vector2.LEFT, Vector2.RIGHT]:
+			var center = axis * radius * 0.80
+			var across = Vector2(-axis.y,axis.x) * radius * 0.07
+			var tip = axis * radius * 0.06
+			draw_polyline(PoolVector2Array([center-across-tip,center+tip,center+across-tip]), Color("b7a579"), 1.3, true)
+	draw_circle(offset, radius * 0.34, Color("514b3b") if direction.empty() else Color("766748"))
+	draw_arc(offset, radius * 0.34, 0, TAU, 48, Color("beaa79"), 1.2, true)
+	var size = radius * 0.25
+	draw_rect(Rect2(offset-Vector2(size*0.35,size*0.55),Vector2(size*0.7,size*1.1)),Color("e2d5b5"),false,1)
+	draw_circle(offset+Vector2(size*0.15,0),1,Color("e2d5b5"))

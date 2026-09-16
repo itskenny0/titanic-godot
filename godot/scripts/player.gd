@@ -1,6 +1,8 @@
 extends Control
 
 const GameFiles = preload("res://scripts/game_files.gd")
+const UIStyle = preload("res://scripts/ui_style.gd")
+const AdaptiveLayout = preload("res://scripts/adaptive_layout.gd")
 const SaveStore = preload("res://scripts/save_store.gd")
 var runtime
 var files = GameFiles.new()
@@ -8,6 +10,21 @@ var saves = SaveStore.new()
 var config = ConfigFile.new()
 var game_index = {}
 var hd_pack_path = ""
+var adaptive = AdaptiveLayout.new()
+var adaptive_panel_style = UIStyle.plate(Color("1b202140"),Color("645b4660"),6)
+var adaptive_button_style = UIStyle.plate(Color("24292960"),Color("4f504580"),4)
+var adaptive_hover_style = UIStyle.plate(Color("35372f90"),Color("9b875dc0"),4)
+var touch_surround_style = UIStyle.plate(Color("191e20"),Color("5b5340"),6)
+var adaptive_active = false
+var adaptive_available = false
+var prefer_classic_now = false
+var layout_switch
+var adaptive_metadata = {}
+var adaptive_atlas_image = Image.new()
+var adaptive_atlas_texture = ImageTexture.new()
+var adaptive_atlas_revision = -1
+var display_pointer = Vector2(256,192)
+var drawn_display_pointer = Vector2(-1000,-1000)
 var game_origin = Vector2.ZERO
 var layout_size = Vector2(512, 384)
 var frame_image = Image.new()
@@ -92,6 +109,7 @@ var perf_events_us = 0
 var perf_peak_us = 0
 
 func _ready():
+	theme = UIStyle.create_theme()
 	files.iso_indexer = self
 	Engine.target_fps = 30 if not OS.get_environment("RETANIC_ARCH").empty() else 60
 	OS.low_processor_usage_mode = true
@@ -121,6 +139,15 @@ func _ready():
 		Engine.get_singleton("TitanicFiles").connect("save_import_finished", self, "android_save_finished")
 		Engine.get_singleton("TitanicFiles").connect("export_finished", self, "android_export_finished")
 	make_touch_controls()
+	layout_switch = Button.new()
+	layout_switch.add_font_override("font",get_font_for("11px Arial"))
+	layout_switch.add_stylebox_override("normal",adaptive_button_style)
+	layout_switch.add_stylebox_override("hover",adaptive_hover_style)
+	layout_switch.add_stylebox_override("pressed",adaptive_hover_style)
+	layout_switch.connect("pressed",self,"toggle_exploration_layout")
+	layout_switch.focus_mode = Control.FOCUS_NONE
+	layout_switch.hide()
+	add_child(layout_switch)
 	var manifest_file = File.new()
 	if manifest_file.open("res://patches/manifest.json", File.READ) == OK:
 		patch_manifest = JSON.parse(manifest_file.get_as_text()).result
@@ -135,6 +162,18 @@ func _ready():
 		boot_configured_game()
 
 func boot_configured_game():
+	var automated = false
+	for arg in OS.get_cmdline_args():
+		if arg in ["--integration-test", "--smoke-test", "--ui-test"]:
+			automated = true
+	if not automated and not config.get_value("graphics","layout_chosen",false):
+		if classic_format_device():
+			config.set_value("graphics","layout_chosen",true)
+			config.set_value("graphics","adaptive_exploration",false)
+			config.save("user://settings.cfg")
+		else:
+			show_first_layout()
+			return
 	var root = config.get_value("game", "root", "")
 	var startup_save = ""
 	active_mods = config.get_value("game", "mods", "")
@@ -207,6 +246,9 @@ func prepare_index(roots):
 	return true
 
 func start_runtime(save_path = ""):
+	set_adaptive_active(false)
+	adaptive_atlas_revision = -1
+	prefer_classic_now = false
 	if is_instance_valid(close_request_dialog):
 		close_request_dialog.queue_free()
 	close_request_dialog = null
@@ -393,7 +435,163 @@ func ink(text):
 		return Color(float(values[0]) / 255, float(values[1]) / 255, float(values[2]) / 255, float(values[3]) if values.size() == 4 else 1.0)
 	return Color(text)
 
+func adaptive_enabled():
+	return config.get_value("graphics", "adaptive_exploration", false)
+
+func adaptive_roomy():
+	return config.get_value("graphics","adaptive_roomy",false)
+
+func classic_format(size):
+	return max(size.x,size.y) < min(size.x,size.y)*1.6
+
+func classic_format_device():
+	# Desktop windows start at 4:3 even on wide monitors. Classify the device,
+	# while the active layout below always uses the actual window size.
+	var size = OS.get_screen_size(OS.current_screen)
+	if size.x <= 0 or size.y <= 0:
+		size = OS.window_size
+	return classic_format(size)
+
+func adaptive_widescreen():
+	return not classic_format_device() and OS.window_size.x >= OS.window_size.y * 1.6
+
+func set_adaptive_active(active):
+	if adaptive_active == active:
+		return
+	# A screen change must not leave a held click attached to a different UI.
+	if pointer_pressed:
+		send({"action": "pointer", "kind": "release", "x": -1, "y": -1})
+		pointer_pressed = false
+	adaptive_active = active
+	controller_selection = -1
+	update_touch_layout()
+	display_pointer = game_to_display(pointer)
+	refresh_cursor()
+	update()
+
+func sync_adaptive_layout():
+	adaptive_available = false
+	if not adaptive_enabled() or not adaptive_widescreen() or modal != null or runtime == null or runtime_failed or not has_frame:
+		set_adaptive_active(false)
+		update_layout_switch()
+		return
+	var metadata = JSON.parse(runtime.query("adaptive_layout")).result
+	if not metadata is Dictionary or not metadata.get("eligible", false) or not adaptive_overlays_fit():
+		set_adaptive_active(false)
+		update_layout_switch()
+		return
+	adaptive_available = true
+	if prefer_classic_now:
+		set_adaptive_active(false)
+		update_layout_switch()
+		return
+	adaptive_metadata = metadata
+	adaptive.configure(layout_size, metadata, adaptive_roomy())
+	if metadata.revision != adaptive_atlas_revision:
+		var bytes = runtime.buffer("adaptive_atlas")
+		if bytes.size() != 640 * 128 * 4:
+			adaptive_available = false
+			set_adaptive_active(false)
+			update_layout_switch()
+			return
+		adaptive_atlas_image.create_from_data(640,128,false,Image.FORMAT_RGBA8,bytes)
+		if adaptive_atlas_revision < 0:
+			adaptive_atlas_texture.create_from_image(adaptive_atlas_image,0)
+		else:
+			adaptive_atlas_texture.set_data(adaptive_atlas_image)
+		adaptive_atlas_revision = metadata.revision
+		update()
+	set_adaptive_active(true)
+	update_layout_switch()
+
+func update_layout_switch():
+	if not is_instance_valid(layout_switch):
+		return
+	layout_switch.visible = adaptive_available and modal == null and not touch_editing and adaptive_widescreen()
+	layout_switch.text = "Classic" if adaptive_active else "Side panels"
+	layout_switch.rect_position = Vector2(6,210) if adaptive_active else Vector2(6,24)
+	layout_switch.rect_size = Vector2(adaptive.rail-12 if adaptive_active else max(60,game_origin.x-12),26)
+
+func toggle_exploration_layout():
+	if not adaptive_available or not adaptive_widescreen():
+		return
+	prefer_classic_now = not prefer_classic_now
+	sync_adaptive_layout()
+
+func game_to_display(point, target_id = ""):
+	return adaptive.game_to_screen(point, target_id) if adaptive_active else game_origin + point
+
+func display_to_game(point):
+	return adaptive.screen_to_game(point) if adaptive_active else point - game_origin
+
+func pointer_in_picture(point):
+	var local = display_to_game(point)
+	return Rect2(0,0,512,384).has_point(local)
+
+func selection_circle(target):
+	if target.id == "ui:layout":
+		return {"center":layout_switch.rect_position+layout_switch.rect_size/2-(Vector2.ZERO if adaptive_active else game_origin),"radius":16}
+	if adaptive_active:
+		return adaptive.target_circle(target)
+	return {"center": Vector2(target.aim_x,target.aim_y), "radius": clamp(min(target.w,target.h) / 2.0 + 5, 12, 30)}
+
+func draw_touch_surround():
+	if not touch_enabled or modal != null:
+		return
+	if OS.window_size.y > OS.window_size.x:
+		draw_style_box(touch_surround_style, Rect2(12,game_origin.y+408,488,132))
+	else:
+		for x in [4,layout_size.x-game_origin.x+4]:
+			draw_style_box(touch_surround_style,Rect2(x,16,max(56,game_origin.x-8),352))
+
+func adaptive_overlays_fit():
+	for command in overlays:
+		if command.op == "text":
+			if command.y < 0 or command.y > 264:
+				return false
+		elif not command.op in ["rect","stroke"]:
+			return false
+	return true
+
+func draw_adaptive_overlays():
+	draw_set_transform(adaptive.world.position,0,adaptive.world_scale())
+	for command in overlays:
+		if command.op == "text":
+			draw_string(get_font_for(command.font),Vector2(command.x,command.y),command.text,ink(command.color),max(0,512-command.x))
+		else:
+			var bounds = Rect2(command.x,command.y,command.w,command.h).clip(Rect2(0,0,512,264))
+			if bounds.size.x > 0 and bounds.size.y > 0:
+				if command.op == "rect":
+					draw_rect(bounds,ink(command.color))
+				else:
+					draw_rect(bounds,ink(command.color),false,command.get("line",1.0))
+	draw_set_transform(Vector2.ZERO,0,Vector2.ONE)
+
+func draw_adaptive():
+	var hd = frame_image.get_width() / 512.0
+	draw_texture_rect_region(frame_texture, adaptive.world, Rect2(0,0,512*hd,264*hd))
+	draw_adaptive_overlays()
+	for bounds in adaptive.panels:
+		draw_style_box(adaptive_panel_style,bounds)
+	for c in adaptive.controls:
+		var highlighted = pointer_visible and c.display.has_point(display_pointer)
+		draw_style_box(adaptive_hover_style if highlighted else adaptive_button_style,c.display)
+		var scale = min((c.display.size.x-8)/c.w,58.0/c.h)
+		var size = Vector2(c.w,c.h)*scale
+		var destination = Rect2(c.display.position+Vector2((c.display.size.x-size.x)/2,4+(58-size.y)/2),size)
+		draw_texture_rect_region(adaptive_atlas_texture,destination,Rect2(c.slot*128,0,c.w,c.h))
+		var font = get_font_for("11px Arial")
+		draw_string(font,c.display.position+Vector2(6,74),c.label,UIStyle.INK)
+	# Keep the entire arrow visible at the bottom of the expanded world.
+	if not adaptive.navigation.empty():
+		var n = adaptive.navigation
+		draw_texture_rect_region(adaptive_atlas_texture,adaptive.navigation_display,Rect2(n.slot*128,0,n.w,n.h))
+
 func _draw():
+	if adaptive_active and has_frame:
+		draw_adaptive()
+		return
+	draw_touch_surround()
 	draw_set_transform(game_origin, 0, Vector2.ONE)
 	if has_frame:
 		draw_texture_rect(frame_texture, Rect2(0, 0, 512, 384), false)
@@ -411,15 +609,17 @@ func draw_cursor():
 		return
 	if modal == null and controller_selection >= 0 and controller_selection < controller_surface.targets.size():
 		var target = controller_surface.targets[controller_selection]
-		cursor_layer.draw_rect(Rect2(target.x + 1, target.y + 1, max(1, target.w - 2), max(1, target.h - 2)), Color("f7d777"), false, 2)
+		var circle = selection_circle(target)
+		cursor_layer.draw_arc(circle.center, circle.radius, 0, TAU, 64, Color(0.78,0.68,0.45,0.50), 1.4, true)
 	if not pointer_visible or (pointer_name == "none" and modal == null):
 		return
+	var cursor = display_pointer if adaptive_active else pointer
 	var color = Color("f7e6a4") if pointer_name in ["touch", "hand", "fist"] else Color.white
-	var points = PoolVector2Array([pointer, pointer + Vector2(0, 15), pointer + Vector2(4, 11), pointer + Vector2(8, 18), pointer + Vector2(11, 16), pointer + Vector2(7, 9), pointer + Vector2(13, 9)])
+	var points = PoolVector2Array([cursor, cursor + Vector2(0, 15), cursor + Vector2(4, 11), cursor + Vector2(8, 18), cursor + Vector2(11, 16), cursor + Vector2(7, 9), cursor + Vector2(13, 9)])
 	cursor_layer.draw_colored_polygon(points, Color.black)
-	cursor_layer.draw_polyline(PoolVector2Array([pointer + Vector2(1, 2), pointer + Vector2(1, 12), pointer + Vector2(4, 9), pointer + Vector2(9, 16)]), color, 1.5, true)
+	cursor_layer.draw_polyline(PoolVector2Array([cursor + Vector2(1, 2), cursor + Vector2(1, 12), cursor + Vector2(4, 9), cursor + Vector2(9, 16)]), color, 1.5, true)
 	if pointer_name.begins_with("go"):
-		cursor_layer.draw_circle(pointer + Vector2(15, 4), 3, Color("f7e6a4"))
+		cursor_layer.draw_circle(cursor + Vector2(15, 4), 3, Color("f7e6a4"))
 
 func send(command):
 	if command.get("action", "") == "pause":
@@ -488,6 +688,7 @@ func _process(delta):
 			handle_event(event)
 		if pending_restart != null:
 			start_runtime(pending_restart)
+		sync_adaptive_layout()
 		if OS.is_debug_build():
 			var finished = OS.get_ticks_usec()
 			perf_frames += 1
@@ -514,10 +715,12 @@ func _process(delta):
 
 func refresh_cursor():
 	cursor_layer.visible = not ((touch_enabled and modal != null) or (pointer_name == "none" and modal == null))
-	if cursor_layer.position != game_origin:
-		cursor_layer.position = game_origin
-	if drawn_pointer != pointer or drawn_pointer_name != pointer_name:
+	var origin = Vector2.ZERO if adaptive_active else game_origin
+	if cursor_layer.position != origin:
+		cursor_layer.position = origin
+	if drawn_pointer != pointer or drawn_pointer_name != pointer_name or drawn_display_pointer != display_pointer:
 		drawn_pointer = pointer
+		drawn_display_pointer = display_pointer
 		drawn_pointer_name = pointer_name
 		cursor_layer.update()
 
@@ -687,10 +890,19 @@ func _input(event):
 	if controller_binding_input(event):
 		get_tree().set_input_as_handled()
 		return
+	if touch_editing:
+		return
 	if event is InputEventMouseMotion or event is InputEventMouseButton:
 		if not controller_pointer_event:
 			set_pointer_visible(true)
-		var local = event.position - game_origin
+		display_pointer = event.position
+		var local = display_to_game(event.position)
+		# A selected world target can sit behind the translucent controls. Keep
+		# its original aim instead of redirecting A to the overlaid toolbar.
+		if controller_pointer_event and controller_selection >= 0 and event is InputEventMouseButton:
+			local = pointer
+		if adaptive_active:
+			update()
 		if Rect2(0, 0, 512, 384).has_point(local):
 			pointer = local
 		if event is InputEventMouseMotion and controller_selection >= 0:
@@ -715,12 +927,13 @@ func _input(event):
 			get_tree().set_input_as_handled()
 
 func _unhandled_input(event):
-	if modal != null or not ready or interrupted():
+	if modal != null or not ready or interrupted() or touch_editing:
 		return
 	if event is InputEventMouseMotion:
-		send({"action": "pointer", "kind": "move", "x": pointer.x, "y": pointer.y})
+		var point = display_to_game(event.position)
+		send({"action": "pointer", "kind": "move", "x": point.x, "y": point.y})
 	elif event is InputEventMouseButton and event.button_index == BUTTON_LEFT:
-		if event.pressed and not Rect2(game_origin, Vector2(512, 384)).has_point(event.position):
+		if event.pressed and not pointer_in_picture(event.position):
 			return
 		if not event.pressed and not pointer_pressed:
 			return
@@ -752,8 +965,8 @@ func mouse_button(pressed):
 	var event = InputEventMouseButton.new()
 	event.button_index = BUTTON_LEFT
 	event.pressed = pressed
-	event.position = pointer + game_origin
-	event.global_position = pointer + game_origin
+	event.position = display_pointer if adaptive_active else pointer + game_origin
+	event.global_position = event.position
 	controller_pointer_event = true
 	dispatch_pointer(event)
 	controller_pointer_event = false
@@ -776,7 +989,7 @@ func dispatch_pointer(event):
 	viewport.set_handle_input_locally(local_handling)
 
 func process_controller(delta):
-	if interrupted():
+	if interrupted() or touch_editing:
 		return
 	if not remap_action.empty():
 		if OS.get_ticks_msec() >= remap_deadline:
@@ -799,10 +1012,13 @@ func process_controller(delta):
 		controller_selection = -1
 		var speed = 65.0 if controller_action_held("precision") else 240.0
 		var step = motion.normalized() * pow(min(1.0, (motion.length() - deadzone) / (1.0 - deadzone)), 1.5) * speed * delta
-		pointer = Vector2(clamp(pointer.x + step.x, 0, 511), clamp(pointer.y + step.y, 0, 383))
+		if adaptive_active:
+			display_pointer = Vector2(clamp(display_pointer.x + step.x,0,layout_size.x-1),clamp(display_pointer.y + step.y,0,layout_size.y-1))
+		else:
+			pointer = Vector2(clamp(pointer.x + step.x, 0, 511), clamp(pointer.y + step.y, 0, 383))
 		var event = InputEventMouseMotion.new()
-		event.position = pointer + game_origin
-		event.global_position = pointer + game_origin
+		event.position = display_pointer if adaptive_active else pointer + game_origin
+		event.global_position = event.position
 		event.relative = step
 		dispatch_pointer(event)
 	var movement = Vector2.ZERO if pad < 0 else Vector2(Input.get_joy_axis(pad, JOY_AXIS_0), Input.get_joy_axis(pad, JOY_AXIS_1))
@@ -829,6 +1045,18 @@ func refresh_controller_surface(include_room = false):
 		set_controller_surface(surface)
 
 func set_controller_surface(surface):
+	if adaptive_available and surface.context == "room" and not surface.targets.empty():
+		surface.targets = surface.targets.duplicate()
+		surface.targets.append({"id":"ui:layout","aim_x":-1,"aim_y":-1,"w":32,"h":26})
+	if adaptive_active:
+		var visible_targets = []
+		for target in surface.targets:
+			if target.id != "prop:light":
+				visible_targets.append(target)
+		surface.targets = visible_targets
+	if surface.context != "dialogue":
+		surface.targets = surface.targets.duplicate()
+		surface.targets.sort_custom(self,"controller_target_before")
 	var same_place = controller_surface.context == surface.context and controller_surface.key == surface.key
 	if same_place and surface.context == "room" and surface.targets.empty():
 		return
@@ -849,13 +1077,60 @@ func set_controller_surface(surface):
 		focus_controller_target(controller_selection)
 	cursor_layer.update()
 
+func controller_target_position(target):
+	if target.id == "ui:layout":
+		return layout_switch.rect_position+layout_switch.rect_size/2
+	return game_to_display(Vector2(target.aim_x,target.aim_y),target.id)
+
+func controller_target_before(a,b):
+	var first = controller_target_position(a)
+	var second = controller_target_position(b)
+	# Read across approximate rows, with an ID tie-break for overlapping items.
+	var row_a = int(floor(first.y/24.0))
+	var row_b = int(floor(second.y/24.0))
+	if row_a != row_b:
+		return row_a < row_b
+	if first.x != second.x:
+		return first.x < second.x
+	if first.y != second.y:
+		return first.y < second.y
+	return a.id < b.id
+
+func controller_spatial_target(key):
+	if controller_selection < 0:
+		return 0
+	var direction = {"uparrow":Vector2.UP,"downarrow":Vector2.DOWN,"leftarrow":Vector2.LEFT,"rightarrow":Vector2.RIGHT}[key]
+	var origin = controller_target_position(controller_surface.targets[controller_selection])
+	var best = controller_selection
+	var best_score = INF
+	for index in range(controller_surface.targets.size()):
+		if index == controller_selection:
+			continue
+		var offset = controller_target_position(controller_surface.targets[index])-origin
+		var forward = offset.dot(direction)
+		if forward <= 1.0:
+			continue
+		var across = abs(offset.cross(direction))
+		# Prefer an item in the requested row/column over a closer diagonal.
+		var score = forward + across*2.0 + across*across*4.0/forward
+		if score < best_score:
+			best = index
+			best_score = score
+	return best
+
 func focus_controller_target(index):
 	if index < 0 or index >= controller_surface.targets.size():
 		return
 	controller_selection = index
 	set_pointer_visible(false)
 	var target = controller_surface.targets[index]
+	if target.id == "ui:layout":
+		display_pointer = layout_switch.rect_position+layout_switch.rect_size/2
+		pointer = display_pointer-game_origin
+		cursor_layer.update()
+		return
 	pointer = Vector2(target.aim_x, target.aim_y)
+	display_pointer = game_to_display(pointer,target.id)
 	send({"action": "pointer", "kind": "move", "x": pointer.x, "y": pointer.y})
 	cursor_layer.update()
 
@@ -869,8 +1144,11 @@ func controller_direction(key):
 	if controller_surface.context in ["dialogue", "movie", "panel"]:
 		var count = controller_surface.targets.size()
 		if count > 0 and not pointer_pressed:
-			var step = -1 if key in ["uparrow", "leftarrow"] else 1
-			focus_controller_target(0 if controller_selection < 0 else (controller_selection + step + count) % count)
+			if controller_surface.context == "dialogue":
+				var step = -1 if key in ["uparrow", "leftarrow"] else 1
+				focus_controller_target(0 if controller_selection < 0 else (controller_selection + step + count) % count)
+			else:
+				focus_controller_target(controller_spatial_target(key))
 		return
 	send({"action": "key", "key": key})
 
@@ -894,6 +1172,9 @@ func controller_confirm(pressed):
 	if pressed:
 		refresh_controller_surface()
 		set_pointer_visible(controller_selection < 0)
+		if controller_selection >= 0 and controller_surface.targets[controller_selection].id == "ui:layout":
+			toggle_exploration_layout()
+			return
 	mouse_button(pressed)
 
 func set_pointer_visible(visible):
@@ -908,6 +1189,9 @@ func controller_ui_key(code, pressed):
 	Input.parse_input_event(event)
 
 func controller_back():
+	if touch_editing:
+		finish_touch_positions()
+		return
 	if remap_open:
 		controller_settings_back()
 		return
@@ -1026,6 +1310,10 @@ func controller_action_held(action):
 	return action in controller_held.values()
 
 func controller_action(action, pressed):
+	if touch_editing:
+		if pressed and action in ["back","menu"]:
+			finish_touch_positions()
+		return
 	if action == "confirm":
 		controller_confirm(pressed)
 	elif action == "mouse":
@@ -1057,6 +1345,166 @@ func controller_binding_label(token):
 		JOY_DPAD_UP: "D-pad up", JOY_DPAD_DOWN: "D-pad down", JOY_DPAD_LEFT: "D-pad left", JOY_DPAD_RIGHT: "D-pad right"}
 	var index = int(token.substr(2))
 	return names.get(index, "Button " + str(index))
+
+func add_layout_preview(box):
+	var preview = load("res://scripts/layout_preview.gd").new()
+	preview.player = self
+	box.add_child(preview)
+
+func show_first_layout():
+	var box = panel("Choose your layout")
+	add_layout_preview(box)
+	var hint = Label.new()
+	hint.text = "Side panels work on wide screens. Conversations and held items use Classic. Change your choice later in Menu > Controls / display."
+	hint.autowrap = true
+	hint.rect_min_size = Vector2(390,64)
+	hint.add_font_override("font",get_font_for("13px Arial"))
+	box.add_child(hint)
+	button(box,"Classic (default)","choose_first_layout",[0]).grab_focus()
+	button(box,"Side panels: Compact","choose_first_layout",[1]).disabled = classic_format_device()
+	button(box,"Side panels: Roomy","choose_first_layout",[2]).disabled = classic_format_device()
+
+func choose_first_layout(choice):
+	config.set_value("graphics","adaptive_exploration",choice != 0 and not classic_format_device())
+	config.set_value("graphics","adaptive_roomy",choice == 2)
+	config.set_value("graphics","layout_chosen",true)
+	config.save("user://settings.cfg")
+	close_modal()
+	update_touch_layout()
+	boot_configured_game()
+
+func show_control_options():
+	var box = panel("Controls / display")
+	if not classic_format_device():
+		button(box,"Adaptive exploration: %s" % ("On" if adaptive_enabled() else "Off"),"toggle_adaptive_exploration").grab_focus()
+		button(box,"Panel size: " + ("Roomy" if adaptive_roomy() else "Compact"),"toggle_adaptive_size")
+		add_layout_preview(box)
+		text_scroller(box,"Side panels need a wide screen. Conversations, held items and special screens use Classic.",40)
+	var bindings = button(box,"Controller bindings","show_controller_settings")
+	if classic_format_device():
+		bindings.grab_focus()
+	button(box,"Touch controls","show_touch_help")
+	button(box,"Back","controller_settings_back")
+
+func toggle_adaptive_size():
+	config.set_value("graphics","adaptive_roomy",not adaptive_roomy())
+	config.save("user://settings.cfg")
+	update_touch_layout()
+	show_control_options()
+
+func toggle_adaptive_exploration():
+	config.set_value("graphics","adaptive_exploration",not adaptive_enabled())
+	config.save("user://settings.cfg")
+	update_touch_layout()
+	sync_adaptive_layout()
+	show_control_options()
+
+func show_touch_help():
+	var box = panel("Touch controls")
+	var appearance = config.get_value("touch","joystick_style","full")
+	button(box,"Joystick: " + {"full":"Ring and knob","knob":"Knob only","hidden":"Invisible"}.get(appearance,"Ring and knob"),"cycle_touch_style")
+	button(box,"Control opacity: %d%%" % int(config.get_value("touch","opacity",0.5)*100),"cycle_touch_opacity")
+	button(box,"Edit positions","edit_touch_positions")
+	add_touch_preview(box)
+	text_scroller(box,"Drag controls in Edit positions, then choose Done / lock. Layouts are saved separately for portrait, landscape and side panels. Invisible parts still respond to touch. Tap the joystick center to open a door.",70)
+	button(box,"Back","show_control_options").grab_focus()
+
+func add_touch_preview(box):
+	var preview = Control.new()
+	preview.rect_min_size = Vector2(396,60)
+	preview.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	box.add_child(preview)
+	var joystick = load("res://scripts/touch_joystick.gd").new()
+	preview.add_child(joystick)
+	joystick.set_process_input(false)
+	joystick.configure(Vector2(52,30),28)
+	joystick.appearance = config.get_value("touch","joystick_style","full")
+	joystick.modulate.a = config.get_value("touch","opacity",0.5)
+	var example = load("res://scripts/touch_button.gd").new()
+	example.name = "space"
+	example.position = Vector2(112,4)
+	example.modulate.a = joystick.modulate.a
+	preview.add_child(example)
+	example.set_process_input(false)
+	var label = Label.new()
+	label.text = "Control preview"
+	label.rect_position = Vector2(188,22)
+	label.add_font_override("font",get_font_for("12px Arial"))
+	preview.add_child(label)
+
+func cycle_touch_style():
+	var styles = ["full","knob","hidden"]
+	var current = styles.find(config.get_value("touch","joystick_style","full"))
+	config.set_value("touch","joystick_style",styles[(current+1)%3])
+	config.save("user://settings.cfg")
+	update_touch_layout()
+	show_touch_help()
+
+func cycle_touch_opacity():
+	var opacity = config.get_value("touch","opacity",0.5) + 0.25
+	config.set_value("touch","opacity",0.25 if opacity > 1.0 else opacity)
+	config.save("user://settings.cfg")
+	update_touch_layout()
+	show_touch_help()
+
+func touch_layout_key():
+	return "adaptive" if adaptive_active else ("portrait" if OS.window_size.y > OS.window_size.x else "landscape")
+
+func touch_control_bounds(control):
+	var node = touch_strip.get_node(control)
+	return Rect2(node.position-Vector2.ONE*node.radius,Vector2.ONE*node.radius*2) if control == "joystick" else Rect2(node.position,Vector2(52,52))
+
+func move_touch_control(control, center):
+	var node = touch_strip.get_node(control)
+	var half = Vector2.ONE * node.radius if control == "joystick" else Vector2(26,26)
+	center = Vector2(clamp(center.x,half.x+4,layout_size.x-half.x-4),clamp(center.y,half.y+48,layout_size.y-half.y-4))
+	node.position = center if control == "joystick" else center-half
+	var positions = config.get_value("touch_positions",touch_layout_key(),{}).duplicate()
+	positions[control] = center/layout_size
+	config.set_value("touch_positions",touch_layout_key(),positions)
+
+func apply_touch_preferences():
+	var positions = config.get_value("touch_positions",touch_layout_key(),{})
+	for control in ["joystick","menu","space","escape","keyboard"]:
+		var node = touch_strip.get_node(control)
+		if positions is Dictionary and positions.get(control) is Vector2:
+			move_touch_control(control,positions[control]*layout_size)
+		node.modulate.a = 1.0 if touch_editing else clamp(float(config.get_value("touch","opacity",0.5)),0.25,1.0)
+		if control != "joystick":
+			node.action = "" if touch_editing else "touch_"+control
+	var joystick = touch_strip.get_node("joystick")
+	joystick.appearance = config.get_value("touch","joystick_style","full")
+	joystick.editing = touch_editing
+	joystick.update()
+
+func edit_touch_positions():
+	close_modal()
+	menu = null
+	manual_pause = true
+	send({"action":"pause","on":true})
+	sync_adaptive_layout()
+	touch_editing = true
+	clear_interrupted_input()
+	update_touch_layout()
+	touch_editor = load("res://scripts/touch_editor.gd").new()
+	touch_editor.player = self
+	touch_editor.connect("finished",self,"finish_touch_positions")
+	touch_editor.connect("reset_requested",self,"reset_touch_positions")
+	add_child(touch_editor)
+
+func reset_touch_positions():
+	config.set_value("touch_positions",touch_layout_key(),{})
+	update_touch_layout()
+
+func finish_touch_positions():
+	touch_editing = false
+	if is_instance_valid(touch_editor):
+		touch_editor.queue_free()
+	touch_editor = null
+	config.save("user://settings.cfg")
+	clear_interrupted_input()
+	update_touch_layout()
+	show_touch_help()
 
 func show_controller_settings():
 	var box = panel("Controller settings")
@@ -1162,6 +1610,12 @@ func show_controller_help():
 	button(box, "Back", "show_controller_settings").grab_focus()
 
 func panel(title):
+	if touch_editing:
+		touch_editing = false
+		if is_instance_valid(touch_editor):
+			touch_editor.queue_free()
+		config.save("user://settings.cfg")
+		update_touch_layout()
 	if pointer_pressed:
 		send({"action": "pointer", "kind": "release", "x": pointer.x, "y": pointer.y})
 		pointer_pressed = false
@@ -1187,6 +1641,8 @@ func panel(title):
 	controller_selection = -1
 	cursor_layer.update()
 	touch_strip.hide()
+	if is_instance_valid(layout_switch):
+		layout_switch.hide()
 	if runtime == null:
 		status.hide()
 	return box
@@ -1241,7 +1697,7 @@ func show_menu():
 	button(box, "Import / export .ti saves", "save_tools")
 	button(box, "Game files / mods", "setup_from_menu")
 	button(box, "Main menu", "menu_command", ["new"])
-	button(box, "Controller settings", "show_controller_settings")
+	button(box, "Controls / display", "show_control_options")
 	button(box, "Credits", "show_credits")
 	button(box, "Quit", "quit_game")
 
@@ -1502,23 +1958,32 @@ func close_keyboard():
 
 # Touch controls occupy a separate strip below the original 512x384 picture.
 var touch_strip
+var touch_editing = false
+var touch_editor
 var touch_enabled = false
 var touch_click_down = false
 var touch_nav_timer = 0.0
 var touch_nav_direction = ""
 
 func update_touch_layout(_device = 0, _connected = false):
-	touch_enabled = (OS.get_name() == "Android" or OS.has_touchscreen_ui_hint() or "--touch-test" in OS.get_cmdline_args()) and Input.get_connected_joypads().empty()
+	if adaptive_active and (not adaptive_enabled() or not adaptive_widescreen()):
+		set_adaptive_active(false)
+		return
+	touch_enabled = touch_editing or (OS.get_name() == "Android" or OS.has_touchscreen_ui_hint() or "--touch-test" in OS.get_cmdline_args()) and Input.get_connected_joypads().empty()
 	var physical = OS.window_size
 	var portrait = physical.y > physical.x
 	var desired = Vector2(512, 384)
-	if touch_enabled:
+	if adaptive_enabled() and adaptive_widescreen():
+		desired = Vector2(384.0 * physical.x / max(1,physical.y),384)
+	elif touch_enabled:
 		desired = Vector2(512, max(640, 512.0 * physical.y / max(1, physical.x))) if portrait else Vector2(max(640, 384.0 * physical.x / max(1, physical.y)), 384)
 	# Keep the picture and its 536-pixel control block within thumb reach.
 	game_origin = Vector2(0, max(12, desired.y - 548)) if touch_enabled and portrait else Vector2((desired.x - 512) / 2, 0)
 	if desired != layout_size:
 		layout_size = desired
 		get_tree().set_screen_stretch(SceneTree.STRETCH_MODE_2D, SceneTree.STRETCH_ASPECT_KEEP, layout_size)
+	if adaptive_active:
+		adaptive.configure(desired, adaptive_metadata, adaptive_roomy())
 	status.rect_position = game_origin + Vector2(20, 160)
 	if is_instance_valid(checkpoint_toast):
 		checkpoint_toast.rect_position = game_origin + Vector2(16, 16)
@@ -1529,7 +1994,12 @@ func update_touch_layout(_device = 0, _connected = false):
 		return
 	touch_strip.visible = touch_enabled and modal == null
 	var specs
-	if portrait:
+	if adaptive_active:
+		var rail = adaptive.rail
+		touch_strip.get_node("joystick").configure(Vector2(rail/2,274),min(34,rail/2-7))
+		var right = desired.x-rail/2-26
+		specs = [["menu","Menu",Vector2(rail/2-26,316)],["space","Door",Vector2(right,208)],["escape","Skip",Vector2(right,262)],["keyboard","Keys",Vector2(right,316)]]
+	elif portrait:
 		var y = game_origin.y + 420
 		touch_strip.get_node("joystick").configure(Vector2(112, y + 58), 58)
 		specs = [["space", "Door", Vector2(264,y+64)], ["escape", "Skip", Vector2(336,y+64)], ["menu", "Menu", Vector2(264,y)], ["keyboard", "Keys", Vector2(336,y)]]
@@ -1539,6 +2009,8 @@ func update_touch_layout(_device = 0, _connected = false):
 		specs = [["menu", "Menu", Vector2(right,72)], ["escape", "Skip", Vector2(right,132)], ["space", "Door", Vector2(right,192)], ["keyboard", "Keys", Vector2(right,252)]]
 	for spec in specs:
 		touch_strip.get_node(spec[0]).position = spec[2]
+	apply_touch_preferences()
+	update_layout_switch()
 	update()
 
 func make_touch_controls():
@@ -1553,22 +2025,22 @@ func make_touch_controls():
 		var action = "touch_" + spec[0]
 		if not InputMap.has_action(action):
 			InputMap.add_action(action)
-		var t = TouchScreenButton.new()
+		var t = load("res://scripts/touch_button.gd").new()
 		t.name = spec[0]
 		t.action = action
 		var img = Image.new()
 		img.create(52, 52, false, Image.FORMAT_RGBA8)
-		img.fill(Color("263a4d"))
+		img.fill(Color(0,0,0,0))
 		var texture = ImageTexture.new()
 		texture.create_from_image(img, 0)
 		t.normal = texture
 		touch_strip.add_child(t)
 		var text = Label.new()
 		text.text = spec[1]
-		text.rect_position = Vector2(1,17)
-		text.rect_size = Vector2(50,20)
+		text.rect_position = Vector2(1,34)
+		text.rect_size = Vector2(50,15)
 		text.align = Label.ALIGN_CENTER
-		text.add_font_override("font", get_font_for("14px Arial"))
+		text.add_font_override("font", get_font_for("10px Arial"))
 		text.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		t.add_child(text)
 	Input.connect("joy_connection_changed", self, "update_touch_layout")
@@ -1578,18 +2050,18 @@ func make_touch_controls():
 	update_touch_layout()
 
 func touch_door():
-	if ready and modal == null:
+	if ready and modal == null and not touch_editing:
 		send({"action": "key", "key": " "})
 
 func touch_direction(direction):
-	if ready and modal == null:
+	if ready and modal == null and not touch_editing:
 		touch_nav_direction = direction
 		touch_nav_timer = 0.55
 		send({"action": "key", "key": direction + "arrow"})
 
 func process_touch(delta):
 	touch_strip.visible = touch_enabled and modal == null
-	if not touch_enabled or modal != null or interrupted():
+	if not touch_enabled or modal != null or interrupted() or touch_editing:
 		touch_nav_direction = ""
 		touch_nav_timer = 0.0
 		return

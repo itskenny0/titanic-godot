@@ -94,6 +94,13 @@ jobs:
           cp tests/interruptions.gd godot/interruptions-test.gd
           timeout 45 xvfb-run -a .tools/Godot_v3.5.2-stable_x11.64 --path godot --audio-driver Dummy -s res://interruptions-test.gd -- --ui-test
           xvfb-run -a python3 tools/test-godot4.py --godot "$PWD/.tools/Godot_v4.3-stable_linux.x86_64" --test interruptions
+      - name: Check adaptive layout and touch editing
+        run: |
+          cp tests/adaptive.gd godot/adaptive-test.gd
+          timeout 45 xvfb-run -a -s "-screen 0 1920x1080x24" .tools/Godot_v3.5.2-stable_x11.64 --path godot --audio-driver Dummy --resolution 1280x720 -s res://adaptive-test.gd -- --ui-test --touch-test
+          xvfb-run -a -s "-screen 0 1920x1080x24" python3 tools/test-godot4.py --godot "$PWD/.tools/Godot_v4.3-stable_linux.x86_64" --test adaptive --resolution 1280x720 --touch
+          timeout 45 xvfb-run -a -s "-screen 0 640x480x24" .tools/Godot_v3.5.2-stable_x11.64 --path godot --audio-driver Dummy --resolution 640x480 -s res://adaptive-test.gd -- --ui-test --classic-device
+          xvfb-run -a -s "-screen 0 640x480x24" python3 tools/test-godot4.py --godot "$PWD/.tools/Godot_v4.3-stable_linux.x86_64" --test adaptive --classic-device
       - name: Check handheld and touch layouts
         run: |
           cp tests/autosave.gd godot/autosave-test.gd

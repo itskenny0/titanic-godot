@@ -93,6 +93,25 @@ func begin():
 	recorder.surface = {"context": "busy", "key": "conversation", "targets": []}
 	player.refresh_controller_surface()
 	check(player.controller_selection == -1, "old reply disappears during speech")
+	# Inventory and puzzle directions follow visible positions, not file order.
+	recorder.surface = {"context":"panel","key":"inventory-grid","targets":[
+		{"id":"bottom-right","aim_x":200,"aim_y":210,"w":24,"h":24},
+		{"id":"top-right","aim_x":200,"aim_y":90,"w":24,"h":24},
+		{"id":"bottom-left","aim_x":80,"aim_y":200,"w":24,"h":24},
+		{"id":"top-left","aim_x":80,"aim_y":80,"w":24,"h":24}]}
+	player.refresh_controller_surface()
+	check(player.controller_surface.targets[player.controller_selection].id=="top-left","initial focus starts at top left")
+	for move in [["downarrow","bottom-left"],["rightarrow","bottom-right"],["uparrow","top-right"],["leftarrow","top-left"],["uparrow","top-left"]]:
+		player.controller_direction(move[0])
+		check(player.controller_surface.targets[player.controller_selection].id==move[1],"spatial inventory selection: "+move[0])
+	recorder.surface.targets.invert()
+	player.refresh_controller_surface()
+	check(player.controller_surface.targets[player.controller_selection].id=="top-left","source order cannot move selection")
+	player.controller_cycle(1)
+	check(player.controller_surface.targets[player.controller_selection].id=="top-right","shoulder cycles in visible reading order")
+	player.controller_confirm(true)
+	player.controller_confirm(false)
+	check(recorder.commands.back().x==200 and recorder.commands.back().y==90,"spatially selected item clicks original position")
 	# Native controller buttons navigate Godot dialogs, without a mouse.
 	player.handle_event({"type": "dialog", "kind": "question", "id": 21, "text": "Continue?"})
 	yield(self, "idle_frame")

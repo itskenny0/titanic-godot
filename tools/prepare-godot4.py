@@ -28,10 +28,18 @@ s=s[:a]+'''\t\tvar font = load("res://fonts/LiberationMono-Regular.ttf" if "Cour
 \t\tfonts[key] = font
 '''+s[b:]
 s=s.replace('get_font_for(args.font).get_string_size(args.text).x','get_font_for(args.font).get_string_size(args.text, HORIZONTAL_ALIGNMENT_LEFT, -1, int(args.font.split("px")[0])).x')
+s=s.replace('command.text,ink(command.color),max(0,512-command.x))','command.text, HORIZONTAL_ALIGNMENT_LEFT, max(0,512-command.x), int(command.font.split("px")[0]), ink(command.color))')
+s=s.replace('command.text,ink(command.color))','command.text, HORIZONTAL_ALIGNMENT_LEFT, -1, int(command.font.split("px")[0]), ink(command.color))')
 s=s.replace('command.text, ink(command.color))','command.text, HORIZONTAL_ALIGNMENT_LEFT, -1, int(command.font.split("px")[0]), ink(command.color))')
+s=s.replace('.clip(Rect2(', '.intersection(Rect2(')
 s=s.replace('frame_image.create_from_data(', 'frame_image = Image.create_from_data(')
 s=re.sub(r'frame_texture\.create_from_image\(frame_image\).*', 'frame_texture = ImageTexture.create_from_image(frame_image)', s)
 s=s.replace('frame_texture.set_data(frame_image)', 'frame_texture.update(frame_image)')
+s=s.replace('adaptive_atlas_image.create_from_data(', 'adaptive_atlas_image = Image.create_from_data(')
+s=re.sub(r'adaptive_atlas_texture\.create_from_image\(adaptive_atlas_image\).*', 'adaptive_atlas_texture = ImageTexture.create_from_image(adaptive_atlas_image)', s)
+s=s.replace('adaptive_atlas_texture.set_data(adaptive_atlas_image)', 'adaptive_atlas_texture.update(adaptive_atlas_image)')
+s=s.replace('c.label,UIStyle.INK)', 'c.label,HORIZONTAL_ALIGNMENT_LEFT,-1,11,UIStyle.INK)')
+
 s=s.replace('cursor_layer.z_index = 100', 'texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST\n\tcursor_layer.z_index = 100')
 s=s.replace('for key in "1234567890qwertyuiopasdfghjklzxcvbnm.,-":','for key in "1234567890qwertyuiopasdfghjklzxcvbnm.,-".split(""):')
 s=s.replace('var ready =', 'var game_ready =').replace('ready = false','game_ready = false').replace('ready = true','game_ready = true').replace('not ready','not game_ready').replace('if ready and','if game_ready and').replace('game_game_ready','game_ready')
@@ -60,6 +68,8 @@ p.write_text(s)
 for path in (out/'scripts').glob('*.gd'):
  text=path.read_text().replace('.plus_file(', '.path_join(').replace('.bind(args)', '.bindv(args)').replace('OS.get_cmdline_args()', '(OS.get_cmdline_args() + OS.get_cmdline_user_args())')
  text=re.sub(r'\bevent\.(control|meta|alt|shift)\b', lambda m: 'event.' + {'control':'ctrl_pressed','meta':'meta_pressed','alt':'alt_pressed','shift':'shift_pressed'}[m[1]], text)
+ text=text.replace('self, "update"', 'self, "queue_redraw"')
+ text=text.replace('caption,Style.INK)', 'caption,HORIZONTAL_ALIGNMENT_LEFT,-1,11,Style.INK)')
  text=re.sub(r'(?<![a-z_])update\(\)', 'queue_redraw()', text)
  path.write_text(text)
 for source in (root/'tools/godot4').glob('*.gd'):shutil.copy2(source,out/'scripts'/source.name)
