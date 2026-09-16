@@ -7,13 +7,15 @@ var drag_offset = Vector2.ZERO
 var finger = -1
 var bar
 var layout_key = ""
+var resizing = false
+var resize_anchor = Vector2.ZERO
 
 func _ready():
 	z_index = 110
 	bar = HBoxContainer.new()
 	bar.add_constant_override("separation",8)
 	add_child(bar)
-	for caption in ["Reset positions", "Done / lock"]:
+	for caption in ["Reset layout", "Done / lock"]:
 		var b = Button.new()
 		b.text = caption
 		b.rect_min_size = Vector2(144,36)
@@ -23,7 +25,7 @@ func _ready():
 	set_process(true)
 
 func button_pressed(caption):
-	if caption == "Reset positions":
+	if caption == "Reset layout":
 		emit_signal("reset_requested")
 	else:
 		emit_signal("finished")
@@ -34,6 +36,7 @@ func _process(_delta):
 		layout_key = player.touch_layout_key()
 		dragged_control = ""
 		finger = -1
+		resizing = false
 	update()
 
 func _input(event):
@@ -64,20 +67,43 @@ func _input(event):
 	if dragged_control.empty() and bar.get_global_rect().has_point(point):
 		return
 	if pressed and dragged_control.empty():
-		for control in ["menu","space","escape","keyboard","joystick"]:
-			var bounds = player.touch_control_bounds(control)
-			if bounds.has_point(point):
-				dragged_control = control
-				finger = contact
-				drag_offset = bounds.position + bounds.size/2 - point
-				break
+		if resize_handle().has_point(point):
+			dragged_control = "joystick"
+			finger = contact
+			resizing = true
+			var bounds = player.touch_control_bounds("joystick")
+			resize_anchor = bounds.position+Vector2(0,bounds.size.y)
+			drag_offset = resize_handle().position+resize_handle().size/2-point
+		else:
+			for control in ["menu","space","escape","keyboard","joystick"]:
+				var bounds = player.touch_control_bounds(control)
+				if bounds.has_point(point):
+					dragged_control = control
+					finger = contact
+					drag_offset = bounds.position + bounds.size/2 - point
+					break
 	if not dragged_control.empty() and contact == finger:
-		player.move_touch_control(dragged_control,point+drag_offset)
+		if resizing:
+			var diagonal = point+drag_offset-resize_anchor
+			player.resize_touch_joystick(max(diagonal.x,-diagonal.y)/2.0,resize_anchor)
+		else:
+			player.move_touch_control(dragged_control,point+drag_offset)
 		if released:
 			dragged_control = ""
 			finger = -1
+			resizing = false
 	get_tree().set_input_as_handled()
+
+func resize_handle():
+	var bounds = player.touch_control_bounds("joystick")
+	return Rect2(bounds.position+Vector2(bounds.size.x,0)-Vector2(12,12),Vector2(24,24))
 
 func _draw():
 	for control in ["menu","space","escape","keyboard","joystick"]:
 		draw_rect(player.touch_control_bounds(control).grow(3),Color(0.85,0.77,0.56,0.8),false,1)
+	var handle = resize_handle()
+	draw_rect(handle,Color("514b3b"))
+	draw_rect(handle,Color("e2d5b5"),false,1)
+	var center = handle.position+handle.size/2
+	draw_line(center+Vector2(-6,6),center+Vector2(6,-6),Color("e2d5b5"),2,true)
+	draw_polyline(PoolVector2Array([center+Vector2(-1,-6),center+Vector2(6,-6),center+Vector2(6,1)]),Color("e2d5b5"),2,true)

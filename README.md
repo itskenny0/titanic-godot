@@ -34,7 +34,7 @@ Use the arrow keys to move and the mouse to interact. On a handheld, use the lef
 
 **Controls / display** previews the optional Compact and Roomy side panels. New and returning players get a one-time chooser on wide devices; Classic is the default. Screens narrower than 16:10 always keep the original layout. The artwork fills the screen behind translucent controls, with a slight stretch and no cropping. Movement, open doors, location signs and climbing animations keep the side panels. Conversations, held items and special screens restore the original layout automatically. During exploration, the Classic / Side panels button switches back and forth; controller users can select it with L2/R2 and A.
 
-**Touch controls** offers a translucent joystick, ring-and-knob, knob-only or invisible styles, and an opacity preview. Use **Edit positions** to drag the controls, then **Done / lock** to keep them in place. Portrait, landscape and adaptive positions are saved separately. Reset positions restores the current layout.
+**Touch controls** offers a translucent joystick, ring-and-knob, knob-only or invisible styles, and an opacity preview. Use **Edit positions and size** to move controls and drag the joystick's corner handle to resize it, then **Done / lock**. Each layout keeps its own positions and joystick size. Reset layout restores the current layout.
 
 Cutscenes during play queue a checkpoint, saved once normal gameplay returns and manual saving is allowed. The newest 25 autosaves appear in **Load game**, marked in blue and labelled **Autosave**. They use separate storage and never replace or rotate your manual saves. **Game files / mods** lets you turn checkpoints off. Manual saves are still useful between cutscenes.
 

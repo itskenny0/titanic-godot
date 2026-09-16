@@ -1404,9 +1404,9 @@ func show_touch_help():
 	var appearance = config.get_value("touch","joystick_style","full")
 	button(box,"Joystick: " + {"full":"Ring and knob","knob":"Knob only","hidden":"Invisible"}.get(appearance,"Ring and knob"),"cycle_touch_style")
 	button(box,"Control opacity: %d%%" % int(config.get_value("touch","opacity",0.5)*100),"cycle_touch_opacity")
-	button(box,"Edit positions","edit_touch_positions")
+	button(box,"Edit positions and size","edit_touch_positions")
 	add_touch_preview(box)
-	text_scroller(box,"Drag controls in Edit positions, then choose Done / lock. Layouts are saved separately for portrait, landscape and side panels. Invisible parts still respond to touch. Tap the joystick center to open a door.",70)
+	text_scroller(box,"Drag controls to move them. Drag the joystick's corner handle to resize it, then choose Done / lock. Each layout keeps its own positions and size. Invisible parts still respond to touch. Tap the joystick center to open a door.",70)
 	button(box,"Back","show_control_options").grab_focus()
 
 func add_touch_preview(box):
@@ -1463,8 +1463,21 @@ func move_touch_control(control, center):
 	positions[control] = center/layout_size
 	config.set_value("touch_positions",touch_layout_key(),positions)
 
+func resize_touch_joystick(size, bottom_left):
+	if not touch_editing:
+		return
+	var limit = min(96.0,min((layout_size.x-bottom_left.x-4)/2.0,(bottom_left.y-48)/2.0))
+	var joystick = touch_strip.get_node("joystick")
+	joystick.radius = clamp(size,min(32.0,limit),limit)
+	config.set_value("touch_sizes",touch_layout_key(),joystick.radius)
+	move_touch_control("joystick",bottom_left+Vector2(joystick.radius,-joystick.radius))
+	joystick.update()
+
 func apply_touch_preferences():
 	var positions = config.get_value("touch_positions",touch_layout_key(),{})
+	var joystick = touch_strip.get_node("joystick")
+	if config.has_section_key("touch_sizes",touch_layout_key()):
+		joystick.radius = clamp(float(config.get_value("touch_sizes",touch_layout_key(),58.0)),32.0,96.0)
 	for control in ["joystick","menu","space","escape","keyboard"]:
 		var node = touch_strip.get_node(control)
 		if positions is Dictionary and positions.get(control) is Vector2:
@@ -1472,7 +1485,6 @@ func apply_touch_preferences():
 		node.modulate.a = 1.0 if touch_editing else clamp(float(config.get_value("touch","opacity",0.5)),0.25,1.0)
 		if control != "joystick":
 			node.action = "" if touch_editing else "touch_"+control
-	var joystick = touch_strip.get_node("joystick")
 	joystick.appearance = config.get_value("touch","joystick_style","full")
 	joystick.editing = touch_editing
 	joystick.update()
@@ -1494,6 +1506,8 @@ func edit_touch_positions():
 
 func reset_touch_positions():
 	config.set_value("touch_positions",touch_layout_key(),{})
+	if config.has_section_key("touch_sizes",touch_layout_key()):
+		config.erase_section_key("touch_sizes",touch_layout_key())
 	update_touch_layout()
 
 func finish_touch_positions():
@@ -1996,9 +2010,9 @@ func update_touch_layout(_device = 0, _connected = false):
 	var specs
 	if adaptive_active:
 		var rail = adaptive.rail
-		touch_strip.get_node("joystick").configure(Vector2(rail/2,274),min(34,rail/2-7))
+		touch_strip.get_node("joystick").configure(Vector2(70,desired.y-70),58)
 		var right = desired.x-rail/2-26
-		specs = [["menu","Menu",Vector2(rail/2-26,316)],["space","Door",Vector2(right,208)],["escape","Skip",Vector2(right,262)],["keyboard","Keys",Vector2(right,316)]]
+		specs = [["menu","Menu",Vector2(144,desired.y-64)],["space","Door",Vector2(right,208)],["escape","Skip",Vector2(right,262)],["keyboard","Keys",Vector2(right,316)]]
 	elif portrait:
 		var y = game_origin.y + 420
 		touch_strip.get_node("joystick").configure(Vector2(112, y + 58), 58)

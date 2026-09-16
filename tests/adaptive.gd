@@ -65,6 +65,8 @@ func begin():
 		player.sync_adaptive_layout()
 		player.update_touch_layout()
 		var world = player.adaptive.world
+		check(player.touch_strip.get_node("joystick").radius == 58.0,"adaptive joystick retains original thumb-sized radius")
+		check(not player.touch_control_bounds("joystick").intersects(player.touch_control_bounds("menu")),"default menu does not overlap enlarged joystick")
 		for point in [Vector2(0,0),Vector2(255,132),Vector2(511,200)]:
 			check(player.display_to_game(player.game_to_display(point)).distance_to(point)<0.01,"world click roundtrip")
 		for control in player.adaptive.controls:
@@ -123,13 +125,32 @@ func begin():
 	touch.pressed=false
 	touch.position=drag.position
 	player.touch_editor._input(touch)
+	var handle = player.touch_editor.resize_handle()
+	touch.position = handle.position+handle.size/2
+	touch.pressed = true
+	player.touch_editor._input(touch)
+	drag.position = touch.position+Vector2(24,-24)
+	drag.index = 4
+	player.touch_editor._input(drag)
+	check(player.touch_strip.get_node("joystick").radius==58,"other finger cannot resize the joystick")
+	drag.index = 3
+	player.touch_editor._input(drag)
+	check(player.touch_strip.get_node("joystick").radius==70,"corner handle resizes joystick")
+	var resized_position = player.touch_strip.get_node("joystick").position
+	touch.position = drag.position
+	touch.pressed = false
+	player.touch_editor._input(touch)
+	check(recorder.commands.size()==before,"resizing sends no gameplay input")
 	player.controller_action("back",true)
 	yield(self, "idle_frame")
 	check(not player.touch_editing and not player.touch_strip.get_node("joystick").editing,"controller Back exits the editor and locks inputs in place")
 	player.close_modal()
 	player.sync_adaptive_layout()
 	player.update_touch_layout()
-	check(player.touch_strip.get_node("joystick").position.distance_to(drag.position)<0.01,"custom position restored")
+	check(player.touch_strip.get_node("joystick").position.distance_to(resized_position)<0.01,"custom position restored")
+	check(player.touch_strip.get_node("joystick").radius==70,"custom size restored")
+	player.resize_touch_joystick(90,Vector2(20,300))
+	check(player.touch_strip.get_node("joystick").radius==70,"joystick size locked outside editing")
 	player.config.set_value("touch","joystick_style","knob")
 	player.apply_touch_preferences()
 	check(player.touch_strip.get_node("joystick").appearance=="knob" and player.touch_strip.get_node("joystick").modulate.a==0.5,"knob-only style has translucent default")
@@ -138,6 +159,7 @@ func begin():
 	yield(create_timer(0.3),"timeout")
 	player.update_touch_layout()
 	check(not player.adaptive_active,"rotation immediately restores classic")
+	check(player.touch_strip.get_node("joystick").radius==58,"portrait keeps independent joystick size")
 	check(player.touch_strip.get_node("joystick").position!=drag.position,"portrait has independent positions")
 	OS.set_window_size(Vector2(640,480))
 	yield(create_timer(0.3),"timeout")
