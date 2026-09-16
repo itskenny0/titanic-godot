@@ -887,6 +887,9 @@ func window_close_requested(now):
 func _input(event):
 	if interrupted():
 		return
+	if block_touch_mouse(event):
+		get_tree().set_input_as_handled()
+		return
 	if controller_binding_input(event):
 		get_tree().set_input_as_handled()
 		return
@@ -1976,8 +1979,31 @@ var touch_editing = false
 var touch_editor
 var touch_enabled = false
 var touch_click_down = false
+var touch_mouse_blocked = false
 var touch_nav_timer = 0.0
 var touch_nav_direction = ""
+
+func block_touch_mouse(event):
+	# Godot emits the mouse copy BEFORE the native touch event. Consuming the
+	# joystick's touch event alone cannot stop that copy clicking the world.
+	if controller_pointer_event or event.device != -1 or not (event is InputEventMouseButton or event is InputEventMouseMotion):
+		return false
+	if event is InputEventMouseButton and event.button_index == BUTTON_LEFT:
+		if event.pressed:
+			touch_mouse_blocked = false
+			if not touch_editing and modal == null and is_instance_valid(touch_strip) and touch_strip.is_visible_in_tree():
+				var joystick = touch_strip.get_node("joystick")
+				touch_mouse_blocked = event.position.distance_to(joystick.position) <= joystick.radius
+				for control in ["menu","space","escape","keyboard"]:
+					if touch_control_bounds(control).has_point(event.position):
+						touch_mouse_blocked = true
+		else:
+			var was_blocked = touch_mouse_blocked
+			touch_mouse_blocked = false
+			return was_blocked
+	# Keep ownership until release, including drags out of the control, hidden
+	# joystick artwork and screen changes caused by the control's own action.
+	return touch_mouse_blocked
 
 func update_touch_layout(_device = 0, _connected = false):
 	if adaptive_active and (not adaptive_enabled() or not adaptive_widescreen()):

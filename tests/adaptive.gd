@@ -20,6 +20,28 @@ func check(ok,message):
 		failed = true
 		printerr("FAIL: ",message)
 func _init(): call_deferred("begin")
+func screen_touch(point, pressed):
+	# Exercise Godot's actual mouse emulation and viewport scaling.
+	var touch = InputEventScreenTouch.new()
+	touch.index = 0
+	touch.position = point*Vector2(OS.window_size)/player.layout_size
+	touch.pressed = pressed
+	Input.parse_input_event(touch)
+	Input.flush_buffered_events()
+
+func screen_drag(point):
+	var drag = InputEventScreenDrag.new()
+	drag.index = 0
+	drag.position = point*Vector2(OS.window_size)/player.layout_size
+	Input.parse_input_event(drag)
+	Input.flush_buffered_events()
+
+func pointer_command_count(recorder):
+	var count = 0
+	for command in recorder.commands:
+		if command.action == "pointer":
+			count += 1
+	return count
 func fit(message):
 	var bounds = player.modal.get_global_rect()
 	check(bounds.position.x >= 0 and bounds.position.y >= 0 and bounds.end.x <= player.layout_size.x+1 and bounds.end.y <= player.layout_size.y+1,message)
@@ -80,6 +102,41 @@ func begin():
 		var arrow = player.adaptive.navigation_display
 		check(world.encloses(arrow),"navigation arrow stays fully visible")
 		check(player.display_to_game(arrow.position+arrow.size/2) == Vector2(230,290),"navigation arrow retains engine aim")
+	var stick = player.touch_strip.get_node("joystick")
+	for appearance in ["full","hidden"]:
+		stick.appearance = appearance
+		recorder.commands.clear()
+		screen_touch(stick.position+Vector2(stick.radius*0.8,0),true)
+		check(Input.is_action_pressed("touch_right"),"joystick owns native touch over world")
+		screen_drag(Vector2(player.layout_size.x/2,200))
+		screen_touch(Vector2(player.layout_size.x/2,200),false)
+		check(pointer_command_count(recorder)==0,"joystick suppresses mouse copies through drag and release: "+appearance)
+		check(not Input.is_action_pressed("touch_right") and not player.touch_mouse_blocked,"release clears joystick and gesture capture")
+	stick.appearance = "full"
+	recorder.commands.clear()
+	screen_touch(stick.position,true)
+	screen_touch(stick.position,false)
+	check(pointer_command_count(recorder)==0 and recorder.commands.size()==1 and recorder.commands[0].key==" ","center tap opens door without clicking behind joystick")
+	for control in ["space","escape","keyboard","menu"]:
+		recorder.commands.clear()
+		var bounds = player.touch_control_bounds(control)
+		screen_touch(bounds.position+bounds.size/2,true)
+		check(Input.is_action_pressed("touch_"+control),"native touch button still activates: "+control)
+		player.process_touch(0.01)
+		screen_touch(Vector2(player.layout_size.x/2,200),false)
+		check(pointer_command_count(recorder)==0,"touch button does not click through: "+control)
+		if player.virtual_keyboard != null:
+			player.close_keyboard()
+		player.close_modal()
+		player.sync_adaptive_layout()
+		player.update_touch_layout()
+		yield(self, "idle_frame")
+	recorder.commands.clear()
+	var free_point = Vector2(player.layout_size.x/2,200)
+	screen_touch(free_point,true)
+	screen_drag(stick.position)
+	screen_touch(stick.position,false)
+	check(pointer_command_count(recorder)==3 and not player.pointer_pressed,"world drag may cross controls and still release normally")
 	player.set_controller_surface({"context":"room","key":"test","targets":[{"id":"prop:bag","aim_x":140,"aim_y":290,"w":20,"h":20},{"id":"prop:light","aim_x":180,"aim_y":280,"w":251,"h":120}]})
 	check(player.controller_surface.targets.size()==2,"decorative toolbar removed and quick layout switch reachable")
 	player.focus_controller_target(1)
