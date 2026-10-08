@@ -1,4 +1,6 @@
-# Titanic for Godot
+# Titanic for Godot - 30 year anniversary edition
+*Titanic: Adventure Out of Time* (1996)
+_I feel old_
 
 ## Play quickly (Windows, Linux, macOS)
 
