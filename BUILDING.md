@@ -65,7 +65,7 @@ python3 tools/prepare-godot4.py --godot /path/to/godot4
 XDG_CONFIG_HOME="$PWD/.build/android-editor-settings" python3 tools/export-android.py --release --godot /path/to/godot4 --sdk "$ANDROID_HOME"
 ```
 
-The release template keeps GDScript, fonts, text shaping, and the Titanic bridge. It disables other optional modules, 3D, and Vulkan, uses size optimization and ThinLTO, and runs R8 on Java/Kotlin with keep rules for JNI and the document picker. Go builds use their normal compiler optimizations plus `-s -w` to remove symbol and debug tables. Game and patch assets make up most of the package size.
+The release template keeps GDScript, fonts, text shaping, SVG decoding, and the Titanic bridge. It disables other optional modules, 3D, and Vulkan, uses size optimization and ThinLTO, and runs R8 on Java/Kotlin with keep rules for JNI and the document picker. Go builds use their normal compiler optimizations plus `-s -w` to remove symbol and debug tables. Game and patch assets make up most of the package size.
 
 ## Personal HD artwork
 
@@ -85,6 +85,8 @@ Prepare the pinned patches with `python3 tools/fetch-patches.py` before exportin
 
 Add the pack to either personal build command with `--hd-pack .build/hd-personal/pack`. The base player must support HD packs. The upscaler keeps the smaller of lossless WebP and PNG for each image. The builder checks image sizes and checksums, then includes the pack alongside the game files and patches.
 
-UI artwork always uses exact nearest-neighbor 2x. Use `--nearest '*/enigma.stg:*'` on the upscale command to keep the cipher puzzle screen pixel-exact too. Repeat the option for more `file:name` patterns or source image hashes from `catalog.json`. Changing these selections regenerates only affected images. See the [HD guide](docs/HD.md#keep-selected-assets-pixel-exact).
+The personal upscaler uses exact nearest-neighbor 2x for UI artwork. The bundled SVG controls override matching idle sprites unless Redrawn interface is switched off. Use `--nearest '*/enigma.stg:*'` on the upscale command to keep the cipher puzzle screen pixel-exact too. Repeat the option for more `file:name` patterns or source image hashes from `catalog.json`. Changing these selections regenerates only affected images. See the [HD guide](docs/HD.md#keep-selected-assets-pixel-exact).
 
 For an unbundled player, put the pack in an `hdpack` folder beside the executable, or inside `titanic` on PortMaster. Game files settings lets you switch HD artwork on or off for the next start. Saves, click targets and the original game files stay unchanged. Unmatched images use the original artwork, including when a custom gamma setting changes the palette.
+
+Bundled exploration controls live in `godot/artwork/ui` as SVG only. Both exporters include the raw SVGs and their manifest. Godot rasterizes them at runtime and the Go cache holds the results in memory. Android templates must keep `module_svg_enabled=yes`. Run `python3 tools/update-svg-ui.py --check` and `tests/svg_ui.gd` alongside the portable tests when editing them.

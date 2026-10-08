@@ -14,7 +14,7 @@ options = ['platform=android', 'target=template_release', 'arch=arm64',
            'vulkan=no', 'disable_3d=yes', 'debug_symbols=no', 'optimize=size', 'lto=thin',
            'modules_enabled_by_default=no', 'module_gdscript_enabled=yes',
            'module_freetype_enabled=yes', 'module_text_server_adv_enabled=yes',
-           'module_titanic_enabled=yes']
+           'module_svg_enabled=yes', 'module_titanic_enabled=yes']
 subprocess.run(['scons', '-C', str(source), *options, '-j'+str(a.jobs)], check=True)
 # The pinned Gradle build excludes automatic SCons tasks for command-line builds.
 subprocess.run(['./gradlew', '--no-daemon', 'copyReleaseBinaryToBin'],

@@ -2,8 +2,11 @@ package engine
 
 import (
 	"fmt"
+	"image"
 	"math"
 	"strings"
+
+	"github.com/itskenny0/titanic-godot/internal/hdpack"
 )
 
 // This is a presentation hint, never a different game coordinate system.
@@ -21,16 +24,20 @@ type AdaptiveControl struct {
 	Slot  int     `json:"slot"`
 }
 type AdaptiveLayout struct {
-	Eligible bool              `json:"eligible"`
-	Reason   string            `json:"reason"`
-	Revision uint64            `json:"revision"`
-	Controls []AdaptiveControl `json:"controls"`
+	Eligible   bool              `json:"eligible"`
+	Reason     string            `json:"reason"`
+	Revision   uint64            `json:"revision"`
+	AtlasScale int               `json:"atlas_scale"`
+	Controls   []AdaptiveControl `json:"controls"`
 }
 
 func (p *Player) AdaptiveLayout() AdaptiveLayout {
-	out := AdaptiveLayout{Reason: "special screen", Controls: []AdaptiveControl{}, Revision: p.Context.Version}
+	out := AdaptiveLayout{Reason: "special screen", Controls: []AdaptiveControl{}, Revision: p.Context.Version, AtlasScale: 1}
 	if p.Host == nil || !p.Ready {
 		return out
+	}
+	if p.Host.Screen().HD != nil {
+		out.AtlasScale = hdpack.Scale
 	}
 	s, d := p.Host.Session, p.Host.Director
 	// Movement fades, door transitions and world-sized movies (including
@@ -126,9 +133,9 @@ func (p *Player) AdaptiveLayout() AdaptiveLayout {
 	return out
 }
 
-// The original sprites are presented separately, with their exact alpha and
-// current palette. Interface HD artwork is integer scaled, so no second AI
-// texture or game-data export is needed for these small controls.
+// Side panels use the same source-keyed HD artwork as the classic toolbar.
+// Logical geometry remains original. Explicit vector replacements may supply
+// smooth display alpha; a missing replacement uses the original pixels and mask.
 func (p *Player) AdaptiveAtlas() []byte {
 	layout := p.AdaptiveLayout()
 	if !layout.Eligible {
@@ -140,7 +147,8 @@ func (p *Player) AdaptiveAtlas() []byte {
 	if d.room != nil {
 		palette = d.room.BandPropPalette(flat.Palette)
 	}
-	const width, height = 640, 128
+	scale := layout.AtlasScale
+	width, height := 640*scale, 128*scale
 	out := make([]byte, width*height*4)
 	for _, control := range layout.Controls {
 		prop := p.Host.Session.Props.Get(control.Name)
@@ -148,18 +156,36 @@ func (p *Player) AdaptiveAtlas() []byte {
 		if err != nil || r == nil {
 			return nil
 		}
-		for y := 0; y < r.H; y++ {
-			for x := 0; x < r.W; x++ {
-				i := r.sample(r.X+float64(x), r.Y+float64(y))
-				if i < 0 {
+		var replacement *image.NRGBA
+		artworkAlpha := false
+		if hd := p.Host.Screen().HD; hd != nil {
+			rgba := spriteRGBA(r.F, palette)
+			key := hdpack.Key(r.F.Width, r.F.Height, rgba)
+			replacement = hd.Pack.Get(key, r.F.Width, r.F.Height)
+			artworkAlpha = replacement != nil && hd.Pack.SpriteAlpha(key, r.F.Width, r.F.Height)
+		}
+		for y := 0; y < r.H*scale; y++ {
+			for x := 0; x < r.W*scale; x++ {
+				i := r.sample(r.X+float64(x/scale), r.Y+float64(y/scale))
+				if i < 0 && !artworkAlpha {
+					continue
+				}
+				dst := (y*width + control.Slot*128*scale + x) * 4
+				if artworkAlpha {
+					from := y*replacement.Stride + x*4
+					copy(out[dst:dst+4], replacement.Pix[from:from+4])
 					continue
 				}
 				pal := int(r.F.Indexed[i]) * 4
 				if pal+2 >= len(palette) {
 					continue
 				}
-				dst := (y*width + control.Slot*128 + x) * 4
-				copy(out[dst:dst+3], palette[pal:pal+3])
+				if replacement != nil {
+					from := y*replacement.Stride + x*4
+					copy(out[dst:dst+3], replacement.Pix[from:from+3])
+				} else {
+					copy(out[dst:dst+3], palette[pal:pal+3])
+				}
 				out[dst+3] = 255
 			}
 		}

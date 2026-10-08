@@ -71,6 +71,16 @@ func (b *nativePlayerBridge) Read(path string) ([]byte, error) {
 	}
 	return data, nil
 }
+func (b *nativePlayerBridge) RasterizeSVG(path string, svg []byte, w, h int) ([]byte, error) {
+	data, kind, err := b.call("svg", map[string]any{"path": path, "width": w, "height": h}, svg)
+	if err != nil {
+		return nil, err
+	}
+	if kind != 2 || len(data) != w*h*4 {
+		return nil, fmt.Errorf("platform SVG decoder returned invalid pixels")
+	}
+	return data, nil
+}
 func (b *nativePlayerBridge) Write(path string, data []byte) error {
 	out, _, err := b.call("write", map[string]string{"path": path}, data)
 	if err != nil {

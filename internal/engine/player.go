@@ -20,6 +20,7 @@ type PlayerBridge interface {
 }
 type PlayerConfig struct {
 	DisableAutosave bool              `json:"disable_autosave"`
+	VectorUI        string            `json:"vector_ui"`
 	HDPack          string            `json:"hd_pack"`
 	Index           map[string]string `json:"index"`
 	Save            string            `json:"save"`
@@ -115,6 +116,22 @@ func (p *Player) fail(err error) {
 		p.emit("error", map[string]any{"text": err.Error()})
 	}
 }
+func (p *Player) svgRenderer() hdpack.SVGRenderer {
+	decoder, ok := p.Bridge.(interface {
+		RasterizeSVG(string, []byte, int, int) ([]byte, error)
+	})
+	if !ok {
+		return nil
+	}
+	return func(path string, svg []byte, w, h int) ([]byte, error) {
+		value, err := p.effect(func() (any, error) { return decoder.RasterizeSVG(path, svg, w, h) })
+		if err != nil {
+			return nil, err
+		}
+		return value.([]byte), nil
+	}
+}
+
 func (p *Player) Boot(config PlayerConfig) error {
 	if p.Host != nil {
 		return fmt.Errorf("player already booted")
@@ -123,15 +140,31 @@ func (p *Player) Boot(config PlayerConfig) error {
 	p.autosaveDisabled = config.DisableAutosave
 	files := NewFiles(config.Index, p.read)
 	p.Host = NewGameHost(files, p.Audio, HostUI{Log: func(text string) { p.emit("log", map[string]any{"text": text}) }, HUD: func(text string) { p.emit("status", map[string]any{"text": text}) }, ShowStage: func() { p.emit("stage", nil) }})
+	renderSVG := p.svgRenderer()
 	if config.HDPack != "" {
 		pack, err := hdpack.Open(config.HDPack, p.read, func(text string) { p.emit("log", map[string]any{"text": text}) })
 		if err != nil {
 			p.emit("log", map[string]any{"text": fmt.Sprintf("HD pack unavailable: %v; using original artwork", err)})
 		} else {
+			pack.SVG = renderSVG
 			p.Host.Screen().HD = NewHDSurface(pack, ScreenWidth, ScreenHeight)
 			p.emit("log", map[string]any{"text": fmt.Sprintf("HD pack: %d images, 2x display, 24 MiB image cache", len(pack.Manifest.Images))})
 		}
 	}
+	if config.VectorUI != "" && renderSVG != nil {
+		pack, err := hdpack.Open(config.VectorUI, p.read, func(text string) { p.emit("log", map[string]any{"text": text}) })
+		if err != nil {
+			p.emit("log", map[string]any{"text": fmt.Sprintf("SVG interface unavailable: %v; using existing artwork", err)})
+		} else {
+			pack.SVG = renderSVG
+			if hd := p.Host.Screen().HD; hd != nil {
+				pack.Fallback = hd.Pack
+			}
+			p.Host.Screen().HD = NewHDSurface(pack, ScreenWidth, ScreenHeight)
+			p.emit("log", map[string]any{"text": fmt.Sprintf("SVG interface: %d source-matched controls", len(pack.Manifest.Images))})
+		}
+	}
+
 	s := p.Host.Session
 	s.PictureMode = "sharp"
 	s.HasRealFrames = true

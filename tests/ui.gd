@@ -41,6 +41,13 @@ func begin():
 	yield(self, "idle_frame")
 	bounds = player.modal.get_global_rect()
 	check(bounds.end.x <= player.layout_size.x and bounds.end.y <= player.layout_size.y, "setup fits viewport")
+	player.show_hd_settings()
+	yield(self, "idle_frame")
+	yield(self, "idle_frame")
+	bounds = player.modal.get_global_rect()
+	check(bounds.position.x >= 0 and bounds.position.y >= 0 and bounds.end.x <= player.layout_size.x and bounds.end.y <= player.layout_size.y, "HD settings fit viewport")
+	player.show_setup()
+	yield(self, "idle_frame")
 	if player.touch_enabled:
 		if OS.window_size.y > OS.window_size.x:
 			check(abs(player.layout_size.y - (player.game_origin.y + 536) - 12) < 1, "portrait controls stay at the bottom")

@@ -12,7 +12,7 @@ name="Android"
 platform="Android"
 runnable=true
 export_filter="all_resources"
-include_filter="required_files.json,hdpack-support.json,fonts/LICENSE.txt,patches/*,patches/files/*,notices/*"
+include_filter="artwork/ui/manifest.json,artwork/ui/images/*.svg,required_files.json,hdpack-support.json,fonts/LICENSE.txt,patches/*,patches/files/*,notices/*"
 exclude_filter="hdpack/*,native/*,integration.gd,*-test.gd{'' if a.bundle_patches else ',patches/files/*'}"
 export_path=""
 [preset.0.options]

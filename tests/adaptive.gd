@@ -12,7 +12,8 @@ class Recorder:
 		return JSON.print(metadata)
 	func buffer(_method):
 		var data = PoolByteArray()
-		data.resize(640*128*4)
+		var scale = metadata.get("atlas_scale",1)
+		data.resize(640*128*4*scale*scale)
 		return data
 var player
 var failed = false
@@ -78,6 +79,16 @@ func begin():
 		check(player.adaptive_active == (dimensions.x/dimensions.y >= 1.6),"adaptive is strictly widescreen only " + str(dimensions))
 		check(player.classic_format(dimensions) == (max(dimensions.x,dimensions.y)/min(dimensions.x,dimensions.y)<1.6),"phone orientation distinguished from classic device")
 	check(player.adaptive_active,"wide exploration enabled")
+	for atlas_scale in [2,1,2]:
+		recorder.metadata["atlas_scale"] = atlas_scale
+		player.sync_adaptive_layout()
+		check(player.adaptive_active and player.adaptive_atlas_scale == atlas_scale,"side panels accept original and HD artwork")
+		check(player.adaptive_atlas_texture.get_width() == 640*atlas_scale,"atlas texture resizes without requiring a game-state revision")
+		yield(VisualServer, "frame_post_draw")
+	recorder.metadata["atlas_scale"] = 3
+	player.sync_adaptive_layout()
+	check(not player.adaptive_active,"invalid atlas scale falls back safely")
+	recorder.metadata["atlas_scale"] = 2
 	player.overlays = [{"op":"text","text":"A Deck","font":"12px Arial","x":20,"y":24,"color":"#fff"},{"op":"rect","x":0,"y":0,"w":512,"h":384,"color":"rgba(0,0,0,0.5)"}]
 	player.sync_adaptive_layout()
 	check(player.adaptive_active,"location labels and navigation fades preserve side panels")

@@ -4,6 +4,7 @@ import (
 	"image"
 	"math"
 
+	"github.com/itskenny0/titanic-godot/internal/df"
 	"github.com/itskenny0/titanic-godot/internal/hdpack"
 )
 
@@ -38,6 +39,21 @@ func (s *HDSurface) lookup(src []byte, w, h int) *image.NRGBA {
 		s.Hits++
 	}
 	return img
+}
+
+// Sprite artwork keys must be identical in the classic frame and side panels.
+func spriteRGBA(f *df.Sprite, palette []byte) []byte {
+	rgba := make([]byte, f.Width*f.Height*4)
+	for i, on := range f.Opaque {
+		if on != 0 {
+			p := int(f.Indexed[i]) * 4
+			if p+2 < len(palette) {
+				copy(rgba[i*4:i*4+3], palette[p:p+3])
+				rgba[i*4+3] = 255
+			}
+		}
+	}
+	return rgba
 }
 
 // MaskedArtwork replaces a complete character pose over the logical fallback.
@@ -105,18 +121,15 @@ func (s *HDSurface) Sprite(r *SpriteRect, palette []byte, clipW, clipH int, occ 
 		return
 	}
 	var img *image.NRGBA
-	if r.F.Width <= 512 && r.F.Height <= 384 {
-		rgba := make([]byte, r.F.Width*r.F.Height*4)
-		for i, on := range r.F.Opaque {
-			if on != 0 {
-				p := int(r.F.Indexed[i]) * 4
-				if p+2 < len(palette) {
-					copy(rgba[i*4:i*4+3], palette[p:p+3])
-					rgba[i*4+3] = 255
-				}
-			}
+	artworkAlpha := false
+	if r.F.Width > 0 && r.F.Height > 0 && r.F.Width <= 512 && r.F.Height <= 384 {
+		rgba := spriteRGBA(r.F, palette)
+		key := hdpack.Key(r.F.Width, r.F.Height, rgba)
+		img = s.Pack.Get(key, r.F.Width, r.F.Height)
+		if img != nil {
+			s.Hits++
+			artworkAlpha = r.screen && s.Pack.SpriteAlpha(key, r.F.Width, r.F.Height)
 		}
-		img = s.lookup(rgba, r.F.Width, r.F.Height)
 	}
 	x0, y0 := max(0, int(r.X))*2, max(0, int(r.Y))*2
 	x1, y1 := min(s.Width, clipW, int(math.Ceil(r.X+float64(r.W))))*2, min(s.Height, clipH, int(math.Ceil(r.Y+float64(r.H))))*2
@@ -124,7 +137,7 @@ func (s *HDSurface) Sprite(r *SpriteRect, palette []byte, clipW, clipH int, occ 
 		for x := x0; x < x1; x++ {
 			lx, ly := x/2, y/2
 			i := r.sample(float64(lx), float64(ly))
-			if i < 0 || SceneryOccludes(occ, lx, ly, level) {
+			if (i < 0 && !artworkAlpha) || SceneryOccludes(occ, lx, ly, level) {
 				continue
 			}
 			to := (y*s.Width*2 + x) * 4
@@ -132,8 +145,16 @@ func (s *HDSurface) Sprite(r *SpriteRect, palette []byte, clipW, clipH int, occ 
 				sx := max(0, min(img.Rect.Dx()-1, int((float64(x)/2-r.X)/r.K*2)))
 				sy := max(0, min(img.Rect.Dy()-1, int((float64(y)/2-r.Y)/r.K*2)))
 				from := sy*img.Stride + sx*4
-				// Original masks retain exact hit and occlusion boundaries.
-				copy(s.Pixels[to:to+3], img.Pix[from:from+3])
+				if artworkAlpha {
+					// Display-only alpha: logical rendering and hit tests still use
+					// the original mask. Blend over the already drawn background.
+					a := int(img.Pix[from+3])
+					for c := 0; c < 3; c++ {
+						s.Pixels[to+c] = byte((int(img.Pix[from+c])*a + int(s.Pixels[to+c])*(255-a) + 127) / 255)
+					}
+				} else {
+					copy(s.Pixels[to:to+3], img.Pix[from:from+3])
+				}
 			} else {
 				p := int(r.F.Indexed[i]) * 4
 				if p+2 < len(palette) {

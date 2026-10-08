@@ -40,13 +40,15 @@ Cutscenes during play queue a checkpoint, saved once normal gameplay returns and
 
 For a personal APK or PortMaster ZIP with your game files included, use the local Go builder in [BUILDING.md](BUILDING.md#personal-packages-with-game-files). This mode runs locally and is not part of CI. You can also generate a [2x HD artwork pack](docs/HD.md) for rooms and interface graphics and include it in either package.
 
+The idle exploration controls include redrawn SVG artwork. You can switch it off under **Game files / mods > HD artwork > Redrawn interface**.
+
 CI builds Windows x64 and ARM64 portable packages, macOS Intel and Apple Silicon apps, Linux packages, a PortMaster ZIP, and an [Android ARM64 APK](docs/ANDROID.md).
 
 ## HD artwork
 
 The same Grand Staircase save, with original artwork and the optional HD pack. World and character artwork use FSDedither Riven; all UI artwork uses nearest-neighbor 2x to preserve its pixels and transparent edges. [Make your own pack](docs/HD.md).
 
-Put the finished `hdpack` folder beside the player to enable it automatically. You can turn it off in **Game files / mods**; that choice stays saved.
+Put the finished `hdpack` folder beside the player to enable it automatically. You can turn it off in **Game files / mods > HD artwork**; that choice stays saved.
 
 | Original | HD: Riven world, nearest-neighbor UI |
 | --- | --- |
@@ -95,6 +97,6 @@ Put the finished `hdpack` folder beside the player to enable it automatically. Y
 
 </details>
 
-Thank you to Daniel Hobi and the dreamREfactory contributors; axx-archive for the Mac port; M3tox for DFET and TAOOT mods; MRXstudios for reverse engineering; the Godot, Go, QuickJS, QuickJS-NG, FRT, PortMaster, SDL, and gptokeyb teams; Jacob for FSDedither Riven; Xintao Wang and the Real-ESRGAN and BasicSR contributors; the PyTorch, NumPy, Liberation Fonts and Pillow authors; Evan Wallace for esbuild; and the original CyberFlix team. [Credits and licenses](CREDITS.md) lists the projects and authors behind this work.
+Thank you to Daniel Hobi and the dreamREfactory contributors; axx-archive for the Mac port; M3tox for DFET and TAOOT mods; MRXstudios for reverse engineering; the Godot, Go, QuickJS, QuickJS-NG, FRT, PortMaster, SDL, and gptokeyb teams; Jacob for FSDedither Riven; Xintao Wang and the Real-ESRGAN and BasicSR contributors; the PyTorch, NumPy, Liberation Fonts, Pillow, VTracer, resvg, CairoSVG and FontTools authors; Evan Wallace for esbuild; and the original CyberFlix team. [Credits and licenses](CREDITS.md) lists the projects and authors behind this work.
 
 Source: GPL-3.0. Public builds do not include the full game. Patch files remain credited to M3tox and their respective rights holders.

@@ -17,15 +17,20 @@ import (
 )
 
 const Version = 1
+
+// VectorVersion allows authored sprite transparency; older players reject it
+// instead of drawing smooth vector sprites through the original pixel masks.
+const VectorVersion = 2
 const Scale = 2
 const Budget = 24 << 20
 const MaxImageBytes = 8 << 20
 
 type Entry struct {
-	Format string `json:"format,omitempty"`
-	Width  int    `json:"width"`
-	Height int    `json:"height"`
-	SHA256 string `json:"sha256"`
+	SpriteAlpha bool   `json:"sprite_alpha,omitempty"`
+	Format      string `json:"format,omitempty"`
+	Width       int    `json:"width"`
+	Height      int    `json:"height"`
+	SHA256      string `json:"sha256"`
 }
 type Manifest struct {
 	Version    int              `json:"version"`
@@ -58,22 +63,40 @@ func Parse(data []byte) (Manifest, error) {
 	if err := json.Unmarshal(data, &m); err != nil {
 		return m, err
 	}
-	if m.Version != Version || m.Scale != Scale || len(m.Images) == 0 || len(m.Images) > 100000 {
+	if (m.Version != Version && m.Version != VectorVersion) || m.Scale != Scale || len(m.Images) == 0 || len(m.Images) > 100000 {
 		return m, fmt.Errorf("unsupported or empty HD manifest")
 	}
 	for key, e := range m.Images {
-		if (e.Format != "" && e.Format != "png" && e.Format != "webp") || !validHash(key) || !validHash(e.SHA256) || e.Width < 1 || e.Height < 1 || e.Width > 1024 || e.Height > 768 {
+		if (e.SpriteAlpha || e.Format == "svg") && m.Version != VectorVersion {
+			return m, fmt.Errorf("authored sprite alpha needs HD manifest version 2")
+		}
+		if (e.Format != "" && e.Format != "png" && e.Format != "webp" && e.Format != "svg") || !validHash(key) || !validHash(e.SHA256) || e.Width < 1 || e.Height < 1 || e.Width > 1024 || e.Height > 768 {
 			return m, fmt.Errorf("invalid HD image entry %q", key)
 		}
 	}
 	return m, nil
 }
 
+func (r *Reader) SpriteAlpha(key string, w, h int) bool {
+	e, ok := r.Manifest.Images[key]
+	if ok && e.Width == w*Scale && e.Height == h*Scale && r.Get(key, w, h) != nil && r.cache[key].image != nil {
+		return r.Manifest.Version == VectorVersion && e.SpriteAlpha && e.Width == w*Scale && e.Height == h*Scale
+	}
+	return r.Fallback != nil && r.Fallback.SpriteAlpha(key, w, h)
+}
+
 type cached struct {
 	image *image.NRGBA
 	used  uint64
 }
+
+// SVGRenderer returns straight-alpha RGBA pixels at the requested dimensions.
+// Godot supplies the decoder; headless Go callers can leave it unset.
+type SVGRenderer func(string, []byte, int, int) ([]byte, error)
+
 type Reader struct {
+	SVG      SVGRenderer
+	Fallback *Reader
 	Manifest Manifest
 	Root     string
 	Read     func(string) ([]byte, error)
@@ -98,15 +121,24 @@ func Open(root string, read func(string) ([]byte, error), log func(string)) (*Re
 	}
 	return &Reader{Manifest: m, Root: root, Read: read, Log: log, cache: map[string]cached{}}, nil
 }
+func (r *Reader) fallback(key string, w, h int) *image.NRGBA {
+	if r.Fallback != nil {
+		return r.Fallback.Get(key, w, h)
+	}
+	return nil
+}
 func (r *Reader) Get(key string, w, h int) *image.NRGBA {
 	e, ok := r.Manifest.Images[key]
 	if !ok || e.Width != w*Scale || e.Height != h*Scale {
-		return nil
+		return r.fallback(key, w, h)
 	}
 	r.clock++
 	if c, ok := r.cache[key]; ok {
 		c.used = r.clock
 		r.cache[key] = c
+		if c.image == nil {
+			return r.fallback(key, w, h)
+		}
 		return c.image
 	}
 	c := cached{used: r.clock}
@@ -117,16 +149,29 @@ func (r *Reader) Get(key string, w, h int) *image.NRGBA {
 	if err == nil && fmt.Sprintf("%x", sha256.Sum256(data)) != e.SHA256 {
 		err = fmt.Errorf("HD image checksum mismatch")
 	}
-	var cfg image.Config
-	if err == nil {
-		cfg, err = e.DecodeConfig(bytes.NewReader(data))
-	}
-	if err == nil && (cfg.Width != e.Width || cfg.Height != e.Height) {
-		err = fmt.Errorf("HD image dimensions do not match manifest")
-	}
 	var decoded image.Image
-	if err == nil {
-		decoded, err = e.Decode(bytes.NewReader(data))
+	if err == nil && e.Format == "svg" {
+		if r.SVG == nil {
+			err = fmt.Errorf("SVG decoder unavailable")
+		} else {
+			var rgba []byte
+			rgba, err = r.SVG(r.Root+"/"+e.Filename(key), data, e.Width, e.Height)
+			if err == nil && len(rgba) != e.Width*e.Height*4 {
+				err = fmt.Errorf("invalid SVG pixel buffer")
+			}
+			if err == nil {
+				decoded = &image.NRGBA{Pix: rgba, Stride: e.Width * 4, Rect: image.Rect(0, 0, e.Width, e.Height)}
+			}
+		}
+	} else if err == nil {
+		var cfg image.Config
+		cfg, err = e.DecodeConfig(bytes.NewReader(data))
+		if err == nil && (cfg.Width != e.Width || cfg.Height != e.Height) {
+			err = fmt.Errorf("HD image dimensions do not match manifest")
+		}
+		if err == nil {
+			decoded, err = e.Decode(bytes.NewReader(data))
+		}
 	}
 	if err == nil {
 		c.image = image.NewNRGBA(image.Rect(0, 0, e.Width, e.Height))
@@ -151,6 +196,9 @@ func (r *Reader) Get(key string, w, h int) *image.NRGBA {
 			r.bytes -= len(old.Pix)
 		}
 		delete(r.cache, oldest)
+	}
+	if c.image == nil {
+		return r.fallback(key, w, h)
 	}
 	return c.image
 }

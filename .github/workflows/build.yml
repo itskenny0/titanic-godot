@@ -68,6 +68,13 @@ jobs:
           cp tests/runtime.gd godot/runtime-test.gd
           timeout 60 xvfb-run -a .tools/Godot_v3.5.2-stable_x11.64 --path godot --audio-driver Dummy -s res://runtime-test.gd | tee .build/portable.log
           grep -q 'PORTABLE TESTS PASS' .build/portable.log
+      - name: Check bundled SVG interface
+        run: |
+          python3 tools/update-svg-ui.py --check
+          cp tests/svg_ui.gd godot/svg-ui-test.gd
+          timeout 45 xvfb-run -a .tools/Godot_v3.5.2-stable_x11.64 --path godot --audio-driver Dummy -s res://svg-ui-test.gd | tee .build/svg-ui.log
+          grep -q 'SVG TESTS PASS' .build/svg-ui.log
+          python3 tools/test-godot4.py --godot "$PWD/.tools/Godot_v4.3-stable_linux.x86_64" --test svg_ui --headless
       - name: Check PortMaster launcher
         run: python3 tests/portmaster-launcher.py
       - name: Check pixel-exact HD generation and automatic detection

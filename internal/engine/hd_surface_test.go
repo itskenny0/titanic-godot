@@ -97,3 +97,45 @@ func TestHDTurnWipeUsesLogicalSnapshot(t *testing.T) {
 		t.Fatal("wipe would present a stale HD image")
 	}
 }
+
+func TestVectorSpriteAlphaIsDisplayOnly(t *testing.T) {
+	pal := []byte{1, 2, 3, 255, 4, 5, 6, 255}
+	f := &df.Sprite{Width: 2, Height: 1, Indexed: []byte{0, 1}, Opaque: []byte{1, 0}}
+	source := spriteRGBA(f, pal)
+	hd := hdFixture(t, source, 2, 1)
+	key := hdpack.Key(2, 1, source)
+	entry := hd.Pack.Manifest.Images[key]
+	entry.SpriteAlpha = true
+	hd.Pack.Manifest.Version = hdpack.VectorVersion
+	hd.Pack.Manifest.Images[key] = entry
+	img := hd.Pack.Get(key, 2, 1)
+	for i := 0; i < len(img.Pix); i += 4 {
+		copy(img.Pix[i:i+4], []byte{200, 100, 50, 128})
+	}
+	img.Pix[3] = 0 // A genuine vector cutout inside the old opaque mask.
+	hd.Clear()
+	for i := 0; i < len(hd.Pixels); i += 4 {
+		copy(hd.Pixels[i:i+4], []byte{10, 20, 30, 255})
+	}
+	logical := make([]byte, 16)
+	r := screenSprite(f, 0, 0)
+	compositeSprite(r, logical, 2, 2, pal, 2, 2, nil, 0, hd)
+	if !bytes.Equal(hd.Pixels[:4], []byte{10, 20, 30, 255}) || !bytes.Equal(hd.Pixels[4:8], []byte{105, 60, 40, 255}) || hd.Pixels[8] != 105 {
+		t.Fatal("smooth alpha did not blend over background or extend beyond pixel mask", hd.Pixels[:16])
+	}
+	if logical[0] != 1 || logical[4] != 0 || r.sample(1, 0) != -1 {
+		t.Fatal("vector alpha changed logical pixels or click mask")
+	}
+	hd.Clear()
+	occ := &Occlusion{W: 2, H: 2, Z: []byte{0, 0, 0, 0}}
+	hd.Sprite(r, pal, 2, 2, occ, 1)
+	if hd.Pixels[4] != 0 {
+		t.Fatal("vector alpha bypassed occlusion")
+	}
+	hd.Clear()
+	r.screen = false
+	hd.Sprite(r, pal, 2, 2, nil, 0)
+	if hd.Pixels[8] != 0 {
+		t.Fatal("screen sprite alpha leaked into world sprite masks")
+	}
+}

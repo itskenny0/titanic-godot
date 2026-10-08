@@ -23,6 +23,7 @@ var adaptive_metadata = {}
 var adaptive_atlas_image = Image.new()
 var adaptive_atlas_texture = ImageTexture.new()
 var adaptive_atlas_revision = -1
+var adaptive_atlas_scale = 1
 var display_pointer = Vector2(256,192)
 var drawn_display_pointer = Vector2(-1000,-1000)
 var game_origin = Vector2.ZERO
@@ -268,7 +269,7 @@ func start_runtime(save_path = ""):
 		return
 	var error = ""
 	runtime.execute("profile", JSON.print({"on": OS.is_debug_build()}))
-	error = runtime.execute("boot", JSON.print({"index": game_index, "save": save_path, "hd_pack": active_hd_pack(), "disable_autosave": not config.get_value("saves", "autosave_enabled", true), "testing": "--integration-test" in OS.get_cmdline_args()}))
+	error = runtime.execute("boot", JSON.print({"index": game_index, "save": save_path, "hd_pack": active_hd_pack(), "vector_ui": "res://artwork/ui" if config.get_value("graphics", "redrawn_ui", true) else "", "disable_autosave": not config.get_value("saves", "autosave_enabled", true), "testing": "--integration-test" in OS.get_cmdline_args()}))
 	if not error.empty():
 		show_note(error)
 		return
@@ -303,7 +304,7 @@ func toggle_hd_artwork():
 	config.set_value("graphics", "hd_enabled", enabled)
 	config.save("user://settings.cfg")
 	# Apply on next startup; preserve unsaved progress in the running game.
-	show_setup()
+	show_hd_settings()
 
 func show_checkpoint_toast(text):
 	if is_instance_valid(checkpoint_toast):
@@ -400,6 +401,8 @@ func index_iso(path):
 func bridge_call(method, args_json, bytes):
 	var args = JSON.parse(args_json).result
 	match method:
+		"svg":
+			return preload("res://scripts/svg_artwork.gd").rasterize(bytes, int(args.width), int(args.height), args.path)
 		"read":
 			var path = args.path
 			if path.begins_with("save:"):
@@ -487,19 +490,26 @@ func sync_adaptive_layout():
 		return
 	adaptive_metadata = metadata
 	adaptive.configure(layout_size, metadata, adaptive_roomy())
-	if metadata.revision != adaptive_atlas_revision:
+	var atlas_scale = int(metadata.get("atlas_scale",1))
+	if not atlas_scale in [1,2]:
+		adaptive_available = false
+		set_adaptive_active(false)
+		update_layout_switch()
+		return
+	if metadata.revision != adaptive_atlas_revision or atlas_scale != adaptive_atlas_scale:
 		var bytes = runtime.buffer("adaptive_atlas")
-		if bytes.size() != 640 * 128 * 4:
+		if bytes.size() != 640 * 128 * 4 * atlas_scale * atlas_scale:
 			adaptive_available = false
 			set_adaptive_active(false)
 			update_layout_switch()
 			return
-		adaptive_atlas_image.create_from_data(640,128,false,Image.FORMAT_RGBA8,bytes)
-		if adaptive_atlas_revision < 0:
+		adaptive_atlas_image.create_from_data(640*atlas_scale,128*atlas_scale,false,Image.FORMAT_RGBA8,bytes)
+		if adaptive_atlas_revision < 0 or atlas_scale != adaptive_atlas_scale:
 			adaptive_atlas_texture.create_from_image(adaptive_atlas_image,0)
 		else:
 			adaptive_atlas_texture.set_data(adaptive_atlas_image)
 		adaptive_atlas_revision = metadata.revision
+		adaptive_atlas_scale = atlas_scale
 		update()
 	set_adaptive_active(true)
 	update_layout_switch()
@@ -579,13 +589,13 @@ func draw_adaptive():
 		var scale = min((c.display.size.x-8)/c.w,58.0/c.h)
 		var size = Vector2(c.w,c.h)*scale
 		var destination = Rect2(c.display.position+Vector2((c.display.size.x-size.x)/2,4+(58-size.y)/2),size)
-		draw_texture_rect_region(adaptive_atlas_texture,destination,Rect2(c.slot*128,0,c.w,c.h))
+		draw_texture_rect_region(adaptive_atlas_texture,destination,Rect2(Vector2(c.slot*128,0)*adaptive_atlas_scale,Vector2(c.w,c.h)*adaptive_atlas_scale))
 		var font = get_font_for("11px Arial")
 		draw_string(font,c.display.position+Vector2(6,74),c.label,UIStyle.INK)
 	# Keep the entire arrow visible at the bottom of the expanded world.
 	if not adaptive.navigation.empty():
 		var n = adaptive.navigation
-		draw_texture_rect_region(adaptive_atlas_texture,adaptive.navigation_display,Rect2(n.slot*128,0,n.w,n.h))
+		draw_texture_rect_region(adaptive_atlas_texture,adaptive.navigation_display,Rect2(Vector2(n.slot*128,0)*adaptive_atlas_scale,Vector2(n.w,n.h)*adaptive_atlas_scale))
 
 func _draw():
 	if adaptive_active and has_frame:
@@ -1754,8 +1764,7 @@ func show_setup():
 	button(box, "Choose discs separately", "choose_data", [1])
 	button(box, "M3tox patches", "show_patch_picker", [false])
 	button(box, "Autosave checkpoints: %s" % ("On" if config.get_value("saves", "autosave_enabled", true) else "Off"), "toggle_autosave")
-	if not hd_pack_path.empty():
-		button(box, "HD artwork: %s (next start)" % ("On" if config.get_value("graphics", "hd_enabled", true) else "Off"), "toggle_hd_artwork")
+	button(box, "HD artwork", "show_hd_settings")
 	button(box, "Choose external mod folder", "choose_mods")
 	button(box, "Disable external mods", "disable_mods")
 	button(box, "Back", "leave_setup")
@@ -1801,6 +1810,26 @@ func data_selected(path, disc):
 	config.set_value("game", "disc2", roots[1])
 	config.save("user://settings.cfg")
 	start_runtime()
+
+func show_hd_settings():
+	var box = panel("HD artwork")
+	var hint = Label.new()
+	hint.text = "Changes take effect next time you start the game."
+	hint.add_font_override("font", get_font_for("13px Arial"))
+	box.add_child(hint)
+	button(box, "HD artwork: %s (next start)" % ("On" if config.get_value("graphics", "hd_enabled", true) else "Off"), "toggle_hd_artwork").grab_focus()
+	button(box, "Redrawn interface: %s (next start)" % ("On" if config.get_value("graphics", "redrawn_ui", true) else "Off"), "toggle_redrawn_ui")
+	if hd_pack_path.empty():
+		var missing = Label.new()
+		missing.text = "No HD pack detected. World artwork stays original."
+		missing.add_font_override("font", get_font_for("13px Arial"))
+		box.add_child(missing)
+	button(box, "Back", "show_setup")
+
+func toggle_redrawn_ui():
+	config.set_value("graphics", "redrawn_ui", not config.get_value("graphics", "redrawn_ui", true))
+	config.save("user://settings.cfg")
+	show_hd_settings()
 
 func choose_mods():
 	if Engine.has_singleton("TitanicFiles"):

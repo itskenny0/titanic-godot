@@ -3,6 +3,7 @@ package engine
 import (
 	"fmt"
 	"github.com/itskenny0/titanic-godot/internal/df"
+	"github.com/itskenny0/titanic-godot/internal/hdpack"
 	"github.com/itskenny0/titanic-godot/internal/script"
 	"os"
 	"strings"
@@ -63,6 +64,42 @@ func TestAdaptiveControlsKeepOriginalHitTesting(t *testing.T) {
 		if atlas[dst] != 91 || atlas[dst+1] != 122 || atlas[dst+2] != 153 || atlas[dst+3] != 255 || atlas[dst+7] != 0 {
 			t.Fatal("sprite palette/alpha lost", c.Name)
 		}
+	}
+}
+
+func TestAdaptiveAtlasUsesHDWithoutChangingTargets(t *testing.T) {
+	p := adaptiveTestPlayer(t)
+	before := p.AdaptiveLayout()
+	r, err := p.Host.Session.Props.Get("life").ScreenRect()
+	if err != nil {
+		t.Fatal(err)
+	}
+	pal := p.Host.Director.room.BandPropPalette(p.Host.Director.flatImage().Palette)
+	source := spriteRGBA(r.F, pal)
+	hd := hdFixture(t, source, r.F.Width, r.F.Height)
+	p.Host.Screen().HD = hd
+	layout := p.AdaptiveLayout()
+	if !layout.Eligible || layout.AtlasScale != 2 || fmt.Sprint(layout.Controls) != fmt.Sprint(before.Controls) {
+		t.Fatal("HD changed logical control positions or targets", layout)
+	}
+	atlas := p.AdaptiveAtlas()
+	if len(atlas) != 1280*256*4 {
+		t.Fatal("HD atlas dimensions", len(atlas))
+	}
+	for _, c := range layout.Controls {
+		dst := c.Slot * 256 * 4
+		if atlas[dst] != 30 || atlas[dst+4] != 31 || atlas[dst+3] != 255 || atlas[dst+11] != 0 {
+			t.Fatal("HD subpixel detail or authored alpha was lost", c.Name)
+		}
+	}
+	if hd.Hits != 0 {
+		t.Fatal("atlas lookup changed classic frame HD validity")
+	}
+	// An absent/corrupt replacement must not hide the control or resize it.
+	hd.Pack.Manifest.Images = nil
+	atlas = p.AdaptiveAtlas()
+	if atlas[0] != 91 || atlas[4] != 91 || atlas[3] != 255 || atlas[11] != 0 {
+		t.Fatal("missing HD artwork did not fall back to original palette/mask")
 	}
 }
 
@@ -339,5 +376,32 @@ func TestAdaptiveWorldSizedMoviesKeepLayout(t *testing.T) {
 				}
 			}
 		})
+	}
+}
+
+func TestAdaptiveVectorAlphaKeepsOriginalTargets(t *testing.T) {
+	p := adaptiveTestPlayer(t)
+	before := p.AdaptiveLayout()
+	r, err := p.Host.Session.Props.Get("life").ScreenRect()
+	if err != nil {
+		t.Fatal(err)
+	}
+	pal := p.Host.Director.room.BandPropPalette(p.Host.Director.flatImage().Palette)
+	source := spriteRGBA(r.F, pal)
+	hd := hdFixture(t, source, r.F.Width, r.F.Height)
+	p.Host.Screen().HD = hd
+	key := hdpack.Key(r.F.Width, r.F.Height, source)
+	entry := hd.Pack.Manifest.Images[key]
+	entry.SpriteAlpha = true
+	hd.Pack.Manifest.Version = hdpack.VectorVersion
+	hd.Pack.Manifest.Images[key] = entry
+	img := hd.Pack.Get(key, r.F.Width, r.F.Height)
+	img.Pix[3], img.Pix[7], img.Pix[11] = 128, 0, 64
+	atlas := p.AdaptiveAtlas()
+	if atlas[3] != 128 || atlas[7] != 0 || atlas[11] != 64 {
+		t.Fatal("adaptive atlas discarded vector antialiasing", atlas[:12])
+	}
+	if fmt.Sprint(before.Controls) != fmt.Sprint(p.AdaptiveLayout().Controls) {
+		t.Fatal("vector edges changed input targets")
 	}
 }

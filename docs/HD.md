@@ -91,12 +91,27 @@ go run ./cmd/personal-build --target portmaster --base dist/titanic-portmaster.z
 
 Android packaging needs Java 17 and Android SDK Build Tools 35 or newer. See [BUILDING.md](../BUILDING.md) for building the base player. The personal builder includes your game files, the selected HD images and the pinned patches. Use `--patch-archive /path/to/TAOOTpatch1.03.FULL.zip` to supply the patch archive without downloading it. Existing output packages are never overwritten.
 
-For a desktop player, copy the finished pack folder beside the executable and name it `hdpack`. On macOS, put it beside `Titanic.app`; for an AppImage, beside the `.AppImage` file. On PortMaster, put it at `ports/titanic/hdpack`. Android users should use the personal APK above. The folder should contain `manifest.json` and `images` directly. The game detects and enables it automatically. **Game files / mods** has an **HD artwork** switch that takes effect next time you start the game. If you turn it off, that choice stays saved even while the pack is present.
+For a desktop player, copy the finished pack folder beside the executable and name it `hdpack`. On macOS, put it beside `Titanic.app`; for an AppImage, beside the `.AppImage` file. On PortMaster, put it at `ports/titanic/hdpack`. Android users should use the personal APK above. The folder should contain `manifest.json` and `images` directly. The game detects and enables it automatically. **Game files / mods > HD artwork** has an on/off switch that takes effect next time you start the game. If you turn it off, that choice stays saved even while the pack is present.
 
 ## What stays original
 
 The normal pack includes the sharp room views used by the player. Navigation animation and cinematics stay at their original resolution. Add `--motion` to the extraction command if you also want navigation frames; this takes much longer and produces a larger pack. Add `--characters` to the Go extraction command to include dialogue characters. The exporter combines each authored pose before upscaling, including the eyes and mouth. It uses the same Riven model without a separate face-restoration model; expressions, masks and lip-sync timing stay authored. This makes a larger pack and needs a player with HD character support. Cinematic video and some special effects keep their original rendering. Godot menus and text already render at the display resolution.
 
-Click targets, masks and saves retain the original coordinates and pixels. Images without an exact replacement use the original art. This also happens when a custom gamma setting changes their palette. AI cannot recover the original render files, so inspect important text and details in the generated images.
+## SVG interface artwork
+
+The player includes redrawn SVGs for the idle life preserver, bag, watch and rolled map. They work in the classic toolbar and adaptive side panels, with or without an HD pack. **Game files / mods > HD artwork > Redrawn interface** switches them off for the next start. Opening animations and other states retain their existing artwork.
+
+Editable SVGs are in `godot/artwork/ui/images`. Their filenames identify the exact source image, so unrelated mod artwork is not replaced. The player reads these SVGs directly and caches their rendered pixels in memory. No generated PNGs or original game images are bundled with them. Lettering is outlined, with no extra runtime font needed.
+
+When editing a drawing, keep its dimensions, viewBox and source hash. Use paths and gradients supported by Godot 3.5.2: no embedded images, filters, clipping masks or external references. Bounding-box gradient coordinates must use percentages for the PortMaster SVG reader. Then refresh the checksums:
+
+```sh
+python3 tools/update-svg-ui.py
+python3 tools/update-svg-ui.py --check
+```
+
+The SVGs take priority over matching UI images in a personal HD pack. Other HD artwork is unaffected.
+
+Click targets, logical masks and saves retain the original coordinates and pixels. Images without an exact replacement use the original art. This also happens when a custom gamma setting changes their palette. AI cannot recover the original render files, so inspect important text and details in the generated images.
 
 Thank you to Jacob for FSDedither Riven, Xintao Wang and the Real-ESRGAN and BasicSR contributors, the PyTorch and NumPy teams, and the Pillow authors. Full game and engine credits are in [CREDITS.md](../CREDITS.md).

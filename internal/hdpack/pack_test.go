@@ -74,3 +74,27 @@ func TestLosslessWebP(t *testing.T) {
 		t.Fatal("lossless color/alpha changed")
 	}
 }
+
+func TestVectorTransparencyNeedsNewManifest(t *testing.T) {
+	r, key, _ := fixture(t)
+	entry := r.Manifest.Images[key]
+	entry.SpriteAlpha = true
+	r.Manifest.Images[key] = entry
+	data, _ := json.Marshal(r.Manifest)
+	if _, err := Parse(data); err == nil {
+		t.Fatal("legacy manifest accepted new sprite alpha semantics")
+	}
+	r.Manifest.Version = VectorVersion
+	data, _ = json.Marshal(r.Manifest)
+	if _, err := Parse(data); err != nil {
+		t.Fatal(err)
+	}
+	if !r.SpriteAlpha(key, 1, 1) || r.SpriteAlpha(key, 2, 1) || r.SpriteAlpha("missing", 1, 1) {
+		t.Fatal("sprite alpha matched the wrong source")
+	}
+	r.Manifest.Version = 3
+	data, _ = json.Marshal(r.Manifest)
+	if _, err := Parse(data); err == nil {
+		t.Fatal("unknown version accepted")
+	}
+}
