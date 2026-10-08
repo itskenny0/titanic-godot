@@ -10,7 +10,7 @@ func _init():
 	check(file.open("res://artwork/ui/manifest.json", File.READ) == OK, "SVG manifest packaged")
 	var manifest = JSON.parse(file.get_as_text()).result
 	file.close()
-	check(manifest.images.size() == 10, "all approved source variants present")
+	check(manifest.images.size() == 16, "exploration controls and all navigation hint variants present")
 	for key in manifest.images:
 		var entry = manifest.images[key]
 		var path = "res://artwork/ui/images/" + key + ".svg"

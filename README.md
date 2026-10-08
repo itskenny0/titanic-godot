@@ -36,9 +36,11 @@ A Godot player with a native Go engine for *Titanic: Adventure Out of Time* (199
 
 Build with the commands in [BUILDING.md](BUILDING.md), then use your two ISOs, GOG/Steam game folder, or extracted discs. [Setup and mods](docs/SETUP.md) covers digital installs and M3tox's fixes, lounge unlock, and extended-content mod. On first start, download the M3tox 1.0.3 FULL patches, choose their ZIP, or play without them. Saves live outside the app; replaced saves are archived.
 
-Use the arrow keys to move and the mouse to interact. On a handheld, use the left stick or D-pad for movement, dialogue replies and menus, then A to confirm. The right stick controls the pointer; L1 slows it, and L2/R2 cycle clickable targets. B goes back or skips speech. Start opens the menu. **Controls / display > Controller bindings** lets you remap buttons and D-pad directions or restore the defaults. See [PortMaster controls](docs/PORTMASTER.md). Touchscreens support tapping, dragging and a virtual joystick. An onscreen keyboard handles text entry with touch or a controller.
+Use the arrow keys to move or select dialogue replies, and Enter to confirm the selected reply. The mouse also works. On a handheld, use the left stick or D-pad for movement, dialogue replies and menus, then A to confirm. The right stick controls the pointer; L1 slows it, and L2/R2 cycle clickable targets. B goes back or skips speech. Start opens the menu. **Controls / display > Controller bindings** lets you remap buttons and D-pad directions or restore the defaults. See [PortMaster controls](docs/PORTMASTER.md). Touchscreens support tapping, dragging and a virtual joystick. An onscreen keyboard handles text entry with touch or a controller.
 
-**Controls / display** previews the optional Compact and Roomy side panels. New and returning players get a one-time chooser on wide devices; Classic is the default. Screens narrower than 16:10 always keep the original layout. The artwork fills the screen behind translucent controls, with a slight stretch and no cropping. Movement, open doors, location signs and climbing animations keep the side panels. Conversations, held items and special screens restore the original layout automatically. During exploration, the Classic / Side panels button switches back and forth; controller users can select it with L2/R2 and A.
+**Controls / display > Dialogue / subtitles** offers widescreen conversations with translucent answers and optional speech-timed words with a gentle fade. New installs and upgrades show a preview and let you choose; both start off. Narrow and 4:3 screens keep Classic dialogue. Speech timing is approximate.
+
+**Controls / display** previews the optional Compact and Roomy side panels. New and returning players get a one-time chooser on wide devices; Classic is the default. Screens narrower than 16:10 always keep the original layout. The artwork fills the screen behind translucent controls, with a slight stretch and no cropping. Movement, open doors, location signs and climbing animations keep the side panels. Held items and special screens restore the original layout automatically. During exploration, the Classic / Side panels button switches back and forth; controller users can select it with L2/R2 and A.
 
 **Touch controls** offers a translucent joystick, ring-and-knob, knob-only or invisible styles, and an opacity preview. Use **Edit positions and size** to move controls and drag the joystick's corner handle to resize it, then **Done / lock**. Each layout keeps its own positions and joystick size. Reset layout restores the current layout.
 
@@ -46,7 +48,7 @@ Cutscenes during play queue a checkpoint, saved once normal gameplay returns and
 
 For a personal APK or PortMaster ZIP with your game files included, use the local Go builder in [BUILDING.md](BUILDING.md#personal-packages-with-game-files). This mode runs locally and is not part of CI. You can also generate a [2x HD artwork pack](docs/HD.md) for rooms and interface graphics and include it in either package.
 
-The idle exploration controls include redrawn SVG artwork. You can switch it off under **Game files / mods > HD artwork > Redrawn interface**.
+The player offers a comparison of original and redrawn SVG controls the first time you launch this version, including after an update. Choose either style, then change it later under **Game files / mods > HD artwork > Redrawn interface**.
 
 CI builds Windows x64 and ARM64 portable packages, macOS Intel and Apple Silicon apps, Linux packages, a PortMaster ZIP, and an [Android ARM64 APK](docs/ANDROID.md).
 
@@ -54,7 +56,7 @@ CI builds Windows x64 and ARM64 portable packages, macOS Intel and Apple Silicon
 
 The same Grand Staircase save, with original artwork and the optional HD pack. World and character artwork use FSDedither Riven; all UI artwork uses nearest-neighbor 2x to preserve its pixels and transparent edges. [Make your own pack](docs/HD.md).
 
-Put the finished `hdpack` folder beside the player to enable it automatically. You can turn it off in **Game files / mods > HD artwork**; that choice stays saved.
+Put the finished `hdpack` folder beside the player to enable it automatically. On Android, keep it beside the ISOs and select their folder, or choose it under **Game files / mods > HD artwork**. Textures are read in place. You can turn HD off in that menu; the choice stays saved.
 
 | Original | HD: Riven world, nearest-neighbor UI |
 | --- | --- |

@@ -19,6 +19,7 @@ type PlayerBridge interface {
 	Measure(string, string) (float64, error)
 }
 type PlayerConfig struct {
+	TimedSubtitles  bool              `json:"timed_subtitles"`
 	DisableAutosave bool              `json:"disable_autosave"`
 	VectorUI        string            `json:"vector_ui"`
 	HDPack          string            `json:"hd_pack"`
@@ -166,6 +167,7 @@ func (p *Player) Boot(config PlayerConfig) error {
 	}
 
 	s := p.Host.Session
+	s.PuppetCtrl.TimedSubtitles = config.TimedSubtitles
 	s.PictureMode = "sharp"
 	s.HasRealFrames = true
 	s.OnNoteDialog = func(text string) error { return p.frozen(func() error { p.dialog("note", text, ""); return nil }) }
@@ -354,6 +356,14 @@ func (p *Player) Command(c PlayerCommand) error {
 		return nil
 	}
 	s, d := p.Host.Session, p.Host.Director
+	if c.Action == "timed_subtitles" {
+		s.PuppetCtrl.TimedSubtitles = c.On
+		return nil
+	}
+	if c.Action == "wide_dialogue" {
+		d.PuppetView.Wide = c.On
+		return nil
+	}
 	if c.Action == "autosave_enabled" {
 		p.autosaveDisabled = !c.On
 		p.checkpointPending, p.checkpointQuiet = false, 0

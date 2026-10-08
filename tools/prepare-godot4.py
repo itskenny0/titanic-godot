@@ -67,6 +67,13 @@ s=s[:a]+'func dispatch_pointer(event):\n\tget_viewport().push_input(event, true)
 p.write_text(s)
 for path in (out/'scripts').glob('*.gd'):
  text=path.read_text().replace('.plus_file(', '.path_join(').replace('.bind(args)', '.bindv(args)').replace('OS.get_cmdline_args()', '(OS.get_cmdline_args() + OS.get_cmdline_user_args())')
+ if path.name == 'dialogue_preview.gd':
+  text=text.replace('caption,Color(0.94,0.90,0.78,alpha))', 'caption,HORIZONTAL_ALIGNMENT_LEFT,-1,11,Color(0.94,0.90,0.78,alpha))')
+  text=text.replace('.get_string_size(caption).x', '.get_string_size(caption,HORIZONTAL_ALIGNMENT_LEFT,-1,11).x')
+ if path.name == 'artwork_preview.gd':
+  text=text.replace('img.create_from_data(', 'img = Image.create_from_data(')
+  text=re.sub(r'texture\.create_from_image\(img\).*', 'texture = ImageTexture.create_from_image(img)', text)
+  text=text.replace('picture.expand = true', 'picture.expand_mode = TextureRect.EXPAND_IGNORE_SIZE')
  text=re.sub(r'\bevent\.(control|meta|alt|shift)\b', lambda m: 'event.' + {'control':'ctrl_pressed','meta':'meta_pressed','alt':'alt_pressed','shift':'shift_pressed'}[m[1]], text)
  text=text.replace('self, "update"', 'self, "queue_redraw"')
  text=text.replace('caption,Style.INK)', 'caption,HORIZONTAL_ALIGNMENT_LEFT,-1,11,Style.INK)')

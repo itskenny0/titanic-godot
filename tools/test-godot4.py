@@ -2,10 +2,10 @@
 """Run the shared UI or owned-data integration test on the generated frontend."""
 from pathlib import Path
 import argparse, re, subprocess, sys
-p=argparse.ArgumentParser();p.add_argument('--godot',required=True);p.add_argument('--test',choices=['ui','integration','controller','idle','patches','game_files','window_close','hd_autodetect','autosave','interruptions','adaptive','svg_ui','runtime'],required=True);p.add_argument('--game-data');p.add_argument('--hd-pack');p.add_argument('--resolution',default='640x480');p.add_argument('--touch',action='store_true');p.add_argument('--patches',default='none');p.add_argument('--expect-isos',action='store_true');p.add_argument('--classic-device',action='store_true');p.add_argument('--headless',action='store_true');a=p.parse_args()
+p=argparse.ArgumentParser();p.add_argument('--godot',required=True);p.add_argument('--test',choices=['ui','integration','controller','idle','patches','game_files','window_close','hd_autodetect','autosave','interruptions','adaptive','svg_ui','runtime','artwork_choice','dialogue'],required=True);p.add_argument('--game-data');p.add_argument('--hd-pack');p.add_argument('--resolution',default='640x480');p.add_argument('--touch',action='store_true');p.add_argument('--patches',default='none');p.add_argument('--expect-isos',action='store_true');p.add_argument('--classic-device',action='store_true');p.add_argument('--headless',action='store_true');a=p.parse_args()
 root=Path(__file__).resolve().parents[1];project=root/'.build/godot4-project'
 s=(root/'tests'/f'{a.test}.gd').read_text()
-if a.test in ['game_files','autosave','svg_ui','runtime']:
+if a.test in ['game_files','autosave','svg_ui','runtime','artwork_choice','dialogue']:
  s=s.replace('extends SceneTree', 'extends SceneTree\nconst File = preload("res://scripts/file_compat.gd")\nconst Directory = preload("res://scripts/directory_compat.gd")')
  s=s.replace('PoolByteArray', 'PackedByteArray').replace('OS.get_ticks_usec()', 'Time.get_ticks_usec()').replace('.plus_file(', '.path_join(').replace('.get_len()', '.get_length()')
 s=re.sub(r'JSON.parse\(([^\n]+)\).result',r'JSON.parse_string(\1)',s)
@@ -14,6 +14,7 @@ s=s.replace('JSON.print(', 'JSON.stringify(').replace('.instance()', '.instantia
 s=s.replace('yield(self, "idle_frame")','await process_frame').replace('yield(VisualServer, "frame_post_draw")','await RenderingServer.frame_post_draw').replace('yield(create_timer(0.3), "timeout")','await create_timer(0.3).timeout')
 s=re.sub(r'yield\(create_timer\(([\d.]+)\),\s*"timeout"\)',r'await create_timer(\1).timeout',s)
 s=s.replace('get_texture().get_data()', 'get_texture().get_image()').replace('OS.window_size', 'DisplayServer.window_get_size()').replace('check_box.pressed', 'check_box.button_pressed')
+s=s.replace('MainLoop.NOTIFICATION_WM_QUIT_REQUEST', 'Node.NOTIFICATION_WM_CLOSE_REQUEST')
 s=s.replace('MainLoop.NOTIFICATION_APP_PAUSED', 'Node.NOTIFICATION_APPLICATION_PAUSED').replace('MainLoop.NOTIFICATION_APP_RESUMED', 'Node.NOTIFICATION_APPLICATION_RESUMED').replace('MainLoop.NOTIFICATION_WM_FOCUS_IN', 'Node.NOTIFICATION_APPLICATION_FOCUS_IN').replace('MainLoop.NOTIFICATION_WM_FOCUS_OUT', 'Node.NOTIFICATION_APPLICATION_FOCUS_OUT')
 s=s.replace('AudioStreamSample', 'AudioStreamWAV').replace('PoolByteArray', 'PackedByteArray').replace('OS.get_ticks_msec()', 'Time.get_ticks_msec()')
 s=s.replace('toast.rect_position', 'toast.position')
@@ -22,6 +23,7 @@ s=re.sub(r'^\t(?:image|screenshot)\.flip_y\(\)\n', '', s, flags=re.M)
 s=s.replace('.empty()', '.is_empty()').replace('.invert()', '.reverse()').replace('.has_icon_override(', '.has_theme_icon_override(').replace('.get_icon(', '.get_theme_icon(').replace('.get_color(', '.get_theme_color(')
 s=s.replace('extends Reference', 'extends RefCounted').replace('.scancode', '.keycode')
 s=s.replace('player.get_focus_owner()', 'player.get_viewport().gui_get_focus_owner()')
+s=s.replace('.find_node(', '.find_child(')
 for old,new in {'JOY_BUTTON_0':'JOY_BUTTON_A','JOY_BUTTON_1':'JOY_BUTTON_B','JOY_BUTTON_3':'JOY_BUTTON_Y','JOY_DPAD_DOWN':'JOY_BUTTON_DPAD_DOWN'}.items():
  s=re.sub(r'\b'+old+r'\b',new,s)
 name=f'{a.test}-test.gd';(project/name).write_text(s)

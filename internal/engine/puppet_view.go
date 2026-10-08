@@ -22,6 +22,7 @@ type puppetFrameKey struct {
 	loc  int
 }
 type PuppetView struct {
+	Wide      bool // Presentation only; original answer coordinates remain unchanged.
 	Session   *Session
 	Gamma     *ScreenGamma
 	frames    map[puppetFrameKey]*df.Sprite
@@ -106,7 +107,7 @@ func (v *PuppetView) Composite(dest []byte, backdrop *PuppetBackdrop) error {
 		return fmt.Errorf("puppet: destination too small")
 	}
 	clipY := PuppetArtHeight
-	if p.Subtitle != "" && v.Session.SubtitlesOn() {
+	if p.Subtitle != "" && v.Session.SubtitlesOn() && !v.Wide {
 		clipY = puppetSubtitleTop
 	}
 	state := v.Session.PuppetCtrl.Frame()
@@ -228,6 +229,8 @@ func (v *PuppetView) DrawSignature(sig *DrawSignature) {
 		return
 	}
 	sig.Bool(true).Bool(p.Visible).Str(p.Name).Num(float64(p.StanceIdx)).Bool(v.Session.SubtitlesOn()).Str(p.Subtitle)
+	from, to, alpha := v.Session.PuppetCtrl.subtitleReveal()
+	sig.Bool(v.Wide).Num(float64(from)).Num(float64(to)).Num(alpha)
 	state := v.Session.PuppetCtrl.Frame()
 	if state == nil {
 		sig.Num(-1)
@@ -276,8 +279,26 @@ func (v *PuppetView) DrawOverlay(ctx *DrawContext) {
 		ctx.Fill = "#000"
 		ctx.FillRect(0, puppetSubtitleTop, ScreenWidth, 40)
 		ctx.Fill = v.clutColor(pal, 0)
+		from, to, alpha := v.Session.PuppetCtrl.subtitleReveal()
+		offset := 0
+		color := ctx.Fill
 		for i, line := range puppetSubtitleLines(p.Subtitle, ctx.MeasureText) {
-			ctx.FillText(line, 8, float64(puppetSubtitleTop+16+i*16))
+			// Find each complete line in the original string, retaining Unicode
+			// byte boundaries and any whitespace removed by wrapping.
+			if at := strings.Index(p.Subtitle[offset:], line); at >= 0 {
+				offset += at
+			}
+			a, b := max(0, min(len(line), from-offset)), max(0, min(len(line), to-offset))
+			y := float64(puppetSubtitleTop + 16 + i*16)
+			ctx.Fill = color
+			if a > 0 {
+				ctx.FillText(line[:a], 8, y)
+			}
+			if b > a {
+				ctx.Fill = strings.Replace(strings.TrimSuffix(color, ")"), "rgb(", "rgba(", 1) + fmt.Sprintf(", %.3f)", alpha)
+				ctx.FillText(line[a:b], 8+ctx.MeasureText(line[:a]), y)
+			}
+			offset += len(line)
 		}
 	}
 	rects := v.BevelRects()

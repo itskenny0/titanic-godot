@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="128" height="34" viewBox="0 0 64 17" data-source-sha256="de491ff07a700cf2cd4b8a9c0b9e4ef6492dd70ac7a683dd4cfc7478aa3cf3b6">
+<title>Red navigation hint, light surround</title>
+<defs>
+  <linearGradient id="surround" x1="0%" y1="0%" x2="0%" y2="100%"><stop stop-color="#1b1b1b"/><stop offset=".28" stop-color="#1e1e1e"/><stop offset="1" stop-color="#525252"/></linearGradient>
+  <linearGradient id="foot" x1="0%" y1="0%" x2="0%" y2="100%"><stop stop-color="#444444"/><stop offset="1" stop-color="#515151"/></linearGradient>
+  <linearGradient id="lens" x1="0%" y1="0%" x2="0%" y2="100%"><stop stop-color="#ba1d1d"/><stop offset=".4" stop-color="#eb2d2d"/><stop offset="1" stop-color="#e42a2a"/></linearGradient>
+  <linearGradient id="reflection" x1="0%" y1="0%" x2="100%" y2="0%"><stop stop-color="#777777" stop-opacity="0"/><stop offset=".34" stop-color="#777777" stop-opacity=".28"/><stop offset="1" stop-color="#777777" stop-opacity="0"/></linearGradient>
+</defs>
+<path fill="url(#surround)" d="M0 13H9.5C12.1 8.5 17.7 3.8 23.1 1.45C25.3 .47 28.5 0 31.9 0C35.7 0 38.3 .59 41 1.9C46.2 4.5 51.3 8.6 54.4 13H64V17H0Z"/>
+<path fill="url(#reflection)" d="M9.5 13C12.1 8.5 17.7 3.8 23.1 1.45C25.3 .47 28.5 0 31.9 0C25.7 .7 18.8 4.8 15.3 9.2L12.5 13Z"/>
+<path fill="#713b27" opacity=".55" d="M14.8 10.6L29.5 3.12Q30.5 2.6 31.45 3.13L47.4 10.9L46.75 12.96L16.1 13.05Z"/>
+<path fill="#700807" d="M15.6 10.65L29.9 3.38Q30.55 3.02 31.25 3.41L46.7 10.95L45.9 12.74H16.9Z"/>
+<path fill="url(#lens)" d="M18.3 10.4L30.14 4.5Q30.6 4.22 31.03 4.5L43.66 10.4Z"/>
+<path fill="#830707" d="M16.05 10.58H46.2L45.82 12.62H17.05Z"/>
+<path fill="url(#foot)" d="M0 13.1H14.3C23.7 13.6 38.5 13.6 48.8 13.1H64V17H0Z"/>
+<path fill="url(#reflection)" d="M0 15.38C16.7 14.65 35 15.58 47.4 15.5H64V16.45H0Z"/>
+</svg>

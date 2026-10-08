@@ -91,7 +91,9 @@ go run ./cmd/personal-build --target portmaster --base dist/titanic-portmaster.z
 
 Android packaging needs Java 17 and Android SDK Build Tools 35 or newer. See [BUILDING.md](../BUILDING.md) for building the base player. The personal builder includes your game files, the selected HD images and the pinned patches. Use `--patch-archive /path/to/TAOOTpatch1.03.FULL.zip` to supply the patch archive without downloading it. Existing output packages are never overwritten.
 
-For a desktop player, copy the finished pack folder beside the executable and name it `hdpack`. On macOS, put it beside `Titanic.app`; for an AppImage, beside the `.AppImage` file. On PortMaster, put it at `ports/titanic/hdpack`. Android users should use the personal APK above. The folder should contain `manifest.json` and `images` directly. The game detects and enables it automatically. **Game files / mods > HD artwork** has an on/off switch that takes effect next time you start the game. If you turn it off, that choice stays saved even while the pack is present.
+For a desktop player, copy the finished pack folder beside the executable and name it `hdpack`. On macOS, put it beside `Titanic.app`; for an AppImage, beside the `.AppImage` file. On PortMaster, put it at `ports/titanic/hdpack`. On Android, extract the pack into an `hdpack` folder beside your two ISOs, then select their parent folder under **Game files / mods > Choose game folder**. The player detects the pack and reads it in place, without copying the textures or putting them in the APK. You can also use **HD artwork > Choose HD artwork folder** to select the pack separately. Android remembers the folder permission across restarts; keep the folder and its storage available. If you previously imported the ISOs, select their original folder again to grant access to the sibling pack. HD changes take effect next start, preserving your current progress. The HD on/off setting is retained.
+
+A personal APK can still bundle a smaller pack with `--hd-pack`, but APKs must stay below 4 GiB. Use the separate folder for full character and movement packs. The folder should contain `manifest.json` and `images` directly. The game detects and enables it automatically. **Game files / mods > HD artwork** has an on/off switch that takes effect next time you start the game. If you turn it off, that choice stays saved even while the pack is present.
 
 ## What stays original
 
@@ -99,7 +101,7 @@ The normal pack includes the sharp room views used by the player. Navigation ani
 
 ## SVG interface artwork
 
-The player includes redrawn SVGs for the idle life preserver, bag, watch and rolled map. They work in the classic toolbar and adaptive side panels, with or without an HD pack. **Game files / mods > HD artwork > Redrawn interface** switches them off for the next start. Opening animations and other states retain their existing artwork.
+The player includes redrawn SVGs for the idle life preserver, bag, watch, rolled map and red/yellow/green navigation hint, including its light and dark surrounds. They work in the classic toolbar and adaptive layout, with or without an HD pack. On first launch, including after updating, a comparison shows original icons from your game files beside the redraws and asks which you prefer. Either choice is remembered. **Game files / mods > HD artwork > Redrawn interface** lets you compare and choose again for the next start. Opening animations and other states retain their existing artwork.
 
 Editable SVGs are in `godot/artwork/ui/images`. Their filenames identify the exact source image, so unrelated mod artwork is not replaced. The player reads these SVGs directly and caches their rendered pixels in memory. No generated PNGs or original game images are bundled with them. Lettering is outlined, with no extra runtime font needed.
 

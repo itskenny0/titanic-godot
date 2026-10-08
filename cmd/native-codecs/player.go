@@ -165,6 +165,14 @@ func taoot_player_call(handle C.uintptr_t, method, args *C.char, out *C.TaootRes
 	var value any
 	var err error
 	switch name {
+	case "artwork_examples":
+		var request struct {
+			Index map[string]string `json:"index"`
+		}
+		err = json.Unmarshal(raw, &request)
+		if err == nil {
+			value, err = p.ArtworkExamples(request.Index)
+		}
 	case "iso_index":
 		var request struct {
 			Path string `json:"path"`
@@ -220,6 +228,8 @@ func taoot_player_call(handle C.uintptr_t, method, args *C.char, out *C.TaootRes
 		}
 	case "state":
 		value = p.State()
+	case "dialogue_layout":
+		value = p.DialogueLayout()
 	case "adaptive_layout":
 		value = p.AdaptiveLayout()
 	case "adaptive_atlas":

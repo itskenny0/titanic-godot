@@ -3,7 +3,8 @@ from pathlib import Path
 import shutil,sys
 root=Path(__file__).resolve().parents[1];source=root/'.build/godot4'
 java=source/'platform/android/java/lib/src/cat/kenny/taoot';java.mkdir(parents=True,exist_ok=True)
-shutil.copy2(root/'native/android/TitanicFiles.java',java/'TitanicFiles.java')
+for name in ['TitanicFiles.java', 'HdPackFolder.java']:
+ shutil.copy2(root/'native/android'/name,java/name)
 (source/'platform/android/java/lib/src/io/github/itskenny0/titanic/TitanicFiles.java').unlink(missing_ok=True)
 manifest=source/'platform/android/java/app/AndroidManifest.xml';text=manifest.read_text()
 text=text.replace("io.github.itskenny0.titanic.TitanicFiles", "cat.kenny.taoot.TitanicFiles")

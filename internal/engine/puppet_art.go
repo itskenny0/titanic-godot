@@ -106,7 +106,7 @@ func (v *PuppetView) CompositeHD(hd *HDSurface, logical []byte) {
 	}
 	if art := v.character.art; art != nil {
 		clipY := PuppetArtHeight
-		if p.Subtitle != "" && v.Session.SubtitlesOn() {
+		if p.Subtitle != "" && v.Session.SubtitlesOn() && !v.Wide {
 			clipY = puppetSubtitleTop
 		}
 		hd.MaskedArtwork(art, clipY)

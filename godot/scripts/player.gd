@@ -10,6 +10,9 @@ var saves = SaveStore.new()
 var config = ConfigFile.new()
 var game_index = {}
 var hd_pack_path = ""
+var artwork_choice_dialog = null
+var artwork_choice_first = false
+var artwork_choice_save = ""
 var adaptive = AdaptiveLayout.new()
 var adaptive_panel_style = UIStyle.plate(Color("1b202140"),Color("645b4660"),6)
 var adaptive_button_style = UIStyle.plate(Color("24292960"),Color("4f504580"),4)
@@ -60,6 +63,15 @@ var manual_pause = false
 var close_first_ms = -1
 var close_last_ms = -1
 var close_count = 0
+var close_menu_pending = false
+var dialogue = preload("res://scripts/dialogue_layout.gd").new()
+var dialogue_active = false
+var dialogue_request = null
+var dialogue_metadata = {}
+var dialogue_choice_dialog = null
+var dialogue_choice_first = false
+var dialogue_choice_save = ""
+var dialogue_preview = null
 var close_request_dialog = null
 var close_dialog_pause = false
 var ready = false
@@ -135,6 +147,8 @@ func _ready():
 	add_child(status)
 	if Engine.has_singleton("TitanicFiles"):
 		Engine.get_singleton("TitanicFiles").connect("import_finished", self, "android_import_finished")
+		Engine.get_singleton("TitanicFiles").connect("hd_folder_selected", self, "android_hd_selected")
+		Engine.get_singleton("TitanicFiles").connect("hd_detected", self, "android_hd_detected")
 		Engine.get_singleton("TitanicFiles").connect("mod_import_finished", self, "android_mod_finished")
 		Engine.get_singleton("TitanicFiles").connect("patch_import_finished", self, "android_patch_finished")
 		Engine.get_singleton("TitanicFiles").connect("save_import_finished", self, "android_save_finished")
@@ -247,6 +261,8 @@ func prepare_index(roots):
 	return true
 
 func start_runtime(save_path = ""):
+	dialogue_active = false
+	dialogue_request = null
 	set_adaptive_active(false)
 	adaptive_atlas_revision = -1
 	prefer_classic_now = false
@@ -267,9 +283,19 @@ func start_runtime(save_path = ""):
 	runtime = create_runtime()
 	if runtime == null:
 		return
+	var automated = false
+	for arg in OS.get_cmdline_args():
+		if arg in ["--integration-test", "--smoke-test", "--ui-test"]:
+			automated = true
+	if not automated and needs_artwork_choice():
+		show_artwork_choice(save_path, true)
+		return
+	if not automated and needs_dialogue_choice():
+		show_dialogue_options(save_path, true)
+		return
 	var error = ""
 	runtime.execute("profile", JSON.print({"on": OS.is_debug_build()}))
-	error = runtime.execute("boot", JSON.print({"index": game_index, "save": save_path, "hd_pack": active_hd_pack(), "vector_ui": "res://artwork/ui" if config.get_value("graphics", "redrawn_ui", true) else "", "disable_autosave": not config.get_value("saves", "autosave_enabled", true), "testing": "--integration-test" in OS.get_cmdline_args()}))
+	error = runtime.execute("boot", JSON.print({"index": game_index, "save": save_path, "hd_pack": active_hd_pack(), "vector_ui": "res://artwork/ui" if config.get_value("graphics", "redrawn_ui", true) else "", "timed_subtitles": config.get_value("dialogue", "timed_subtitles", false), "disable_autosave": not config.get_value("saves", "autosave_enabled", true), "testing": "--integration-test" in OS.get_cmdline_args()}))
 	if not error.empty():
 		show_note(error)
 		return
@@ -278,8 +304,30 @@ func start_runtime(save_path = ""):
 	send({"action": "pause", "on": interrupted()})
 
 func find_hd_pack():
+	for arg in OS.get_cmdline_args():
+		if arg.begins_with("--hd-pack="):
+			return arg.substr(10)
 	var base = OS.get_executable_path().get_base_dir()
 	var candidates = ["res://hdpack", "user://hdpack", base.plus_file("hdpack")]
+	var selected = config.get_value("graphics", "hd_folder", "")
+	if Engine.has_singleton("TitanicFiles"):
+		var plugin = Engine.get_singleton("TitanicFiles")
+		var tree = config.get_value("game", "android_tree", "")
+		var folder = selected
+		if folder.empty() and not tree.empty():
+			folder = plugin.find_hd_folder(tree)
+		if not folder.empty():
+			var error = plugin.prepare_hd_folder(folder)
+			if error.empty():
+				return "saf-hd:" + folder
+			print("HD folder unavailable: ", error)
+	elif not selected.empty():
+		candidates.push_front(selected)
+	for root in [config.get_value("game", "root", ""), config.get_value("game", "disc1", ""), config.get_value("game", "disc2", "")]:
+		if not root.empty():
+			if root.to_lower().ends_with(".iso"):
+				root = root.get_base_dir()
+			candidates.append(root.plus_file("hdpack"))
 	var game_dir = OS.get_environment("RETANIC_GAME_DIR")
 	if not game_dir.empty():
 		candidates.append(game_dir.plus_file("hdpack"))
@@ -288,9 +336,6 @@ func find_hd_pack():
 		candidates.append(appimage.get_base_dir().plus_file("hdpack"))
 	if OS.get_name() in ["OSX", "macOS"]:
 		candidates.append(base.get_base_dir().get_base_dir().get_base_dir().plus_file("hdpack"))
-	for arg in OS.get_cmdline_args():
-		if arg.begins_with("--hd-pack="):
-			return arg.substr(10)
 	for candidate in candidates:
 		if File.new().file_exists(candidate.plus_file("manifest.json")):
 			return candidate
@@ -405,6 +450,8 @@ func bridge_call(method, args_json, bytes):
 			return preload("res://scripts/svg_artwork.gd").rasterize(bytes, int(args.width), int(args.height), args.path)
 		"read":
 			var path = args.path
+			if path.begins_with("saf-hd:") and Engine.has_singleton("TitanicFiles"):
+				return Engine.get_singleton("TitanicFiles").read_hd_file(path.substr(7))
 			if path.begins_with("save:"):
 				path = saves.path_for(path.substr(5))
 			return files.read_asset(path)
@@ -529,9 +576,13 @@ func toggle_exploration_layout():
 	sync_adaptive_layout()
 
 func game_to_display(point, target_id = ""):
+	if dialogue_active:
+		return dialogue.game_to_screen(point)
 	return adaptive.game_to_screen(point, target_id) if adaptive_active else game_origin + point
 
 func display_to_game(point):
+	if dialogue_active:
+		return dialogue.screen_to_game(point)
 	return adaptive.screen_to_game(point) if adaptive_active else point - game_origin
 
 func pointer_in_picture(point):
@@ -539,8 +590,11 @@ func pointer_in_picture(point):
 	return Rect2(0,0,512,384).has_point(local)
 
 func selection_circle(target):
+	if dialogue_active and target.aim_y >= 264 and int((target.aim_y-264)/24) < dialogue.choices.size():
+		var r = dialogue.choices[int((target.aim_y-264)/24)]
+		return {"center":r.position+Vector2(-12,12), "radius":7}
 	if target.id == "ui:layout":
-		return {"center":layout_switch.rect_position+layout_switch.rect_size/2-(Vector2.ZERO if adaptive_active else game_origin),"radius":16}
+		return {"center":layout_switch.rect_position+layout_switch.rect_size/2-(Vector2.ZERO if adaptive_active or dialogue_active else game_origin),"radius":16}
 	if adaptive_active:
 		return adaptive.target_circle(target)
 	return {"center": Vector2(target.aim_x,target.aim_y), "radius": clamp(min(target.w,target.h) / 2.0 + 5, 12, 30)}
@@ -598,6 +652,9 @@ func draw_adaptive():
 		draw_texture_rect_region(adaptive_atlas_texture,adaptive.navigation_display,Rect2(Vector2(n.slot*128,0)*adaptive_atlas_scale,Vector2(n.w,n.h)*adaptive_atlas_scale))
 
 func _draw():
+	if dialogue_active and has_frame:
+		draw_wide_dialogue()
+		return
 	if adaptive_active and has_frame:
 		draw_adaptive()
 		return
@@ -623,7 +680,7 @@ func draw_cursor():
 		cursor_layer.draw_arc(circle.center, circle.radius, 0, TAU, 64, Color(0.78,0.68,0.45,0.50), 1.4, true)
 	if not pointer_visible or (pointer_name == "none" and modal == null):
 		return
-	var cursor = display_pointer if adaptive_active else pointer
+	var cursor = display_pointer if adaptive_active or dialogue_active else pointer
 	var color = Color("f7e6a4") if pointer_name in ["touch", "hand", "fist"] else Color.white
 	var points = PoolVector2Array([cursor, cursor + Vector2(0, 15), cursor + Vector2(4, 11), cursor + Vector2(8, 18), cursor + Vector2(11, 16), cursor + Vector2(7, 9), cursor + Vector2(13, 9)])
 	cursor_layer.draw_colored_polygon(points, Color(0,0,0))
@@ -667,6 +724,10 @@ func _process(delta):
 	process_controller(delta)
 	refresh_cursor()
 	if runtime != null:
+		var wide_requested = wide_dialogue_enabled() and adaptive_widescreen()
+		if wide_requested != dialogue_request:
+			send({"action":"wide_dialogue", "on":wide_requested})
+			dialogue_request = wide_requested
 		var tick_started = OS.get_ticks_usec()
 		var error = "" if runtime_failed else runtime.execute("tick", JSON.print({"dt": min(delta, 0.25) * 1000.0}))
 		var tick_finished = OS.get_ticks_usec()
@@ -698,6 +759,7 @@ func _process(delta):
 			handle_event(event)
 		if pending_restart != null:
 			start_runtime(pending_restart)
+		sync_dialogue_layout()
 		sync_adaptive_layout()
 		if OS.is_debug_build():
 			var finished = OS.get_ticks_usec()
@@ -725,7 +787,7 @@ func _process(delta):
 
 func refresh_cursor():
 	cursor_layer.visible = not ((touch_enabled and modal != null) or (pointer_name == "none" and modal == null))
-	var origin = Vector2.ZERO if adaptive_active else game_origin
+	var origin = Vector2.ZERO if adaptive_active or dialogue_active else game_origin
 	if cursor_layer.position != origin:
 		cursor_layer.position = origin
 	if drawn_pointer != pointer or drawn_pointer_name != pointer_name or drawn_display_pointer != display_pointer:
@@ -878,6 +940,14 @@ func window_close_requested(now):
 	# seconds bypass normal shutdown, including a stuck gameplay session.
 	if close_count >= 4 and now - close_first_ms >= 2500:
 		return true
+	# OS notifications may arrive while the scene tree is locked.
+	if not close_menu_pending:
+		close_menu_pending = true
+		call_deferred("show_window_close_menu")
+	return false
+
+func show_window_close_menu():
+	close_menu_pending = false
 	if is_instance_valid(menu) and modal == menu:
 		menu.show()
 		return false
@@ -962,7 +1032,7 @@ func _unhandled_input(event):
 		if event.scancode >= KEY_F1 and event.scancode <= KEY_F9:
 			send({"action": "gamma", "key": event.scancode - KEY_F1 + 1})
 			return
-		var keys = {KEY_UP: "uparrow", KEY_DOWN: "downarrow", KEY_LEFT: "leftarrow", KEY_RIGHT: "rightarrow", KEY_ESCAPE: ".", KEY_ENTER: "\r", KEY_BACKSPACE: "\b", KEY_TAB: "\t"}
+		var keys = {KEY_UP: "uparrow", KEY_DOWN: "downarrow", KEY_LEFT: "leftarrow", KEY_RIGHT: "rightarrow", KEY_ESCAPE: ".", KEY_ENTER: "\r", KEY_KP_ENTER: "\r", KEY_BACKSPACE: "\b", KEY_TAB: "\t"}
 		var key = keys.get(event.scancode, char(event.unicode).to_lower() if event.unicode > 0 else "")
 		if not key.empty():
 			send({"action": "key", "key": key, "special": event.scancode == KEY_ESCAPE or event.control})
@@ -978,7 +1048,7 @@ func mouse_button(pressed):
 	var event = InputEventMouseButton.new()
 	event.button_index = BUTTON_LEFT
 	event.pressed = pressed
-	event.position = display_pointer if adaptive_active else pointer + game_origin
+	event.position = display_pointer if adaptive_active or dialogue_active else pointer + game_origin
 	event.global_position = event.position
 	controller_pointer_event = true
 	dispatch_pointer(event)
@@ -1025,12 +1095,12 @@ func process_controller(delta):
 		controller_selection = -1
 		var speed = 65.0 if controller_action_held("precision") else 240.0
 		var step = motion.normalized() * pow(min(1.0, (motion.length() - deadzone) / (1.0 - deadzone)), 1.5) * speed * delta
-		if adaptive_active:
+		if adaptive_active or dialogue_active:
 			display_pointer = Vector2(clamp(display_pointer.x + step.x,0,layout_size.x-1),clamp(display_pointer.y + step.y,0,layout_size.y-1))
 		else:
 			pointer = Vector2(clamp(pointer.x + step.x, 0, 511), clamp(pointer.y + step.y, 0, 383))
 		var event = InputEventMouseMotion.new()
-		event.position = display_pointer if adaptive_active else pointer + game_origin
+		event.position = display_pointer if adaptive_active or dialogue_active else pointer + game_origin
 		event.global_position = event.position
 		event.relative = step
 		dispatch_pointer(event)
@@ -1203,6 +1273,15 @@ func controller_ui_key(code, pressed):
 	Input.parse_input_event(event)
 
 func controller_back():
+	if is_instance_valid(dialogue_choice_dialog) and modal == dialogue_choice_dialog:
+		if not dialogue_choice_first:
+			finish_dialogue_options()
+		return
+	if is_instance_valid(artwork_choice_dialog) and modal == artwork_choice_dialog:
+		if not artwork_choice_first:
+			artwork_choice_dialog = null
+			show_hd_settings()
+		return
 	if touch_editing:
 		finish_touch_positions()
 		return
@@ -1243,7 +1322,7 @@ func controller_config_section():
 
 func default_controller_bindings():
 	return {
-		"confirm": ["b:" + str(JOY_BUTTON_0), "b:" + str(JOY_R), "k:" + str(KEY_ENTER)],
+		"confirm": ["b:" + str(JOY_BUTTON_0), "b:" + str(JOY_R), "k:" + str(KEY_ENTER), "k:" + str(KEY_KP_ENTER)],
 		"back": ["b:" + str(JOY_BUTTON_1), "k:" + str(KEY_ESCAPE)],
 		"menu": ["b:" + str(JOY_START), "k:" + str(KEY_F10)],
 		"door": ["b:" + str(JOY_BUTTON_2), "k:" + str(KEY_SPACE)],
@@ -1281,6 +1360,7 @@ func controller_binding_input(event):
 		pressed = event.pressed
 	else:
 		return false
+	var held_action = controller_held.get(token, "")
 	if not pressed:
 		controller_held.erase(token)
 	if token == remap_release:
@@ -1294,14 +1374,22 @@ func controller_binding_input(event):
 			cancel_controller_remap()
 		return true
 	if event is InputEventKey:
+		# Finish a keyboard click even if its reply vanished or focus changed.
+		if held_action == "confirm":
+			if not pressed:
+				controller_action("confirm", false)
+				return true
+			if event.echo:
+				return true
 		# Keep normal typing and keyboard shortcuts in text fields.
 		if get_focus_owner() is LineEdit or event.control or event.meta or event.alt:
 			return false
 		# Keyboard arrows also cover Android controllers that report a D-pad as keys.
 		var portable = not OS.get_environment("RETANIC_ARCH").empty() or OS.get_name() == "Android"
 		var navigation = event.scancode in [KEY_UP, KEY_DOWN, KEY_LEFT, KEY_RIGHT]
+		var confirmation = event.scancode in [KEY_ENTER, KEY_KP_ENTER] and modal == null and controller_selection >= 0
 		var custom = config.get_value(controller_config_section(), "keyboard_remapped", false)
-		if not portable and not navigation and not custom:
+		if not portable and not navigation and not confirmation and not custom:
 			return false
 	for action in controller_bindings:
 		if token in controller_bindings[action]:
@@ -1316,7 +1404,7 @@ func controller_binding_input(event):
 			return true
 	# Consume old navigation bindings, but leave typing available for game puzzles.
 	if event is InputEventKey:
-		return event.scancode in [KEY_UP, KEY_DOWN, KEY_LEFT, KEY_RIGHT, KEY_ENTER, KEY_ESCAPE, KEY_F10, KEY_F12, KEY_SPACE, KEY_PAGEUP, KEY_PAGEDOWN]
+		return event.scancode in [KEY_UP, KEY_DOWN, KEY_LEFT, KEY_RIGHT, KEY_ENTER, KEY_KP_ENTER, KEY_ESCAPE, KEY_F10, KEY_F12, KEY_SPACE, KEY_PAGEUP, KEY_PAGEDOWN]
 	# Unassigned native buttons must not activate Godot's default UI bindings.
 	return true
 
@@ -1393,11 +1481,14 @@ func show_control_options():
 		button(box,"Adaptive exploration: %s" % ("On" if adaptive_enabled() else "Off"),"toggle_adaptive_exploration").grab_focus()
 		button(box,"Panel size: " + ("Roomy" if adaptive_roomy() else "Compact"),"toggle_adaptive_size")
 		add_layout_preview(box)
-		text_scroller(box,"Side panels need a wide screen. Conversations, held items and special screens use Classic.",40)
-	var bindings = button(box,"Controller bindings","show_controller_settings")
+		text_scroller(box,"Side panels need a wide screen. Held items and special screens use Classic. Dialogue has its own layout setting.",40)
+	var row = HBoxContainer.new()
+	box.add_child(row)
+	var bindings = button(row,"Controller bindings","show_controller_settings")
 	if classic_format_device():
 		bindings.grab_focus()
-	button(box,"Touch controls","show_touch_help")
+	button(row,"Touch controls","show_touch_help")
+	button(box,"Dialogue / subtitles","show_dialogue_options")
 	button(box,"Back","controller_settings_back")
 
 func toggle_adaptive_size():
@@ -1462,7 +1553,7 @@ func cycle_touch_opacity():
 	show_touch_help()
 
 func touch_layout_key():
-	return "adaptive" if adaptive_active else ("portrait" if OS.window_size.y > OS.window_size.x else "landscape")
+	return "dialogue" if dialogue_active else ("adaptive" if adaptive_active else ("portrait" if OS.window_size.y > OS.window_size.x else "landscape"))
 
 func touch_control_bounds(control):
 	var node = touch_strip.get_node(control)
@@ -1814,11 +1905,13 @@ func data_selected(path, disc):
 func show_hd_settings():
 	var box = panel("HD artwork")
 	var hint = Label.new()
-	hint.text = "Changes take effect next time you start the game."
+	hint.text = "Keep hdpack beside your ISOs, or choose its folder.\nChanges take effect next time you start the game."
 	hint.add_font_override("font", get_font_for("13px Arial"))
 	box.add_child(hint)
-	button(box, "HD artwork: %s (next start)" % ("On" if config.get_value("graphics", "hd_enabled", true) else "Off"), "toggle_hd_artwork").grab_focus()
-	button(box, "Redrawn interface: %s (next start)" % ("On" if config.get_value("graphics", "redrawn_ui", true) else "Off"), "toggle_redrawn_ui")
+	button(box, "Choose HD artwork folder", "choose_hd_folder").grab_focus()
+	button(box, "Use automatic folder detection", "reset_hd_folder")
+	button(box, "HD artwork: %s (next start)" % ("On" if config.get_value("graphics", "hd_enabled", true) else "Off"), "toggle_hd_artwork")
+	button(box, "Redrawn interface: %s (compare)" % ("On" if config.get_value("graphics", "redrawn_ui", true) else "Off"), "show_artwork_choice")
 	if hd_pack_path.empty():
 		var missing = Label.new()
 		missing.text = "No HD pack detected. World artwork stays original."
@@ -1826,10 +1919,78 @@ func show_hd_settings():
 		box.add_child(missing)
 	button(box, "Back", "show_setup")
 
-func toggle_redrawn_ui():
-	config.set_value("graphics", "redrawn_ui", not config.get_value("graphics", "redrawn_ui", true))
+func needs_artwork_choice():
+	# Separate from the old on/off setting, so existing players see this once.
+	return not config.get_value("graphics", "redrawn_ui_chosen", false)
+
+func show_artwork_choice(save_path = "", first_start = false):
+	artwork_choice_first = first_start
+	artwork_choice_save = save_path
+	var examples = null
+	if runtime != null and not game_index.empty():
+		examples = JSON.parse(runtime.query("artwork_examples", JSON.print({"index": game_index}))).result
+	var box = panel("Choose interface artwork")
+	artwork_choice_dialog = modal
+	status.hide()
+	var preview = preload("res://scripts/artwork_preview.gd").new()
+	preview.name = "artwork_preview"
+	box.add_child(preview)
+	preview.populate(self, examples)
+	var hint = Label.new()
+	hint.text = "Redraws change the toolbar icons and navigation hint. You can change this later in Game files / mods > HD artwork."
+	if not first_start:
+		hint.text = "Changes take effect next start. Your current game continues with its existing artwork."
+	hint.autowrap = true
+	hint.rect_min_size = Vector2(396,44)
+	hint.add_font_override("font", get_font_for("13px Arial"))
+	box.add_child(hint)
+	button(box, "Keep original artwork", "choose_artwork", [false]).grab_focus()
+	button(box, "Enable redrawn artwork", "choose_artwork", [true])
+
+func choose_artwork(enabled):
+	config.set_value("graphics", "redrawn_ui", enabled)
+	config.set_value("graphics", "redrawn_ui_chosen", true)
 	config.save("user://settings.cfg")
+	artwork_choice_dialog = null
+	if artwork_choice_first:
+		start_runtime(artwork_choice_save)
+	else:
+		show_hd_settings()
+
+func reset_hd_folder():
+	config.set_value("graphics", "hd_folder", "")
+	config.save("user://settings.cfg")
+	hd_pack_path = find_hd_pack()
 	show_hd_settings()
+
+func choose_hd_folder():
+	if Engine.has_singleton("TitanicFiles"):
+		Engine.get_singleton("TitanicFiles").choose_hd_folder()
+	else:
+		file_dialog(FileDialog.MODE_OPEN_DIR, "hd_folder_selected")
+
+func hd_folder_selected(path):
+	if not File.new().file_exists(path.plus_file("manifest.json")):
+		show_note("Choose the hdpack folder containing manifest.json and images.")
+		return
+	config.set_value("graphics", "hd_folder", path)
+	config.save("user://settings.cfg")
+	hd_pack_path = find_hd_pack()
+	show_hd_settings()
+
+func android_hd_selected(path, error):
+	if not error.empty():
+		show_note(error)
+	elif not path.empty():
+		config.set_value("graphics", "hd_folder", path)
+		config.save("user://settings.cfg")
+		hd_pack_path = "saf-hd:" + path
+		show_hd_settings()
+
+func android_hd_detected(path, error):
+	# Game import finishes immediately afterwards and boots with the detected pack.
+	if not error.empty():
+		print("HD folder unavailable: ", error)
 
 func choose_mods():
 	if Engine.has_singleton("TitanicFiles"):
@@ -1870,6 +2031,7 @@ func show_next_dialog():
 		save_name = LineEdit.new()
 		save_name.text = event.value
 		save_name.add_font_override("font", get_font_for("14px Arial"))
+		save_name.connect("text_entered", self, "submit_entered_text", [event.kind])
 		box.add_child(save_name)
 		button(box, "On-screen keyboard", "show_keyboard", [save_name])
 		button(box, "Save" if event.kind == "save" else "OK", "submit_text", [event.kind]).grab_focus()
@@ -1881,6 +2043,9 @@ func show_next_dialog():
 			Engine.get_singleton("TitanicFiles").import_save(ProjectSettings.globalize_path("user://"))
 			return
 		file_dialog(FileDialog.MODE_OPEN_FILE, "reply_dialog", [], "*.ti ; Titanic saved game").connect("popup_hide", self, "cancel_file_reply")
+
+func submit_entered_text(_text, kind):
+	submit_text(kind)
 
 func submit_text(kind):
 	var text = save_name.text.strip_edges()
@@ -2043,7 +2208,7 @@ func update_touch_layout(_device = 0, _connected = false):
 	var physical = OS.window_size
 	var portrait = physical.y > physical.x
 	var desired = Vector2(512, 384)
-	if adaptive_enabled() and adaptive_widescreen():
+	if (adaptive_enabled() or wide_dialogue_enabled()) and adaptive_widescreen():
 		desired = Vector2(384.0 * physical.x / max(1,physical.y),384)
 	elif touch_enabled:
 		desired = Vector2(512, max(640, 512.0 * physical.y / max(1, physical.x))) if portrait else Vector2(max(640, 384.0 * physical.x / max(1, physical.y)), 384)
@@ -2054,6 +2219,8 @@ func update_touch_layout(_device = 0, _connected = false):
 		get_tree().set_screen_stretch(SceneTree.STRETCH_MODE_2D, SceneTree.STRETCH_ASPECT_KEEP, layout_size)
 	if adaptive_active:
 		adaptive.configure(desired, adaptive_metadata, adaptive_roomy())
+	if dialogue_active:
+		dialogue.configure(desired,dialogue_metadata.get("choices",0),touch_enabled)
 	status.rect_position = game_origin + Vector2(20, 160)
 	if is_instance_valid(checkpoint_toast):
 		checkpoint_toast.rect_position = game_origin + Vector2(16, 16)
@@ -2064,7 +2231,10 @@ func update_touch_layout(_device = 0, _connected = false):
 		return
 	touch_strip.visible = touch_enabled and modal == null
 	var specs
-	if adaptive_active:
+	if dialogue_active:
+		touch_strip.get_node("joystick").configure(Vector2(70,desired.y-70),58)
+		specs = [["menu","Menu",Vector2(16,16)],["escape","Skip",Vector2(desired.x-68,desired.y-64)],["space","Door",Vector2(desired.x-68,80)],["keyboard","Keys",Vector2(desired.x-68,140)]]
+	elif adaptive_active:
 		var rail = adaptive.rail
 		touch_strip.get_node("joystick").configure(Vector2(70,desired.y-70),58)
 		var right = desired.x-rail/2-26
@@ -2186,6 +2356,8 @@ func android_import_finished(path, error):
 	if not error.empty():
 		show_note(error)
 		return
+	if Engine.has_singleton("TitanicFiles"):
+		config.set_value("game", "android_tree", Engine.get_singleton("TitanicFiles").selected_game_tree())
 	data_selected(path, android_selected_disc)
 
 func android_mod_finished(path, error):
@@ -2403,3 +2575,86 @@ func poll_patches(delta):
 			patch_import_copy = ""
 	if is_instance_valid(patch_status_label):
 		patch_status_label.text = message
+
+func wide_dialogue_enabled():
+	return config.get_value("dialogue","widescreen",false)
+
+func needs_dialogue_choice():
+	return not config.get_value("dialogue","presentation_chosen",false)
+
+func show_dialogue_options(save_path = "", first_start = false):
+	dialogue_choice_first = first_start
+	dialogue_choice_save = save_path
+	var box = panel("Dialogue presentation")
+	dialogue_choice_dialog = modal
+	dialogue_preview = preload("res://scripts/dialogue_preview.gd").new()
+	dialogue_preview.player = self
+	box.add_child(dialogue_preview)
+	button(box,"Layout: " + ("Widescreen" if wide_dialogue_enabled() else "Classic"),"toggle_dialogue_option",["widescreen"]).disabled = classic_format_device()
+	button(box,"Speech-timed words: " + ("On" if config.get_value("dialogue","timed_subtitles",false) else "Off"),"toggle_dialogue_option",["timed_subtitles"]).grab_focus()
+	text_scroller(box,"Words gently fade in over the length of each spoken line. Timing is approximate. Change either option later in Controls / display.\n" + ("This 4:3 display uses Classic dialogue." if classic_format_device() else "Widescreen uses translucent answers in landscape; narrow screens keep Classic."),65)
+	button(box,"Continue" if first_start else "Back","finish_dialogue_options")
+
+func toggle_dialogue_option(key):
+	config.set_value("dialogue",key,not config.get_value("dialogue",key,false))
+	config.save("user://settings.cfg")
+	send({"action":"timed_subtitles","on":config.get_value("dialogue","timed_subtitles",false)})
+	update_touch_layout()
+	show_dialogue_options(dialogue_choice_save,dialogue_choice_first)
+
+func finish_dialogue_options():
+	config.set_value("dialogue","presentation_chosen",true)
+	config.save("user://settings.cfg")
+	dialogue_choice_dialog = null
+	close_modal()
+	if dialogue_choice_first:
+		start_runtime(dialogue_choice_save)
+	else:
+		show_control_options()
+
+func sync_dialogue_layout():
+	var metadata = JSON.parse(runtime.query("dialogue_layout")).result if wide_dialogue_enabled() and adaptive_widescreen() else {}
+	var active = metadata is Dictionary and metadata.get("eligible",false) and wide_dialogue_enabled() and adaptive_widescreen() and not runtime_failed and has_frame
+	if metadata is Dictionary:
+		dialogue_metadata = metadata
+	if active:
+		dialogue.configure(layout_size,metadata.get("choices",0),touch_enabled)
+	if dialogue_active != active:
+		if pointer_pressed:
+			send({"action":"pointer","kind":"release","x":-1,"y":-1})
+			pointer_pressed = false
+		dialogue_active = active
+		controller_selection = -1
+		update_touch_layout()
+		display_pointer = game_to_display(pointer)
+		refresh_cursor()
+		update()
+
+func draw_wide_dialogue():
+	var hd = frame_image.get_width()/512.0
+	draw_texture_rect_region(frame_texture,Rect2(Vector2.ZERO,layout_size),Rect2(0,0,512*hd,264*hd))
+	for bounds in dialogue.choices:
+		draw_style_box(UIStyle.plate(Color(0,0,0,0.32),Color(0.78,0.68,0.45,0.22),3),bounds)
+	for command in overlays:
+		if command.op == "rect" and command.h == 384:
+			draw_set_transform(Vector2.ZERO,0,Vector2.ONE)
+			draw_rect(Rect2(Vector2.ZERO,layout_size),ink(command.color))
+			continue
+		if command.y >= 264:
+			var index = int((command.y-264)/24)
+			if index >= dialogue.choices.size():
+				continue
+			var bounds = dialogue.choices[index]
+			var scale = min(1.0,bounds.size.x/512.0)
+			draw_set_transform(bounds.position+Vector2(0,12-12*scale)-Vector2(0,264+index*24)*scale,0,Vector2(scale,scale))
+		elif command.y >= 224:
+			draw_set_transform(dialogue.subtitle.position-Vector2(0,224),0,Vector2.ONE)
+		else:
+			draw_set_transform(Vector2.ZERO,0,layout_size/Vector2(512,264))
+		if command.op == "text":
+			draw_string(get_font_for(command.font),Vector2(command.x,command.y),command.text,ink(command.color))
+		elif command.op == "rect":
+			draw_rect(Rect2(command.x,command.y,command.w,command.h),Color(0,0,0,0.25))
+		elif command.op == "stroke":
+			draw_rect(Rect2(command.x,command.y,command.w,command.h),Color(0.78,0.68,0.45,0.45),false,1)
+	draw_set_transform(Vector2.ZERO,0,Vector2.ONE)

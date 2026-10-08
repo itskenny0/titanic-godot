@@ -75,6 +75,16 @@ jobs:
           timeout 45 xvfb-run -a .tools/Godot_v3.5.2-stable_x11.64 --path godot --audio-driver Dummy -s res://svg-ui-test.gd | tee .build/svg-ui.log
           grep -q 'SVG TESTS PASS' .build/svg-ui.log
           python3 tools/test-godot4.py --godot "$PWD/.tools/Godot_v4.3-stable_linux.x86_64" --test svg_ui --headless
+          cp tests/artwork_choice.gd godot/artwork-choice-test.gd
+          timeout 45 xvfb-run -a .tools/Godot_v3.5.2-stable_x11.64 --path godot --audio-driver Dummy -s res://artwork-choice-test.gd -- --ui-test
+          xvfb-run -a python3 tools/test-godot4.py --godot "$PWD/.tools/Godot_v4.3-stable_linux.x86_64" --test artwork_choice
+      - name: Check dialogue presentation
+        run: |
+          cp tests/dialogue.gd godot/dialogue-test.gd
+          timeout 45 xvfb-run -a -s '-screen 0 1920x1080x24' .tools/Godot_v3.5.2-stable_x11.64 --path godot --audio-driver Dummy -s res://dialogue-test.gd -- --ui-test
+          xvfb-run -a -s '-screen 0 1920x1080x24' python3 tools/test-godot4.py --godot "$PWD/.tools/Godot_v4.3-stable_linux.x86_64" --test dialogue
+      - name: Check Android HD folder access
+        run: python3 tests/android-hd-folder.py
       - name: Check PortMaster launcher
         run: python3 tests/portmaster-launcher.py
       - name: Check pixel-exact HD generation and automatic detection

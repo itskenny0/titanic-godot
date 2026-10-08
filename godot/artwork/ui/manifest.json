@@ -17,6 +17,13 @@
       "sha256": "ca280a76fdf9f4ada33dca44c76dc166048ef6877d046e74947db89bc7b174ae",
       "sprite_alpha": true
     },
+    "18090ae61ade08299c3e2ed726ef65a9c5db49d28e10420a6c49486d9e84ac23": {
+      "width": 128,
+      "height": 34,
+      "format": "svg",
+      "sha256": "0a4501a6fb18be13827771ff9f04562f0c320f8f40ffa61aa8024a28a8bd6e2d",
+      "sprite_alpha": true
+    },
     "470b6d0a212843123b174d9318b8fc7f3add3e2076c5badf2ecc1b2181edf0b5": {
       "width": 118,
       "height": 80,
@@ -31,11 +38,39 @@
       "sha256": "fdbcb5113888923f15009e1a03b157751785a9201ec6c808882ead4e64861f5d",
       "sprite_alpha": true
     },
+    "4df95e2f4053392d7a46fc4921e9d04c8988d31e7e19f00483165cbcfc2fabb8": {
+      "width": 128,
+      "height": 34,
+      "format": "svg",
+      "sha256": "fd5893104025142894a011a03264493850c53e22e0114e6aa34c4355797159c3",
+      "sprite_alpha": true
+    },
+    "5ebe7553a71b0f70cafc40d986e64875b95a9c7372977fe48d01151f099b8b59": {
+      "width": 128,
+      "height": 34,
+      "format": "svg",
+      "sha256": "7edd83b8a85a869e260b5ed01d8f3407ab09d76df10d625cbcd738903a5517e8",
+      "sprite_alpha": true
+    },
     "65d3abb400c01349c4629b7b8b47687c6b45c2b93dacdb462d80c7ab562c5cd6": {
       "width": 124,
       "height": 78,
       "format": "svg",
       "sha256": "d7dfe7f3db24f240a2fc75d249f4f5f4c37a02bf7e96896929839f87375791be",
+      "sprite_alpha": true
+    },
+    "664db3b77a63612c31d91fe32685b42e492f61635d9d0cb3cbe165fb306ca84a": {
+      "width": 128,
+      "height": 34,
+      "format": "svg",
+      "sha256": "320418e348a22d3ba01c9053237001e4792f917c9840284e33ec4418e9a392ff",
+      "sprite_alpha": true
+    },
+    "6c84b536d12086b48badbc35a2fc93454f2a8a35a046a68d0a42b0cda796e86c": {
+      "width": 128,
+      "height": 34,
+      "format": "svg",
+      "sha256": "3ca65dc07a9bcdc28d4d58d5a3623e5e63afde79c44b2f17ed90f03a41743866",
       "sprite_alpha": true
     },
     "6e3ba6481cc08d8cb0818d934d0f8014faba9ad2f126d9e3aa2897f63db6776f": {
@@ -57,6 +92,13 @@
       "height": 110,
       "format": "svg",
       "sha256": "b8c418c7719382cd49615591dfdac4733a35e6072d7506ed5c35ea50584bde72",
+      "sprite_alpha": true
+    },
+    "de491ff07a700cf2cd4b8a9c0b9e4ef6492dd70ac7a683dd4cfc7478aa3cf3b6": {
+      "width": 128,
+      "height": 34,
+      "format": "svg",
+      "sha256": "68b4c0c0ea067ccabed2c4a652d724772de9aa6272832be4eca596ab632bf9c5",
       "sprite_alpha": true
     },
     "f2f7f5d17df261f9e3c1405125a5dd047e4de2731c041a79ae3e0aff7e119863": {

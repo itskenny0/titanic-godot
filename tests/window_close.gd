@@ -12,6 +12,7 @@ func begin():
 	yield(create_timer(0.3), "timeout")
 	player.close_modal()
 	check(not player.window_close_requested(0), "first close opens menu")
+	yield(self, "idle_frame")
 	var menu = player.menu
 	check(menu != null and player.modal == menu and player.manual_pause, "close shows engine menu")
 	check(not player.window_close_requested(50), "double-close does not exit")
@@ -20,14 +21,25 @@ func begin():
 	check(not player.window_close_requested(200), "rapid clicks alone do not force exit")
 	check(player.window_close_requested(2600), "persistent close requests force exit")
 	check(not player.window_close_requested(9000), "old requests expire")
+	yield(self, "idle_frame")
 	player.resume_game()
 	check(player.modal == null and not player.manual_pause, "resume unpauses after window close")
 	player.show_setup()
 	var setup = player.modal
 	player.window_close_requested(12000)
+	yield(self, "idle_frame")
 	check(player.modal == player.menu and not setup.visible, "close also opens menu over a dialog")
 	player.window_close_requested(12050)
+	yield(self, "idle_frame")
 	player.resume_game()
 	check(player.modal == setup and setup.visible, "resume restores interrupted dialog")
+	player.close_modal()
+	player.menu = null
+	player.close_last_ms = -1
+	# Exercise the notification path too, with parent traversal in progress.
+	get_root().propagate_notification(MainLoop.NOTIFICATION_WM_QUIT_REQUEST)
+	check(player.close_menu_pending and player.menu == null, "close notification defers tree mutations")
+	yield(self, "idle_frame")
+	check(is_instance_valid(player.menu) and player.menu.is_visible_in_tree(), "notification creates visible menu after traversal")
 	print("WINDOW CLOSE TEST ", "FAIL" if failed else "PASS")
 	quit(1 if failed else 0)

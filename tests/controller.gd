@@ -82,6 +82,33 @@ func begin():
 	yield(self, "idle_frame")
 	check(recorder.commands.back().kind == "release" and recorder.commands.back().y == 300, "PortMaster A confirms selected reply")
 	OS.set_environment("RETANIC_ARCH", previous_arch)
+	# Desktop keyboards use the same selection, without the PortMaster flag.
+	OS.set_environment("RETANIC_ARCH", "")
+	for confirm_key in [KEY_ENTER, KEY_KP_ENTER]:
+		player.focus_controller_target(1)
+		recorder.commands.clear()
+		mapped.scancode = confirm_key
+		mapped.pressed = true
+		Input.parse_input_event(mapped)
+		yield(self, "idle_frame")
+		check(player.pointer_pressed, "desktop Enter presses selected reply")
+		var count = recorder.commands.size()
+		# The reply may vanish immediately, while Enter is still held.
+		player.controller_selection = -1
+		mapped.echo = true
+		Input.parse_input_event(mapped)
+		yield(self, "idle_frame")
+		check(recorder.commands.size() == count, "held Enter does not confirm repeatedly")
+		mapped.echo = false
+		mapped.pressed = false
+		Input.parse_input_event(mapped)
+		yield(self, "idle_frame")
+		check(not player.pointer_pressed, "Enter release clears click after selection disappears")
+		check(recorder.commands.size() >= 2 and recorder.commands.back().get("kind", "") == "release" and recorder.commands.back().get("y", 0) == 300, "desktop Enter confirms the highlighted answer")
+		for command in recorder.commands:
+			check(command.action != "key", "selected-reply Enter never leaks into game typing")
+		check(not player.controller_binding_input(mapped), "unselected Enter remains available to game typing")
+	OS.set_environment("RETANIC_ARCH", previous_arch)
 	# Mouse movement must take over without focus snapping back on the next poll.
 	var motion = InputEventMouseMotion.new()
 	motion.position = player.game_origin + Vector2(70, 80)
@@ -139,6 +166,20 @@ func begin():
 	check(player.get_focus_owner().text == "Save", "keyboard restores dialog focus")
 	joy_button(player, JOY_BUTTON_1, true)
 	check(player.current_dialog == -1, "B cancels save without writing")
+	# A physical Enter in a text field submits normally, without opening the
+	# controller's on-screen keyboard or clicking an old dialogue target.
+	player.handle_event({"type": "dialog", "kind": "save", "id": 23, "text": "Save game", "value": "Keyboard voyage"})
+	player.save_name.grab_focus()
+	yield(self, "idle_frame")
+	mapped.scancode = KEY_ENTER
+	mapped.pressed = true
+	Input.parse_input_event(mapped)
+	yield(self, "idle_frame")
+	mapped.pressed = false
+	Input.parse_input_event(mapped)
+	yield(self, "idle_frame")
+	check(player.virtual_keyboard == null and player.current_dialog == -1, "keyboard Enter submits save-name field")
+	check(recorder.commands.back().action == "reply" and recorder.commands.back().value == "Keyboard voyage", "typed save name is preserved")
 	# Bindings must work from events even if the OS lists another joypad first.
 	player.controller_held.clear()
 	recorder.surface = {"context": "room", "key": "room", "targets": []}

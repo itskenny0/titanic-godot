@@ -40,6 +40,7 @@ type PuppetState struct {
 	StanceIdx         int
 	Visible           bool
 	Subtitle          string
+	subtitleTiming    *subtitleTiming
 	Bevels            []Bevel
 	Chosen            *int
 	Press             *PuppetPress
@@ -64,6 +65,7 @@ type PuppetController struct {
 	Param                 func(int) float64
 	SetWaveVolume         func(float64) float64
 	Puppet                *PuppetState
+	TimedSubtitles        bool
 }
 
 func NewPuppetController(d *ScriptDispatch, e *Executor, audio AudioSink, read func(string) ([]byte, error)) *PuppetController {
@@ -173,6 +175,7 @@ func (c *PuppetController) Speak(task *Task, ident string) {
 }
 func (c *PuppetController) playLine(task *Task, p *PuppetState, line df.PuppetDialogue) {
 	p.Subtitle = ""
+	p.subtitleTiming = nil
 	if Subtitled(line) {
 		p.Subtitle = line.Text
 	}
@@ -184,6 +187,9 @@ func (c *PuppetController) playLine(task *Task, p *PuppetState, line df.PuppetDi
 	} else {
 		seconds = float64(len(audio.Samples)) / float64(audio.SampleRate)
 		c.Audio.Play(VoiceChannel, &audio, PlayOptions{})
+		if len(audio.Samples) > 0 && audio.SampleRate > 0 {
+			p.subtitleTiming = newSubtitleTiming(p.Subtitle, c.Executor.Now(), seconds*1000)
+		}
 	}
 	frames := p.Pup.AnimLogic(line.AnimLogicLocation)
 	if len(frames) > 0 {
@@ -197,6 +203,7 @@ func (c *PuppetController) playLine(task *Task, p *PuppetState, line df.PuppetDi
 		c.Audio.Halt(VoiceChannel)
 		if c.Puppet == p {
 			p.Subtitle = ""
+			p.subtitleTiming = nil
 			if p.Anim != nil {
 				p.Pose = &p.Anim.Frames[len(p.Anim.Frames)-1]
 				p.Anim = nil
@@ -225,6 +232,7 @@ func (c *PuppetController) Clear() {
 		p.Chosen = nil
 		p.Press = nil
 		p.Subtitle = ""
+		p.subtitleTiming = nil
 	}
 }
 func (c *PuppetController) Base(ident string) {
