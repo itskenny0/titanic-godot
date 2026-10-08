@@ -2,7 +2,9 @@
 *Titanic: Adventure Out of Time* (1996) - I feel old
 
 <a href="docs/images/hd/staircase-riven.png"><img src="docs/images/hd/staircase-riven.png" width="100%" alt="Grand Staircase: Upscaled with FSDedither Riven"></a>
-Game artwork upscaled with FSDedither Riven (DIY - not included). Perfectly playable with original assets.
+Game artwork upscaled with FSDedither Riven (DIY - not included). 
+
+Perfectly playable with original assets.
 
 ## Play quickly (Windows, Linux, macOS)
 
