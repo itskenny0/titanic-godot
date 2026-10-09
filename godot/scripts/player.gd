@@ -801,7 +801,9 @@ func refresh_cursor():
 	cursor_layer.visible = not ((touch_enabled and modal != null) or (name == "none" and controller_selection < 0))
 	var origin = Vector2.ZERO if adaptive_active or dialogue_active else game_origin
 	var origin_changed = cursor_layer.position != origin
-	cursor_layer.position = origin
+	# Godot 3 invalidates the canvas even when the assigned position is equal.
+	if origin_changed:
+		cursor_layer.position = origin
 	if origin_changed or drawn_pointer != pointer or drawn_pointer_name != name or drawn_display_pointer != display_pointer:
 		drawn_pointer = pointer
 		drawn_display_pointer = display_pointer
