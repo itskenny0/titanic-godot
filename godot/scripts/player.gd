@@ -515,7 +515,9 @@ func set_adaptive_active(active):
 	adaptive_active = active
 	controller_selection = -1
 	update_touch_layout()
-	display_pointer = game_to_display(pointer)
+	# Layout changes move the artwork, not the physical mouse. Reinterpret
+	# its screen position instead of projecting an old game target onto it.
+	pointer = display_to_game(display_pointer)
 	refresh_cursor()
 	update()
 
@@ -671,6 +673,14 @@ func _draw():
 				else:
 					draw_rect(Rect2(command.x, command.y, command.w, command.h), ink(command.color), false, command.get("line", 1.0))
 
+func display_cursor_name():
+	# The game's hidden cursor applies only to its picture, never host controls.
+	if modal != null or not pointer_in_picture(display_pointer):
+		return "arrow"
+	if is_instance_valid(layout_switch) and layout_switch.visible and layout_switch.get_global_rect().has_point(display_pointer):
+		return "arrow"
+	return pointer_name
+
 func draw_cursor():
 	if touch_enabled and modal != null:
 		return
@@ -678,14 +688,15 @@ func draw_cursor():
 		var target = controller_surface.targets[controller_selection]
 		var circle = selection_circle(target)
 		cursor_layer.draw_arc(circle.center, circle.radius, 0, TAU, 64, Color(0.78,0.68,0.45,0.50), 1.4, true)
-	if not pointer_visible or (pointer_name == "none" and modal == null):
+	var name = display_cursor_name()
+	if not pointer_visible or name == "none":
 		return
-	var cursor = display_pointer if adaptive_active or dialogue_active else pointer
-	var color = Color("f7e6a4") if pointer_name in ["touch", "hand", "fist"] else Color.white
+	var cursor = display_pointer - cursor_layer.position
+	var color = Color("f7e6a4") if name in ["touch", "hand", "fist"] else Color.white
 	var points = PoolVector2Array([cursor, cursor + Vector2(0, 15), cursor + Vector2(4, 11), cursor + Vector2(8, 18), cursor + Vector2(11, 16), cursor + Vector2(7, 9), cursor + Vector2(13, 9)])
 	cursor_layer.draw_colored_polygon(points, Color(0,0,0))
 	cursor_layer.draw_polyline(PoolVector2Array([cursor + Vector2(1, 2), cursor + Vector2(1, 12), cursor + Vector2(4, 9), cursor + Vector2(9, 16)]), color, 1.5, true)
-	if pointer_name.begins_with("go"):
+	if name.begins_with("go"):
 		cursor_layer.draw_circle(cursor + Vector2(15, 4), 3, Color("f7e6a4"))
 
 func send(command):
@@ -786,14 +797,15 @@ func _process(delta):
 				get_tree().quit(0 if ready and has_frame else 1)
 
 func refresh_cursor():
-	cursor_layer.visible = not ((touch_enabled and modal != null) or (pointer_name == "none" and modal == null))
+	var name = display_cursor_name()
+	cursor_layer.visible = not ((touch_enabled and modal != null) or (name == "none" and controller_selection < 0))
 	var origin = Vector2.ZERO if adaptive_active or dialogue_active else game_origin
-	if cursor_layer.position != origin:
-		cursor_layer.position = origin
-	if drawn_pointer != pointer or drawn_pointer_name != pointer_name or drawn_display_pointer != display_pointer:
+	var origin_changed = cursor_layer.position != origin
+	cursor_layer.position = origin
+	if origin_changed or drawn_pointer != pointer or drawn_pointer_name != name or drawn_display_pointer != display_pointer:
 		drawn_pointer = pointer
 		drawn_display_pointer = display_pointer
-		drawn_pointer_name = pointer_name
+		drawn_pointer_name = name
 		cursor_layer.update()
 
 func handle_event(event):
@@ -986,8 +998,9 @@ func _input(event):
 			local = pointer
 		if adaptive_active:
 			update()
-		if Rect2(0, 0, 512, 384).has_point(local):
-			pointer = local
+		# Keep outside coordinates too: the cursor crosses Classic side areas,
+		# and releasing a drag outside the picture must not reuse its last hit.
+		pointer = local
 		if event is InputEventMouseMotion and controller_selection >= 0:
 			controller_selection = -1
 			cursor_layer.update()
@@ -2626,7 +2639,7 @@ func sync_dialogue_layout():
 		dialogue_active = active
 		controller_selection = -1
 		update_touch_layout()
-		display_pointer = game_to_display(pointer)
+		pointer = display_to_game(display_pointer)
 		refresh_cursor()
 		update()
 

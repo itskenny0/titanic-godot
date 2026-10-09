@@ -22,6 +22,16 @@ func check(ok,message):
 		failed = true
 		printerr("FAIL: ",message)
 func _init(): call_deferred("begin")
+func screen_mouse(point, pressed = null):
+	var event = InputEventMouseMotion.new() if pressed == null else InputEventMouseButton.new()
+	event.position = point*Vector2(OS.window_size)/player.layout_size
+	event.global_position = event.position
+	if pressed != null:
+		event.button_index = 1
+		event.pressed = pressed
+	Input.parse_input_event(event)
+	Input.flush_buffered_events()
+
 func screen_touch(point, pressed):
 	# Exercise Godot's actual mouse emulation and viewport scaling.
 	var touch = InputEventScreenTouch.new()
@@ -114,6 +124,55 @@ func begin():
 		var arrow = player.adaptive.navigation_display
 		check(world.encloses(arrow),"navigation arrow stays fully visible")
 		check(player.display_to_game(arrow.position+arrow.size/2) == Vector2(230,290),"navigation arrow retains engine aim")
+	# Opening a moved toolbar control changes layout while the physical mouse
+	# stays on the button. Neither the drawn pointer nor the next click may jump.
+	for roomy in [false,true]:
+		player.config.set_value("graphics","adaptive_roomy",roomy)
+		player.sync_adaptive_layout()
+		for name in ["bag","watch"]:
+			var button_point
+			for control in player.adaptive.controls:
+				if control.name == name:
+					button_point = control.display.position+Vector2(14,20)
+			screen_mouse(button_point)
+			screen_mouse(button_point,true)
+			screen_mouse(button_point,false)
+			check(player.display_pointer.distance_to(button_point)<1.0,"mouse reaches overlay "+name)
+			button_point = player.display_pointer
+			recorder.metadata.eligible = false
+			player.sync_adaptive_layout()
+			check(not player.adaptive_active and player.display_pointer.distance_to(button_point)<0.01,"opening "+name+" preserves mouse screen position")
+			check(player.pointer.distance_to(player.display_to_game(button_point))<0.01,"fallback remaps click coordinates without moving the pointer")
+			screen_mouse(button_point+Vector2(2,1))
+			check(player.display_pointer.distance_to(button_point+Vector2(2,1))<1.0,"first movement after opening toolbar does not jump")
+			recorder.metadata.eligible = true
+			player.sync_adaptive_layout()
+			check(player.display_pointer.distance_to(button_point+Vector2(2,1))<1.0,"return to side panels preserves screen position")
+	player.prefer_classic_now = true
+	player.sync_adaptive_layout()
+	player.pointer_name = "none"
+	for point in [Vector2(12,188),Vector2(player.layout_size.x-12,188),player.layout_switch.get_global_rect().position+Vector2(10,10)]:
+		screen_mouse(point)
+		player.refresh_cursor()
+		check(player.cursor_layer.visible and player.display_cursor_name()=="arrow","Classic side areas and layout button show an arrow even when game hides cursor")
+		check(player.pointer.distance_to(point-player.game_origin)<1.0,"side areas retain outside pointer coordinates")
+	# Clicking the actual host button must work where its cursor is drawn.
+	screen_mouse(player.display_pointer,true)
+	screen_mouse(player.display_pointer,false)
+	check(player.adaptive_active,"physical mouse activates Classic side layout button")
+	player.prefer_classic_now = true
+	player.sync_adaptive_layout()
+	screen_mouse(player.game_origin+Vector2(200,100))
+	player.refresh_cursor()
+	check(not player.cursor_layer.visible,"authored hidden cursor still applies inside game picture")
+	player.pointer_name = "arrow"
+	screen_mouse(player.game_origin+Vector2(200,100),true)
+	screen_mouse(Vector2(12,188))
+	screen_mouse(Vector2(12,188),false)
+	check(not player.pointer_pressed and recorder.commands.back().get("x",0)<0,"drag released outside picture does not reuse last in-game target")
+	player.prefer_classic_now = false
+	player.sync_adaptive_layout()
+	player.refresh_cursor()
 	var stick = player.touch_strip.get_node("joystick")
 	for appearance in ["full","hidden"]:
 		stick.appearance = appearance
