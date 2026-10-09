@@ -486,7 +486,7 @@ func ink(text):
 	return Color(text)
 
 func adaptive_enabled():
-	return config.get_value("graphics", "adaptive_exploration", false)
+	return config.get_value("graphics", "adaptive_exploration", not classic_format_device())
 
 func adaptive_roomy():
 	return config.get_value("graphics","adaptive_roomy",false)
@@ -1472,14 +1472,20 @@ func show_first_layout():
 	var box = panel("Choose your layout")
 	add_layout_preview(box)
 	var hint = Label.new()
-	hint.text = "Side panels work on wide screens. Conversations and held items use Classic. Change your choice later in Menu > Controls / display."
+	hint.text = "Side panels work on wide screens. Held items and special screens use Classic. Change your choice later in Menu > Controls / display."
 	hint.autowrap = true
 	hint.rect_min_size = Vector2(390,64)
 	hint.add_font_override("font",get_font_for("13px Arial"))
 	box.add_child(hint)
-	button(box,"Classic (default)","choose_first_layout",[0]).grab_focus()
-	button(box,"Side panels: Compact","choose_first_layout",[1]).disabled = classic_format_device()
-	button(box,"Side panels: Roomy","choose_first_layout",[2]).disabled = classic_format_device()
+	var supported = not classic_format_device()
+	var classic = button(box,"Classic" if supported else "Classic (default)","choose_first_layout",[0])
+	var compact = button(box,"Side panels: Compact (default)" if supported else "Side panels: Compact","choose_first_layout",[1])
+	var roomy = button(box,"Side panels: Roomy","choose_first_layout",[2])
+	compact.disabled = not supported
+	roomy.disabled = not supported
+	# Match the highlighted preview, including an explicit saved preference.
+	var selected = 0 if not supported or not adaptive_enabled() else (2 if adaptive_roomy() else 1)
+	[classic,compact,roomy][selected].grab_focus()
 
 func choose_first_layout(choice):
 	config.set_value("graphics","adaptive_exploration",choice != 0 and not classic_format_device())

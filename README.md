@@ -8,20 +8,20 @@ Perfectly playable with original assets.
 
 ## Play quickly (Windows, Linux, macOS)
 
-Download and extract [the release](https://github.com/itskenny0/titanic-godot/releases/tag/v0.5.0) for your platform, then use either source:
+Download and extract [the release](https://github.com/itskenny0/titanic-godot/releases/tag/v0.6.0) for your platform, then use either source:
 
 - **ISOs:** Drop both images beside the executable, or beside `Titanic.app` on macOS. Their filenames just need to contain `cd1` and `cd2`, for example `Titanic_CD1.iso` and `Titanic_CD2.iso`. Run Titanic; it finds them automatically. No mounting or extraction needed.
 - **GOG / Steam:** Run Titanic and choose your installed game folder or its `LOCAL` folder. No conversion needed. You can also place a copy of `LOCAL` beside the player for automatic detection (on Windows, you can literally unzip the release into the installed game directory and launch titanic.exe).
 
 ## Play quickly (Android)
 
-Install the [APK](https://github.com/itskenny0/titanic-godot/releases/tag/v0.5.0) and choose the folder containing both ISOs or your GOG/Steam game files. For ISOs, use filenames containing `cd1` and `cd2`. For GOG/Steam, select the game folder or `LOCAL` directly. Put the files somewhere selectable, such as a subfolder of Downloads.
+Install the [APK](https://github.com/itskenny0/titanic-godot/releases/tag/v0.6.0) and choose the folder containing both ISOs or your GOG/Steam game files. For ISOs, use filenames containing `cd1` and `cd2`. For GOG/Steam, select the game folder or `LOCAL` directly. Put the files somewhere selectable, such as a subfolder of Downloads.
 
 Android imports the files into app storage. Keep the app open until it finishes. Both gamepad and touchscreen play are supported.
 
 ## Play quickly (PortMaster)
 
-Extract the [PortMaster ZIP](https://github.com/itskenny0/titanic-godot/releases/tag/v0.5.0) into your handheld's ports folder, then add your game files:
+Extract the [PortMaster ZIP](https://github.com/itskenny0/titanic-godot/releases/tag/v0.6.0) into your handheld's ports folder, then add your game files:
 
 - **ISOs:** Put both images inside `titanic`, with `cd1` and `cd2` in their filenames. They also work in `titanic/gamedata` or beside `Titanic.sh`.
 - **GOG / Steam:** Copy the game's `LOCAL` folder into `titanic/gamedata`, keeping the folder name.
@@ -40,7 +40,7 @@ Use the arrow keys to move or select dialogue replies, and Enter to confirm the 
 
 **Controls / display > Dialogue / subtitles** offers widescreen conversations with translucent answers and optional speech-timed words with a gentle fade. New installs and upgrades show a preview and let you choose; both start off. Narrow and 4:3 screens keep Classic dialogue. Speech timing is approximate.
 
-**Controls / display** previews the optional Compact and Roomy side panels. New and returning players get a one-time chooser on wide devices; Classic is the default. Screens narrower than 16:10 always keep the original layout. The artwork fills the screen behind translucent controls, with a slight stretch and no cropping. Movement, open doors, location signs and climbing animations keep the side panels. Held items and special screens restore the original layout automatically. During exploration, the Classic / Side panels button switches back and forth; controller users can select it with L2/R2 and A.
+**Controls / display** previews the optional Compact and Roomy side panels. New and returning players get a one-time chooser on wide devices, with Compact selected by default. Existing layout choices are kept. Native 4:3 devices use Classic and skip the chooser. Screens narrower than 16:10 always keep the original layout. The artwork fills the screen behind translucent controls, with a slight stretch and no cropping. Movement, open doors, location signs and climbing animations keep the side panels. Held items and special screens restore the original layout automatically. During exploration, the Classic / Side panels button switches back and forth; controller users can select it with L2/R2 and A.
 
 **Touch controls** offers a translucent joystick, ring-and-knob, knob-only or invisible styles, and an opacity preview. Use **Edit positions and size** to move controls and drag the joystick's corner handle to resize it, then **Done / lock**. Each layout keeps its own positions and joystick size. Reset layout restores the current layout.
 

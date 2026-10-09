@@ -67,7 +67,20 @@ func begin():
 	player.ready = true
 	player.has_frame = true
 	player.config.clear()
-	check(not player.adaptive_enabled(),"classic remains default for existing settings")
+	check(player.adaptive_enabled() == (not player.classic_format_device()),"new settings default to adaptive only on supported devices")
+	player.show_first_layout()
+	yield(self, "idle_frame")
+	check("Classic" in player.get_focus_owner().text if player.classic_format_device() else "Compact" in player.get_focus_owner().text,"setup focuses device-appropriate default")
+	player.close_modal()
+	for saved_choice in [false,true]:
+		player.config.set_value("graphics","adaptive_exploration",saved_choice)
+		check(player.adaptive_enabled() == saved_choice,"explicit layout preferences survive new defaults")
+		player.show_first_layout()
+		yield(self, "idle_frame")
+		var expected = "Compact" if saved_choice and not player.classic_format_device() else "Classic"
+		check(expected in player.get_focus_owner().text,"setup respects saved layout preference")
+		player.close_modal()
+	player.config.clear()
 	check(not player.config.get_value("graphics","layout_chosen",false),"older settings have not dismissed the new chooser")
 	if "--classic-device" in OS.get_cmdline_args():
 		player.config.set_value("graphics","adaptive_exploration",true)
