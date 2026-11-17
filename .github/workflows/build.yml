@@ -157,8 +157,8 @@ jobs:
         include:
           - {runner: ubuntu-22.04, platform: linux, arch: x86_64}
           - {runner: ubuntu-24.04-arm, platform: linux, arch: arm64}
-          - {runner: macos-14, platform: mac, arch: x86_64}
-          - {runner: macos-14, platform: mac, arch: arm64}
+          - {runner: macos-15, platform: mac, arch: x86_64}
+          - {runner: macos-15, platform: mac, arch: arm64}
           - {runner: ubuntu-22.04, platform: windows, arch: x86_64}
           - {runner: ubuntu-22.04, platform: windows, arch: arm64}
     runs-on: ${{ matrix.runner }}
