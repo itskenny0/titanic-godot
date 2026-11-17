@@ -141,3 +141,66 @@ func TestScriptedTurnReportsMovementBeforeReturning(t *testing.T) {
 		t.Fatal("queued script turn did not settle", v.ViewIdx, s.Pending())
 	}
 }
+
+// Idle time must be spent decoding where the player can go next, without the
+// game thread doing the decoding itself, and movement must then show exactly
+// the frames a sequential decode shows.
+func TestViewerPrefetchesMovementInBackground(t *testing.T) {
+	v, s := viewerFixture(t)
+	v.Rings.Background = true
+	road := &v.Set.Transitions[0].FrameRegisters[0]
+	far := &v.Set.Scenes[1].Turns
+	if !v.Rings.NeedsDecode(road) || !v.Rings.NeedsDecode(&far[0]) {
+		t.Fatal("fixture already decoded the way ahead")
+	}
+	wait := func() {
+		for _, job := range v.Rings.jobs {
+			<-job.done
+		}
+	}
+	for i := 0; i < 20 && !v.warmDone; i++ {
+		if _, err := v.AdvanceRoom(float64(i)); err != nil {
+			t.Fatal(err)
+		}
+		if v.Rings.NeedsDecode(road) && len(v.Rings.jobs) == 0 {
+			t.Fatal("road was neither decoded nor decoding after an idle tick")
+		}
+		wait()
+	}
+	if !v.warmDone || v.Rings.NeedsDecode(road) || v.Rings.NeedsDecode(&far[0]) || v.Rings.NeedsDecode(&far[1]) {
+		t.Fatal("idle prefetch did not cover the road and its destination")
+	}
+	if err := v.Walk(50); err != nil {
+		t.Fatal(err)
+	}
+	s.Pump(0, false, 100)
+	if !v.Animating() || len(v.animation) != 2 || v.animation[0].Pixels[0] != 7 || v.animation[1].Pixels[0] != 8 {
+		t.Fatal("walk frames differ after background decode")
+	}
+	v.AdvanceRoom(10000)
+	v.AdvanceRoom(20000)
+	s.Pump(20000, false, 100)
+	if v.Animating() || v.SceneIdx != 1 || v.current.Pixels[0] != 6 || v.WorldCamera().Z != 70 {
+		t.Fatal("arrival differs after background decode")
+	}
+}
+
+// A turn or a walk starts decoding what follows it while its own frames play.
+func TestViewerMovementStartsDecodingItsDestination(t *testing.T) {
+	v, s := viewerFixture(t)
+	v.Rings.Background = true
+	far := &v.Set.Scenes[1].Turns
+	if err := v.Walk(50); err != nil {
+		t.Fatal(err)
+	}
+	s.Pump(0, false, 100)
+	if len(v.Rings.jobs) != 2 || v.Rings.jobs[0].ring.Register != &far[1] || v.Rings.jobs[1].ring.Register != &far[0] {
+		t.Fatal("walk did not start decoding both destination rings", len(v.Rings.jobs))
+	}
+	v.AdvanceRoom(10000)
+	v.AdvanceRoom(20000)
+	s.Pump(20000, false, 100)
+	if v.SceneIdx != 1 || len(v.Rings.jobs) != 0 || v.current.Pixels[0] != 6 {
+		t.Fatal("arrival did not adopt the rings decoded during the walk")
+	}
+}

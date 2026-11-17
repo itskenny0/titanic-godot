@@ -170,6 +170,7 @@ func (p *Player) Boot(config PlayerConfig) error {
 	s.PuppetCtrl.TimedSubtitles = config.TimedSubtitles
 	s.PictureMode = "sharp"
 	s.HasRealFrames = true
+	s.BackgroundDecode = true
 	s.OnNoteDialog = func(text string) error { return p.frozen(func() error { p.dialog("note", text, ""); return nil }) }
 	s.OnQuestionDialog = func(text string) (bool, error) {
 		var yes bool
@@ -418,7 +419,7 @@ func (p *Player) Command(c PlayerCommand) error {
 			p.pointerOffsetX, p.pointerOffsetY = 0, 0
 			d.Release(c.X, c.Y)
 		} else if !s.PointerDown {
-			s.Track("hover", true, func(*Task) error { _, err := d.Hover(c.X, c.Y); return err })
+			s.Track("hover", true, func(*Task) error { return d.ReportHover(c.X, c.Y) })
 		}
 	case "key":
 		key := playerString(c.Key)

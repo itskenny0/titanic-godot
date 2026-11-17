@@ -1,6 +1,9 @@
 package df
 
-import "fmt"
+import (
+	"fmt"
+	"math/bits"
+)
 
 type FrameBuffer struct {
 	Pixels, ZPixels []byte
@@ -165,13 +168,8 @@ func decodeBits(r *Reader, out []byte, pos, count, mode, rowBack int) error {
 		if src < 0 || src >= len(out) {
 			return fmt.Errorf("frame: invalid bit predictor at %d", pos+i)
 		}
-		first := 0
-		for j := 15; j >= 0; j-- {
-			if flags&(uint32(1)<<uint(j+16)) != 0 {
-				first = j
-				break
-			}
-		}
+		// Highest set bit of the upper half, or 0 when it is empty.
+		first := max(0, bits.Len32(flags>>16)-1)
 		switch {
 		case first == 15:
 			out[pos+i] = out[src]

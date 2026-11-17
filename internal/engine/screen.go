@@ -32,10 +32,7 @@ func (s *ScreenPresenter) ClearFrame() {
 	if s.HD != nil {
 		s.HD.Clear()
 	}
-	clear(s.Frame)
-	for i := 3; i < len(s.Frame); i += 4 {
-		s.Frame[i] = 255
-	}
+	fillOpaqueBlack(s.Frame)
 }
 func (s *ScreenPresenter) Capture() *RGBAFrame {
 	if !s.FrameValid {

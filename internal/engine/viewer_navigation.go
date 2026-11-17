@@ -180,6 +180,12 @@ func (v *SetViewer) Turn(dir int, pace ...float64) error {
 	if ring == nil {
 		return nil
 	}
+	if v.Rings.Background {
+		// Decode the way ahead of the new heading while the turn plays.
+		for _, road := range v.Set.RoadsAt(v.Scene().Views[target].ViewID) {
+			v.Rings.Prefetch(&road.Transition.FrameRegisters[road.Register])
+		}
+	}
 	images, err := v.Rings.Ensure(&v.Scene().Turns[dir])
 	if err != nil {
 		return err
@@ -264,6 +270,10 @@ func (v *SetViewer) Walk(pace ...float64) error {
 		}
 	}
 	arrival := v.roadArrival(reg, road.ArriveViewID)
+	if arrival != nil {
+		// Decode the destination while the walk plays.
+		v.prefetchStand(&v.Set.Scenes[arrival.SceneIdx])
+	}
 	if len(frames) > 0 {
 		frames[0] = pinCameraHeight(frames[0], standFrameInfo(v.Scene(), v.ViewIdx))
 		var stand *df.FrameInfo

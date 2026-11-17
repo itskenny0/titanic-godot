@@ -150,3 +150,41 @@ func TestDirectorPhotosOwnPixelsAndGammaRepaintsHeldMovie(t *testing.T) {
 		t.Fatal("gamma change failed to repaint held movie")
 	}
 }
+
+// A controller or touch player turns without moving the pointer, so a new
+// view must re-evaluate what is under it.
+func TestDirectorCursorFollowsViewUnderRestingPointer(t *testing.T) {
+	s := NewSession(func(string) ([]byte, error) { return nil, nil }, new(HostAudio))
+	defer s.Close()
+	d := NewScreenDirector(s, 512, 384, nil)
+	s.StageCtrl.Name = "main"
+	s.StageCtrl.CurrentFlat = "flat"
+	s.StageCtrl.File = &df.Stage{File: &df.File{}}
+	view, cursor := "north", "touch"
+	s.CurrentViewName = func() string { return view }
+	s.Interp.Register("record", func(*script.Interpreter, []script.Value, *script.Expr, *script.Frame) (script.Value, error) {
+		s.CursorName = cursor
+		return script.Num(0), nil
+	})
+	s.FlatScripts.Set("flat", dispatchInstance("flat", "setcursor", ""))
+	reported := []string{}
+	d.OnCursor = func(name string) { reported = append(reported, name) }
+	tick := func(now float64) {
+		t.Helper()
+		if _, err := d.Tick(now); err != nil {
+			t.Fatal(err)
+		}
+		s.Pump(now, true, 1000)
+	}
+	tick(0)
+	tick(50)
+	if len(reported) != 1 || reported[0] != "touch" {
+		t.Fatal("resting pointer was not evaluated once", reported)
+	}
+	view, cursor = "east", ""
+	tick(100)
+	tick(150)
+	if len(reported) != 2 || reported[1] != "" {
+		t.Fatal("new view kept the previous view's cursor", reported)
+	}
+}

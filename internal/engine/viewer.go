@@ -44,6 +44,7 @@ type SetViewer struct {
 		out        []byte
 	}
 	warmDone                bool
+	warmTicks               int
 	pendingJumpScene        *string
 	animation               []*CachedFrame
 	animationPos            int
@@ -65,6 +66,7 @@ func NewSetViewer(set *df.Set, s *Session, startScene, startView string, gamma *
 		gamma = NewScreenGamma()
 	}
 	v := &SetViewer{Set: set, Session: s, Director: director, Gamma: gamma, Rings: NewRingCache(set), Log: func(string) {}, OnHUD: func(string) {}}
+	v.Rings.Background = s.BackgroundDecode
 	v.basePalette = df.PaletteRGBA(set.PaletteRaw, set.ColorCount, set.File.Order)
 	v.basePropPalette = df.PaletteRGBA(set.PaletteRaw, 256, set.File.Order)
 	v.updatePalettes()
@@ -226,7 +228,7 @@ func (v *SetViewer) JumpTo(sceneName, viewName string) (bool, error) {
 	return true, v.ShowView()
 }
 func (v *SetViewer) ShowView() error {
-	v.warmDone = false
+	v.warmDone, v.warmTicks = false, 0
 	frame, err := v.standFrame()
 	if err != nil {
 		return err

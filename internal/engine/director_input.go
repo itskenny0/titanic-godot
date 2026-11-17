@@ -259,18 +259,27 @@ func (d *ScreenDirector) serviceCursor() {
 		return
 	}
 	s := d.Session
-	gate := fmt.Sprintf("%s|%t|%t|%s|%s", d.Movies.PlayingFile(), d.Conversing(), d.eventsLocked(), s.StageCtrl.CurrentFlat, s.SetName)
+	// The picture can change under a resting pointer: a controller or touch
+	// player turns without moving it, so the view is part of the gate.
+	gate := fmt.Sprintf("%s|%t|%t|%s|%s|%s|%s|%t", d.Movies.PlayingFile(), d.Conversing(), d.eventsLocked(), s.StageCtrl.CurrentFlat, s.SetName, s.CurrentSceneName(), s.CurrentViewName(), d.roomAnimating())
 	if gate == d.cursorGate {
 		return
 	}
 	d.cursorGate = gate
-	s.Track("cursor", true, func(*Task) error {
-		name, err := d.Hover(s.PointerX, s.PointerY)
-		if err == nil && d.OnCursor != nil {
-			d.OnCursor(name)
-		}
-		return nil
-	})
+	s.Track("cursor", true, func(*Task) error { return d.ReportHover(s.PointerX, s.PointerY) })
+}
+
+// ReportHover asks the scripts which cursor belongs under the pointer and
+// tells the host when it changes. The original shows a touching hand over
+// objects, people and controls; without this the pointer never reacts.
+func (d *ScreenDirector) ReportHover(x, y float64) error {
+	name, err := d.Hover(x, y)
+	if err != nil || d.OnCursor == nil || d.cursorShown && name == d.cursorName {
+		return err
+	}
+	d.cursorShown, d.cursorName = true, name
+	d.OnCursor(name)
+	return nil
 }
 func (d *ScreenDirector) Hover(x, y float64) (string, error) {
 	s := d.Session

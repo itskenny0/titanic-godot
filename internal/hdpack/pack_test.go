@@ -98,3 +98,18 @@ func TestVectorTransparencyNeedsNewManifest(t *testing.T) {
 		t.Fatal("unknown version accepted")
 	}
 }
+
+func TestHasSizeCoversPackAndFallback(t *testing.T) {
+	r, _, _ := fixture(t)
+	if !r.HasSize(1, 1) || r.HasSize(2, 1) || r.HasSize(512, 384) {
+		t.Fatal("size filter does not match the manifest")
+	}
+	var missing *Reader
+	if missing.HasSize(1, 1) {
+		t.Fatal("absent pack claims artwork")
+	}
+	vector := &Reader{Manifest: Manifest{Images: map[string]Entry{"x": {Width: 128, Height: 34}}}, Fallback: r}
+	if !vector.HasSize(64, 17) || !vector.HasSize(1, 1) || vector.HasSize(3, 3) {
+		t.Fatal("size filter ignores the fallback pack")
+	}
+}

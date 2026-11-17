@@ -317,3 +317,43 @@ func TestPlayerAudioCompletionDoesNotAdvanceSuspendedScripts(t *testing.T) {
 		t.Fatal("duplicate pause left clock frozen")
 	}
 }
+
+func TestPlayerPointerMoveReportsCursorChanges(t *testing.T) {
+	p := adaptiveTestPlayer(t)
+	s := p.Host.Session
+	// A stage-only screen: the fixture room cannot answer hit tests.
+	p.Host.Director.SetRoom(nil)
+	s.SetVisible = false
+	s.Interp.Register("record", func(*script.Interpreter, []script.Value, *script.Expr, *script.Frame) (script.Value, error) {
+		s.CursorName = "touch"
+		return script.Num(0), nil
+	})
+	s.PropScripts.Set("life", dispatchInstance("life", "setcursor", ""))
+	cursors := func() []string {
+		names := []string{}
+		for _, raw := range p.Events() {
+			if m, ok := raw.(map[string]any); ok && m["type"] == "cursor" {
+				names = append(names, m["name"].(string))
+			}
+		}
+		return names
+	}
+	cursors()
+	move := func(x, y float64) []string {
+		t.Helper()
+		if err := p.Command(PlayerCommand{Action: "pointer", Kind: "move", X: x, Y: y}); err != nil {
+			t.Fatal(err)
+		}
+		return cursors()
+	}
+	life := s.Props.Get("life")
+	if got := move(life.AnchorX, life.AnchorY); len(got) != 1 || got[0] != "touch" {
+		t.Fatal("moving onto an object did not report its cursor", got)
+	}
+	if got := move(life.AnchorX, life.AnchorY); len(got) != 0 {
+		t.Fatal("unchanged cursor was reported again", got)
+	}
+	if got := move(5, 5); len(got) != 1 || got[0] != "" {
+		t.Fatal("leaving the object did not restore the plain cursor", got)
+	}
+}

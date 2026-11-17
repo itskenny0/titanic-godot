@@ -61,32 +61,35 @@ type Session struct {
 	PictureMode, MoveSpeed                                                          string
 	LowMemory, NavHappened, NavGestureActive, NavFromScript                         bool
 	OnNavigate, OnSceneJump, OnViewJump, NavDriver, SceneJumpDriver, ViewJumpDriver func(string)
-	CurrentSceneName, CurrentViewName                                               func() string
-	OnSetChange                                                                     func(string, string, string) error
-	Listener                                                                        func() *Listener
-	ActiveCamera                                                                    func() *WorldCamera
-	HitTestAt                                                                       func(float64, float64) HitTarget
-	PointInSet, PointInStage                                                        func(float64, float64) bool
-	OnClut                                                                          func(string, *ClutDim)
-	RepaintNow                                                                      func()
-	CaptureFrame                                                                    func() *RGBAFrame
-	OnDiscChange                                                                    func(int)
-	OnMoviesDone                                                                    func([]string)
-	OnAbandonMovie                                                                  func()
-	OnPlayMovie                                                                     func(string, *int) error
-	OnNoteDialog                                                                    func(string) error
-	OnQuestionDialog                                                                func(string) (bool, error)
-	OnTextDialog                                                                    func(string, string) (string, error)
-	OnQuit                                                                          func() error
-	OnSaveGame                                                                      func([]byte, string) error
-	OnLoadGame                                                                      func(string) ([]byte, error)
-	MovieActions                                                                    map[int]bool
-	XRay                                                                            *XRayReveal
-	StarRegistry                                                                    orderedMap[df.Actor]
-	instancedActors                                                                 map[string]bool
-	inflight, idleInflight                                                          orderedMap[*Task]
-	coreLoaded                                                                      bool
-	plan                                                                            *BootPlan
+	// BackgroundDecode lets room viewers decode upcoming movement off the
+	// game thread. Hosts with real frames enable it; fixtures stay sequential.
+	BackgroundDecode                  bool
+	CurrentSceneName, CurrentViewName func() string
+	OnSetChange                       func(string, string, string) error
+	Listener                          func() *Listener
+	ActiveCamera                      func() *WorldCamera
+	HitTestAt                         func(float64, float64) HitTarget
+	PointInSet, PointInStage          func(float64, float64) bool
+	OnClut                            func(string, *ClutDim)
+	RepaintNow                        func()
+	CaptureFrame                      func() *RGBAFrame
+	OnDiscChange                      func(int)
+	OnMoviesDone                      func([]string)
+	OnAbandonMovie                    func()
+	OnPlayMovie                       func(string, *int) error
+	OnNoteDialog                      func(string) error
+	OnQuestionDialog                  func(string) (bool, error)
+	OnTextDialog                      func(string, string) (string, error)
+	OnQuit                            func() error
+	OnSaveGame                        func([]byte, string) error
+	OnLoadGame                        func(string) ([]byte, error)
+	MovieActions                      map[int]bool
+	XRay                              *XRayReveal
+	StarRegistry                      orderedMap[df.Actor]
+	instancedActors                   map[string]bool
+	inflight, idleInflight            orderedMap[*Task]
+	coreLoaded                        bool
+	plan                              *BootPlan
 }
 
 func NewSession(read func(string) ([]byte, error), audio AudioSink) *Session {

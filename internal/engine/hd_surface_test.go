@@ -139,3 +139,31 @@ func TestVectorSpriteAlphaIsDisplayOnly(t *testing.T) {
 		t.Fatal("screen sprite alpha leaked into world sprite masks")
 	}
 }
+
+// Repaints must not hash a sprite's pixels again, and a different palette
+// must never reuse another palette's artwork.
+func TestHDSpriteKeyIsCachedPerPalette(t *testing.T) {
+	palA := []byte{1, 2, 3, 255, 4, 5, 6, 255}
+	palB := []byte{9, 9, 9, 255, 4, 5, 6, 255}
+	f := &df.Sprite{Width: 2, Height: 1, Indexed: []byte{0, 1}, Opaque: []byte{1, 1}}
+	hd := hdFixture(t, spriteRGBA(f, palA), 2, 1)
+	if got := hd.spriteKey(f, palA); got != hdpack.Key(2, 1, spriteRGBA(f, palA)) {
+		t.Fatal("cached key differs from the artwork key")
+	}
+	if len(hd.spriteKeys) != 1 || hd.spriteKey(f, palA) != hd.spriteKey(f, palA) || len(hd.spriteKeys) != 1 {
+		t.Fatal("repeated draw was hashed again")
+	}
+	if hd.spriteKey(f, palB) == hd.spriteKey(f, palA) || hd.spriteKey(f, palB) != hdpack.Key(2, 1, spriteRGBA(f, palB)) {
+		t.Fatal("palette change reused stale artwork key")
+	}
+	hd.Clear()
+	hd.Sprite(screenSprite(f, 0, 0), palA, 2, 2, nil, 0)
+	if hd.Hits != 1 || hd.Pixels[0] != 30 {
+		t.Fatal("matching sprite artwork was not drawn")
+	}
+	hd.Clear()
+	hd.Sprite(screenSprite(f, 0, 0), palB, 2, 2, nil, 0)
+	if hd.Hits != 1 || hd.Pixels[0] != 9 {
+		t.Fatal("unmatched palette did not fall back to original pixels")
+	}
+}

@@ -131,3 +131,86 @@ func TestPaletteDimPreservesAlphaAndEvenRounding(t *testing.T) {
 		t.Fatal("palette dim lost alpha, changed its source or rounded half values up", got)
 	}
 }
+
+func ringFixture() (*df.Set, *RingCache) {
+	file := &df.File{Containers: []df.Container{{}, {Data: []byte{1, 0, 2, 0, 4, 1, 2}}, {Data: []byte{1, 0, 2, 0, 4, 3, 4}}, {Data: []byte{9}}}}
+	set := &df.Set{File: file, Scenes: []df.Scene{
+		{Turns: [2]df.FrameRegister{{Frames: []df.FrameInfo{{FrameContainerLoc: 1, PosX16: 17}}}, {Frames: []df.FrameInfo{{FrameContainerLoc: 2}}}}},
+		{Turns: [2]df.FrameRegister{{Frames: []df.FrameInfo{{FrameContainerLoc: 3}}}, {Frames: []df.FrameInfo{{FrameContainerLoc: 1}, {FrameContainerLoc: 2}}}}},
+	}}
+	return set, NewRingCache(set)
+}
+
+func TestRingCachePrefetchDecodesOffTheGameThread(t *testing.T) {
+	set, c := ringFixture()
+	right, left := &set.Scenes[0].Turns[0], &set.Scenes[0].Turns[1]
+	if !c.Prefetch(right) || len(c.jobs) != 0 || !c.NeedsDecode(right) {
+		t.Fatal("sequential cache started background work")
+	}
+	c.Background = true
+	if !c.Prefetch(right) || !c.Prefetch(right) || len(c.jobs) != 1 {
+		t.Fatal("prefetch did not start exactly one job for the ring")
+	}
+	if !c.NeedsDecode(right) {
+		t.Fatal("ring appeared before the game thread adopted it")
+	}
+	<-c.jobs[0].done
+	if c.Prefetch(right) || c.NeedsDecode(right) || len(c.jobs) != 0 || c.DecodedBytes() != 2 {
+		t.Fatal("finished ring was not adopted", c.DecodedBytes())
+	}
+	// Ensure must wait for a ring in flight instead of decoding it again.
+	c.Prefetch(left)
+	job := c.jobs[0]
+	frames, err := c.Ensure(left)
+	if err != nil || len(c.jobs) != 0 || frames[2] != job.frames[2] || !bytes.Equal(frames[2].Pixels, []byte{3, 4}) {
+		t.Fatal("ensure did not adopt the in-flight ring", err)
+	}
+	_, sequential := ringFixture()
+	want, _ := sequential.Ensure(&sequential.Set.Scenes[0].Turns[0])
+	got, _ := c.Ensure(right)
+	if !bytes.Equal(got[1].Pixels, want[1].Pixels) || *got[1].Camera != *want[1].Camera || c.DecodedBytes() != 4 {
+		t.Fatal("background ring differs from a sequential decode")
+	}
+}
+
+func TestRingCachePrefetchLimitsWorkersAndSurvivesBadRings(t *testing.T) {
+	set, c := ringFixture()
+	c.Background = true
+	bad, far := &set.Scenes[1].Turns[0], &set.Scenes[1].Turns[1]
+	regs := []*df.FrameRegister{&set.Scenes[0].Turns[0], &set.Scenes[0].Turns[1], far}
+	for _, reg := range regs {
+		if !c.Prefetch(reg) {
+			t.Fatal("ring not outstanding")
+		}
+	}
+	if len(c.jobs) > ringWorkers {
+		t.Fatal("too many concurrent decodes", len(c.jobs))
+	}
+	for _, reg := range regs {
+		for c.Prefetch(reg) {
+			for _, job := range c.jobs {
+				<-job.done
+			}
+		}
+	}
+	if c.DecodedBytes() != 8 {
+		t.Fatal("queued rings were not all decoded", c.DecodedBytes())
+	}
+	// A damaged ring must not be retried forever, and still reports its error
+	// to the caller that needs it.
+	c.Prefetch(bad)
+	<-c.jobs[0].done
+	if c.Prefetch(bad) || len(c.jobs) != 0 || !c.NeedsDecode(bad) {
+		t.Fatal("damaged ring keeps being prefetched")
+	}
+	if _, err := c.Ensure(bad); err == nil {
+		t.Fatal("damaged ring error was swallowed")
+	}
+	// Touching keeps nearby rings ahead of stale ones in eviction order.
+	c.Touch(regs[0])
+	c.Budget = 6
+	c.evict()
+	if c.NeedsDecode(regs[0]) || !c.NeedsDecode(regs[1]) {
+		t.Fatal("eviction ignored the most recently wanted ring")
+	}
+}

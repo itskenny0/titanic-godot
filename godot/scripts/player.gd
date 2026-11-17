@@ -27,6 +27,11 @@ var adaptive_atlas_image = Image.new()
 var adaptive_atlas_texture = ImageTexture.new()
 var adaptive_atlas_revision = -1
 var adaptive_atlas_scale = 1
+var device_format_checked = -1
+var device_format_classic = false
+var adaptive_text = ""
+var adaptive_parsed = null
+var adaptive_configured = []
 var display_pointer = Vector2(256,192)
 var drawn_display_pointer = Vector2(-1000,-1000)
 var game_origin = Vector2.ZERO
@@ -95,6 +100,34 @@ const CONTROLLER_ACTIONS = [
 	["door", "Door / Space"], ["keyboard", "Keyboard"], ["mouse", "Pointer click"],
 	["previous", "Previous target"], ["next", "Next target"], ["precision", "Slow pointer"],
 	["up", "Up"], ["down", "Down"], ["left", "Left"], ["right", "Right"]]
+# Hand-drawn stand-ins for the original's cursor set, relative to the hot spot:
+# a pointing hand over anything that responds, an open hand and fist for
+# things to pick up and carry, direction arrows, a four-way sight and an
+# hourglass while the game is not listening.
+const POINTER_ARROW = [Vector2(0,0), Vector2(0,15), Vector2(4,11.5), Vector2(7.5,18), Vector2(10.5,16.5), Vector2(7,10), Vector2(12.5,10)]
+const POINTER_UP = [Vector2(0,-9), Vector2(8,-1), Vector2(3.5,-1), Vector2(3.5,8), Vector2(-3.5,8), Vector2(-3.5,-1), Vector2(-8,-1)]
+const POINTER_ARM = [Vector2(-1.5,-1.5), Vector2(-1.5,-5.5), Vector2(-4,-5.5), Vector2(0,-10), Vector2(4,-5.5), Vector2(1.5,-5.5), Vector2(1.5,-1.5)]
+const POINTER_SHAPES = {
+	"touch": [
+		Vector2(-2,1), Vector2(-1,0), Vector2(1,0), Vector2(2,1), Vector2(2,8), Vector2(4,7), Vector2(5.5,8),
+		Vector2(7,8), Vector2(8,9.5), Vector2(9.5,9.5), Vector2(10.5,11), Vector2(10.5,16), Vector2(8.5,20),
+		Vector2(-1,20), Vector2(-3,17), Vector2(-6.5,13), Vector2(-7,11), Vector2(-5.5,10.5), Vector2(-2,12.5)],
+	"hand": [
+		Vector2(-5,2), Vector2(-5,-7), Vector2(-3.8,-8), Vector2(-2.5,-7), Vector2(-2.5,-9), Vector2(-1.2,-10),
+		Vector2(0,-9), Vector2(0.2,-9.5), Vector2(1.5,-10.5), Vector2(2.8,-9.5), Vector2(3,-8), Vector2(4.4,-8.8),
+		Vector2(5.6,-7.8), Vector2(5.6,4), Vector2(3.5,9), Vector2(-3,9), Vector2(-5,6), Vector2(-8.5,2.5),
+		Vector2(-9,0.5), Vector2(-7.5,0)],
+	"fist": [
+		Vector2(-5.5,-4), Vector2(-4,-6), Vector2(4.5,-6), Vector2(6.5,-4), Vector2(6.5,3), Vector2(4,7.5),
+		Vector2(-3,7.5), Vector2(-6,4.5), Vector2(-8.5,1.5), Vector2(-8.5,-1), Vector2(-6.5,-1.5)],
+	"watch": [
+		Vector2(-6,-9), Vector2(6,-9), Vector2(6,-7), Vector2(1.2,0), Vector2(6,7), Vector2(6,9), Vector2(-6,9),
+		Vector2(-6,7), Vector2(-1.2,0), Vector2(-6,-7)]}
+const POINTER_DETAILS = {
+	"touch": [[Vector2(2,11), Vector2(2,14)], [Vector2(5,11), Vector2(5,14)], [Vector2(7.5,11), Vector2(7.5,14)]],
+	"hand": [[Vector2(-2.5,-6), Vector2(-2.5,-1)], [Vector2(0.2,-8), Vector2(0.2,-1)], [Vector2(3,-7), Vector2(3,-1)]],
+	"fist": [[Vector2(-2,-6), Vector2(-2,-2)], [Vector2(1,-6), Vector2(1,-2)], [Vector2(4,-6), Vector2(4,-2)]],
+	"watch": [[Vector2(-7,-9), Vector2(7,-9)], [Vector2(-7,9), Vector2(7,9)], [Vector2(-3,6.5), Vector2(3,6.5)], [Vector2(-1.5,5), Vector2(1.5,5)]]}
 var smoke = false
 var smoke_time = 0.0
 var pending_restart = null
@@ -265,6 +298,9 @@ func start_runtime(save_path = ""):
 	dialogue_request = null
 	set_adaptive_active(false)
 	adaptive_atlas_revision = -1
+	adaptive_text = ""
+	adaptive_parsed = null
+	adaptive_configured = []
 	prefer_classic_now = false
 	if is_instance_valid(close_request_dialog):
 		close_request_dialog.queue_free()
@@ -497,10 +533,20 @@ func classic_format(size):
 func classic_format_device():
 	# Desktop windows start at 4:3 even on wide monitors. Classify the device,
 	# while the active layout below always uses the actual window size.
-	var size = OS.get_screen_size(OS.current_screen)
-	if size.x <= 0 or size.y <= 0:
-		size = OS.window_size
-	return classic_format(size)
+	# Asking the display server is a round trip, and layout code asks several
+	# times per frame; a screen keeps its shape, so ask about once a second.
+	var now = OS.get_ticks_msec()
+	if device_format_checked < 0 or now - device_format_checked >= 1000:
+		device_format_checked = now
+		var size = OS.get_screen_size(OS.current_screen)
+		if size.x <= 0 or size.y <= 0:
+			size = OS.window_size
+		device_format_classic = classic_format(size)
+	return device_format_classic
+
+func small_display():
+	var size = OS.window_size
+	return min(size.x, size.y) < 576
 
 func adaptive_widescreen():
 	return not classic_format_device() and OS.window_size.x >= OS.window_size.y * 1.6
@@ -527,7 +573,13 @@ func sync_adaptive_layout():
 		set_adaptive_active(false)
 		update_layout_switch()
 		return
-	var metadata = JSON.parse(runtime.query("adaptive_layout")).result
+	# The answer rarely changes between frames; parsing it every frame costs
+	# more than the engine spends producing it.
+	var text = runtime.query("adaptive_layout")
+	if text != adaptive_text:
+		adaptive_text = text
+		adaptive_parsed = JSON.parse(text).result
+	var metadata = adaptive_parsed
 	if not metadata is Dictionary or not metadata.get("eligible", false) or not adaptive_overlays_fit():
 		set_adaptive_active(false)
 		update_layout_switch()
@@ -538,7 +590,10 @@ func sync_adaptive_layout():
 		update_layout_switch()
 		return
 	adaptive_metadata = metadata
-	adaptive.configure(layout_size, metadata, adaptive_roomy())
+	var configured = [text, layout_size, adaptive_roomy()]
+	if configured != adaptive_configured:
+		adaptive_configured = configured
+		adaptive.configure(layout_size, metadata, adaptive_roomy())
 	var atlas_scale = int(metadata.get("atlas_scale",1))
 	if not atlas_scale in [1,2]:
 		adaptive_available = false
@@ -692,12 +747,33 @@ func draw_cursor():
 	if not pointer_visible or name == "none":
 		return
 	var cursor = display_pointer - cursor_layer.position
-	var color = Color("f7e6a4") if name in ["touch", "hand", "fist"] else Color.white
-	var points = PoolVector2Array([cursor, cursor + Vector2(0, 15), cursor + Vector2(4, 11), cursor + Vector2(8, 18), cursor + Vector2(11, 16), cursor + Vector2(7, 9), cursor + Vector2(13, 9)])
-	cursor_layer.draw_colored_polygon(points, Color(0,0,0))
-	cursor_layer.draw_polyline(PoolVector2Array([cursor + Vector2(1, 2), cursor + Vector2(1, 12), cursor + Vector2(4, 9), cursor + Vector2(9, 16)]), color, 1.5, true)
-	if name.begins_with("go"):
-		cursor_layer.draw_circle(cursor + Vector2(15, 4), 3, Color("f7e6a4"))
+	# A light shape with a dark edge stays visible on both the bright cabins
+	# and the night decks; the plain arrow is white, anything special brass.
+	var shape = cursor_shape(name)
+	var outline = PoolVector2Array()
+	for p in shape:
+		outline.append(cursor + p)
+	cursor_layer.draw_colored_polygon(outline, Color("f7e6a4") if shape != POINTER_ARROW else Color.white)
+	outline.append(outline[0])
+	cursor_layer.draw_polyline(outline, Color(0,0,0), 1.5, true)
+	for detail in POINTER_DETAILS.get(name, []):
+		cursor_layer.draw_line(cursor + detail[0], cursor + detail[1], Color(0,0,0,0.6), 1.0, true)
+
+func cursor_shape(name):
+	if POINTER_SHAPES.has(name):
+		return POINTER_SHAPES[name]
+	if name != "sight" and not name.begins_with("go"):
+		return POINTER_ARROW
+	var shape = []
+	if name == "sight":
+		for quarter in range(4):
+			for p in POINTER_ARM:
+				shape.append(p.rotated(quarter * PI / 2))
+	elif name.begins_with("go"):
+		var turn = {"goright": PI / 2, "godown": PI, "goleft": -PI / 2}.get(name, 0.0)
+		for p in POINTER_UP:
+			shape.append(p.rotated(turn))
+	return shape
 
 func send(command):
 	if command.get("action", "") == "pause":
@@ -1961,6 +2037,11 @@ func show_artwork_choice(save_path = "", first_start = false):
 	hint.text = "Redraws change the toolbar icons and navigation hint. You can change this later in Game files / mods > HD artwork."
 	if not first_start:
 		hint.text = "Changes take effect next start. Your current game continues with its existing artwork."
+	if small_display():
+		# Redraws make the engine compose every frame at twice the size, which
+		# a screen this small cannot show and slower handhelds feel.
+		hint.text += "\nOn this small screen the original artwork runs faster and looks much the same."
+		hint.rect_min_size = Vector2(396,64)
 	hint.autowrap = true
 	hint.rect_min_size = Vector2(396,44)
 	hint.add_font_override("font", get_font_for("13px Arial"))
@@ -2240,6 +2321,7 @@ func update_touch_layout(_device = 0, _connected = false):
 		get_tree().set_screen_stretch(SceneTree.STRETCH_MODE_2D, SceneTree.STRETCH_ASPECT_KEEP, layout_size)
 	if adaptive_active:
 		adaptive.configure(desired, adaptive_metadata, adaptive_roomy())
+		adaptive_configured = []
 	if dialogue_active:
 		dialogue.configure(desired,dialogue_metadata.get("choices",0),touch_enabled)
 	status.rect_position = game_origin + Vector2(20, 160)

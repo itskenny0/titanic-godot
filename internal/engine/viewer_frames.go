@@ -74,6 +74,7 @@ func (v *SetViewer) standFrame() (*CachedFrame, error) {
 	if fi == nil {
 		return nil, nil
 	}
+	v.prefetchStand(v.Scene())
 	images, err := v.Rings.Ensure(&v.Scene().Turns[RightTurns])
 	if err != nil {
 		return nil, err
@@ -113,8 +114,12 @@ func (v *SetViewer) warmNeighbourRing() error {
 		return nil
 	}
 	candidates := []*df.FrameRegister{&v.Scene().Turns[RightTurns], &v.Scene().Turns[LeftTurns]}
-	for _, road := range v.AvailableRoads() {
+	roads := v.AvailableRoads()
+	for _, road := range roads {
 		candidates = append(candidates, &road.Transition.FrameRegisters[road.Register])
+	}
+	if v.Rings.Background {
+		return v.prefetchRings(candidates, roads)
 	}
 	for _, reg := range candidates {
 		if v.Rings.NeedsDecode(reg) {
@@ -124,6 +129,55 @@ func (v *SetViewer) warmNeighbourRing() error {
 	}
 	v.warmDone = true
 	return nil
+}
+
+// prefetchRings keeps the decoder ahead of the player without ever blocking
+// a frame: first the turns and roads available from here, then the views at
+// the far end of each road, which are needed the moment a walk arrives.
+func (v *SetViewer) prefetchRings(near []*df.FrameRegister, roads []df.Road) error {
+	// Rings too large to hold together would evict each other and be decoded
+	// again without end; a view that has not settled after this long gives up.
+	if v.warmTicks++; v.warmTicks > 1800 {
+		v.warmDone = true
+		return nil
+	}
+	waiting := false
+	for _, reg := range near {
+		v.Rings.Touch(reg)
+		waiting = v.Rings.Prefetch(reg) || waiting
+	}
+	if waiting {
+		return nil
+	}
+	for _, road := range roads {
+		arrival := v.roadArrival(&road.Transition.FrameRegisters[road.Register], road.ArriveViewID)
+		if arrival == nil {
+			continue
+		}
+		for dir := range v.Set.Scenes[arrival.SceneIdx].Turns {
+			// Looking further ahead must not push out what is needed here.
+			reg := &v.Set.Scenes[arrival.SceneIdx].Turns[dir]
+			if v.Rings.NeedsDecode(reg) && v.Rings.DecodedBytes() > v.Rings.Budget/2 {
+				v.warmDone = true
+				return nil
+			}
+			waiting = v.Rings.Prefetch(reg) || waiting
+		}
+	}
+	v.warmDone = !waiting
+	return nil
+}
+
+// prefetchStand starts both rings a standpoint is drawn from, so the two
+// decode side by side when the caller then asks for them in turn.
+func (v *SetViewer) prefetchStand(scene *df.Scene) {
+	if !v.Rings.Background {
+		return
+	}
+	if v.Session.PictureMode != "soft" {
+		v.Rings.Prefetch(&scene.Turns[LeftTurns])
+	}
+	v.Rings.Prefetch(&scene.Turns[RightTurns])
 }
 func (v *SetViewer) startAnimation(frames []*CachedFrame, pace float64, done func() error) error {
 	if len(frames) == 0 {

@@ -17,21 +17,38 @@ type HDSurface struct {
 	Valid          bool
 	Hits           uint64
 	FrameStartHits uint64
+	spriteKeys     map[spriteKeyID]string
+}
+
+// A sprite's artwork key depends only on its decoded pixels and the palette
+// it is drawn with. Decoded sprites are immutable, so the SHA-256 is computed
+// once per pairing instead of on every repaint.
+type spriteKeyID struct {
+	sprite  *df.Sprite
+	palette uint64
 }
 
 func NewHDSurface(pack *hdpack.Reader, w, h int) *HDSurface {
 	return &HDSurface{Pack: pack, Width: w, Height: h, Pixels: make([]byte, w*h*4*hdpack.Scale*hdpack.Scale)}
 }
-func (s *HDSurface) Clear() {
-	clear(s.Pixels)
-	for i := 3; i < len(s.Pixels); i += 4 {
-		s.Pixels[i] = 255
+
+// fillOpaqueBlack writes 0,0,0,255 pixels by doubling a seeded prefix.
+func fillOpaqueBlack(pixels []byte) {
+	if len(pixels) < 4 {
+		return
 	}
+	pixels[0], pixels[1], pixels[2], pixels[3] = 0, 0, 0, 255
+	for n := 4; n < len(pixels); n *= 2 {
+		copy(pixels[n:], pixels[:n])
+	}
+}
+func (s *HDSurface) Clear() {
+	fillOpaqueBlack(s.Pixels)
 	s.Valid = true
 	s.FrameStartHits = s.Hits
 }
 func (s *HDSurface) lookup(src []byte, w, h int) *image.NRGBA {
-	if w < 1 || h < 1 || w > 512 || h > 384 || len(src) < w*h*4 {
+	if w < 1 || h < 1 || w > 512 || h > 384 || len(src) < w*h*4 || !s.Pack.HasSize(w, h) {
 		return nil
 	}
 	img := s.Pack.Get(hdpack.Key(w, h, src[:w*h*4]), w, h)
@@ -39,6 +56,22 @@ func (s *HDSurface) lookup(src []byte, w, h int) *image.NRGBA {
 		s.Hits++
 	}
 	return img
+}
+func (s *HDSurface) spriteKey(f *df.Sprite, palette []byte) string {
+	hash := uint64(14695981039346656037)
+	for _, b := range palette {
+		hash = (hash ^ uint64(b)) * 1099511628211
+	}
+	id := spriteKeyID{f, hash ^ uint64(len(palette))<<48}
+	if key, ok := s.spriteKeys[id]; ok {
+		return key
+	}
+	if s.spriteKeys == nil || len(s.spriteKeys) >= 4096 {
+		s.spriteKeys = map[spriteKeyID]string{}
+	}
+	key := hdpack.Key(f.Width, f.Height, spriteRGBA(f, palette))
+	s.spriteKeys[id] = key
+	return key
 }
 
 // Sprite artwork keys must be identical in the classic frame and side panels.
@@ -101,11 +134,13 @@ func (s *HDSurface) Blit(src []byte, w, h, x, y int) {
 			previous := to - s.Width*2*4
 			copy(s.Pixels[to:to+rowBytes], s.Pixels[previous:previous+rowBytes])
 		} else {
-			for dx := x0; dx < x1; dx += 2 {
-				from := (((dy/2)-y)*w + dx/2 - x) * 4
-				at := to + (dx-x0)*4
-				copy(s.Pixels[at:at+4], src[from:from+4])
-				copy(s.Pixels[at+4:at+8], src[from:from+4])
+			from := (((dy/2)-y)*w + x0/2 - x) * 4
+			in, out := src[from:from+rowBytes/2], s.Pixels[to:to+rowBytes]
+			for len(in) >= 4 && len(out) >= 8 {
+				r, g, b, a := in[0], in[1], in[2], in[3]
+				out[0], out[1], out[2], out[3] = r, g, b, a
+				out[4], out[5], out[6], out[7] = r, g, b, a
+				in, out = in[4:], out[8:]
 			}
 		}
 	}
@@ -122,43 +157,65 @@ func (s *HDSurface) Sprite(r *SpriteRect, palette []byte, clipW, clipH int, occ 
 	}
 	var img *image.NRGBA
 	artworkAlpha := false
-	if r.F.Width > 0 && r.F.Height > 0 && r.F.Width <= 512 && r.F.Height <= 384 {
-		rgba := spriteRGBA(r.F, palette)
-		key := hdpack.Key(r.F.Width, r.F.Height, rgba)
+	if r.F.Width > 0 && r.F.Height > 0 && r.F.Width <= 512 && r.F.Height <= 384 && s.Pack.HasSize(r.F.Width, r.F.Height) {
+		key := s.spriteKey(r.F, palette)
 		img = s.Pack.Get(key, r.F.Width, r.F.Height)
 		if img != nil {
 			s.Hits++
 			artworkAlpha = r.screen && s.Pack.SpriteAlpha(key, r.F.Width, r.F.Height)
 		}
 	}
-	x0, y0 := max(0, int(r.X))*2, max(0, int(r.Y))*2
-	x1, y1 := min(s.Width, clipW, int(math.Ceil(r.X+float64(r.W))))*2, min(s.Height, clipH, int(math.Ceil(r.Y+float64(r.H))))*2
-	for y := y0; y < y1; y++ {
-		for x := x0; x < x1; x++ {
-			lx, ly := x/2, y/2
+	x0, y0 := max(0, int(r.X)), max(0, int(r.Y))
+	x1, y1 := min(s.Width, clipW, int(math.Ceil(r.X+float64(r.W)))), min(s.Height, clipH, int(math.Ceil(r.Y+float64(r.H))))
+	stride := s.Width * 2 * 4
+	unit, unitX, unitY, imgW, imgH := r.K == 1, int(r.X)*2, int(r.Y)*2, 0, 0
+	if img != nil {
+		imgW, imgH = img.Rect.Dx(), img.Rect.Dy()
+	}
+	// Mask and occlusion are logical: decide once per original pixel, then
+	// fill its 2x2 block.
+	for ly := y0; ly < y1; ly++ {
+		for lx := x0; lx < x1; lx++ {
 			i := r.sample(float64(lx), float64(ly))
 			if (i < 0 && !artworkAlpha) || SceneryOccludes(occ, lx, ly, level) {
 				continue
 			}
-			to := (y*s.Width*2 + x) * 4
-			if img != nil {
-				sx := max(0, min(img.Rect.Dx()-1, int((float64(x)/2-r.X)/r.K*2)))
-				sy := max(0, min(img.Rect.Dy()-1, int((float64(y)/2-r.Y)/r.K*2)))
-				from := sy*img.Stride + sx*4
-				if artworkAlpha {
-					// Display-only alpha: logical rendering and hit tests still use
-					// the original mask. Blend over the already drawn background.
-					a := int(img.Pix[from+3])
-					for c := 0; c < 3; c++ {
-						s.Pixels[to+c] = byte((int(img.Pix[from+c])*a + int(s.Pixels[to+c])*(255-a) + 127) / 255)
-					}
-				} else {
-					copy(s.Pixels[to:to+3], img.Pix[from:from+3])
-				}
-			} else {
+			to := ly*2*stride + lx*2*4
+			if img == nil {
 				p := int(r.F.Indexed[i]) * 4
 				if p+2 < len(palette) {
-					copy(s.Pixels[to:to+3], palette[p:p+3])
+					cr, cg, cb := palette[p], palette[p+1], palette[p+2]
+					for _, at := range [4]int{to, to + 4, to + stride, to + stride + 4} {
+						px := s.Pixels[at : at+3 : at+3]
+						px[0], px[1], px[2] = cr, cg, cb
+					}
+				}
+				continue
+			}
+			for y := ly * 2; y < ly*2+2; y++ {
+				// Unscaled sprites map exactly: (y/2-Y)*2 is y-2Y for integral Y.
+				sy := y - unitY
+				if !unit {
+					sy = int((float64(y)/2 - r.Y) / r.K * 2)
+				}
+				sy = max(0, min(imgH-1, sy))
+				for x := lx * 2; x < lx*2+2; x++ {
+					sx := x - unitX
+					if !unit {
+						sx = int((float64(x)/2 - r.X) / r.K * 2)
+					}
+					sx = max(0, min(imgW-1, sx))
+					from, at := sy*img.Stride+sx*4, y*stride+x*4
+					if artworkAlpha {
+						// Display-only alpha: logical rendering and hit tests still use
+						// the original mask. Blend over the already drawn background.
+						a := int(img.Pix[from+3])
+						for c := 0; c < 3; c++ {
+							s.Pixels[at+c] = byte((int(img.Pix[from+c])*a + int(s.Pixels[at+c])*(255-a) + 127) / 255)
+						}
+					} else {
+						copy(s.Pixels[at:at+3], img.Pix[from:from+3])
+					}
 				}
 			}
 		}

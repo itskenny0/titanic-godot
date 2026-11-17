@@ -146,9 +146,20 @@ func (a Audio) WriteStereoPCM(out []byte, volume, pan float64) error {
 	l := float64(volume * math.Cos(float64((pan+1)*math.Pi)/4))
 	r := float64(volume * math.Sin(float64((pan+1)*math.Pi)/4))
 	for i, sample := range a.Samples {
-		s := float64(math.Max(-1, math.Min(1, float64(sample))) * 32767)
+		// Branches instead of math.Max/Min: this runs for every sample of
+		// every sound started, and the library calls are not inlined cheaply.
+		v := float64(sample)
+		if v > 1 {
+			v = 1
+		} else if v < -1 {
+			v = -1
+		} else if v != v {
+			v = math.Max(-1, math.Min(1, v))
+		}
+		s := float64(v * 32767)
 		lv, rv := uint16(int16(math.Floor(float64(s*l)+0.5))), uint16(int16(math.Floor(float64(s*r)+0.5)))
-		out[i*4], out[i*4+1], out[i*4+2], out[i*4+3] = byte(lv), byte(lv>>8), byte(rv), byte(rv>>8)
+		o := out[i*4 : i*4+4 : i*4+4]
+		o[0], o[1], o[2], o[3] = byte(lv), byte(lv>>8), byte(rv), byte(rv>>8)
 	}
 	return nil
 }

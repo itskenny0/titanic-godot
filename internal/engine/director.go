@@ -80,6 +80,8 @@ type ScreenDirector struct {
 	dimRef      referenceSlot[*ClutDim]
 	roomRef     referenceSlot[*CachedFrame]
 	cursorGate  string
+	cursorName  string
+	cursorShown bool
 }
 
 func NewScreenDirector(s *Session, w, h int, gamma *ScreenGamma) *ScreenDirector {

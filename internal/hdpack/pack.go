@@ -102,8 +102,25 @@ type Reader struct {
 	Read     func(string) ([]byte, error)
 	Log      func(string)
 	cache    map[string]cached
+	sizes    map[[2]int]bool
 	clock    uint64
 	bytes    int
+}
+
+// HasSize reports whether any artwork replaces a w x h source image. Callers
+// use it to avoid hashing pixels that cannot match: a small pack such as the
+// interface controls never replaces a full-screen picture.
+func (r *Reader) HasSize(w, h int) bool {
+	if r == nil {
+		return false
+	}
+	if r.sizes == nil {
+		r.sizes = make(map[[2]int]bool, len(r.Manifest.Images))
+		for _, e := range r.Manifest.Images {
+			r.sizes[[2]int{e.Width, e.Height}] = true
+		}
+	}
+	return r.sizes[[2]int{w * Scale, h * Scale}] || r.Fallback.HasSize(w, h)
 }
 
 func Open(root string, read func(string) ([]byte, error), log func(string)) (*Reader, error) {
