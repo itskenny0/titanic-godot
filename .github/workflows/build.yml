@@ -208,9 +208,15 @@ jobs:
             export PATH="$PWD/.tools/llvm-scons:$PATH"
           fi
           if [[ '${{ matrix.platform }}' == mac ]]; then
-            # Tags up to v0.6.5 do not keep libpng away from the removed <fp.h>.
+            # Godot 3.5's libpng and zlib take the classic Mac OS paths under the
+            # macOS 15.4+ SDK. Prefer an older SDK, and keep both off those paths.
+            ls -d /Applications/Xcode*.app || true
+            for xcode in /Applications/Xcode_16.2.app /Applications/Xcode_16.1.app /Applications/Xcode_16.app /Applications/Xcode_16.0.app /Applications/Xcode_15.4.app; do
+              if [[ -d "$xcode" ]]; then export DEVELOPER_DIR="$xcode/Contents/Developer"; break; fi
+            done
+            echo "DEVELOPER_DIR=${DEVELOPER_DIR:-default}"
             mkdir -p .tools/mac-scons
-            printf '#!/bin/sh\nexec "%s" "$@" "CFLAGS=-include math.h"\n' "$(command -v scons)" > .tools/mac-scons/scons
+            printf '#!/bin/sh\nexec "%s" "$@" "CFLAGS=-include math.h -Dfdopen=fdopen"\n' "$(command -v scons)" > .tools/mac-scons/scons
             chmod +x .tools/mac-scons/scons
             export PATH="$PWD/.tools/mac-scons:$PATH"
           fi
