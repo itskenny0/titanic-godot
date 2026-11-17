@@ -207,6 +207,13 @@ jobs:
             chmod +x .tools/llvm-scons/scons
             export PATH="$PWD/.tools/llvm-scons:$PATH"
           fi
+          if [[ '${{ matrix.platform }}' == mac ]]; then
+            # Tags up to v0.6.5 do not keep libpng away from the removed <fp.h>.
+            mkdir -p .tools/mac-scons
+            printf '#!/bin/sh\nexec "%s" "$@" "CFLAGS=-include math.h"\n' "$(command -v scons)" > .tools/mac-scons/scons
+            chmod +x .tools/mac-scons/scons
+            export PATH="$PWD/.tools/mac-scons:$PATH"
+          fi
           python3 tools/build-runtime.py --platform '${{ matrix.platform }}' --arch '${{ matrix.arch }}' --jobs 3 "${extra[@]}"
       - name: Check binary architecture
         if: runner.os == 'Linux'

@@ -25,7 +25,9 @@ if major=='4':
  cmd+=['use_llvm=yes']
 else:
  cmd+=['platform='+{'linux':'x11','mac':'osx','windows':'windows'}[a.platform],'tools=no','target=release','debug_symbols=no','module_bullet_enabled=no','module_mono_enabled=no','use_static_cpp=yes']
- if a.platform=='mac':cmd+=['arch='+a.arch]
+ # Godot 3.5's libpng asks for the classic Mac <fp.h>, which current SDKs lack,
+ # unless math.h is already included.
+ if a.platform=='mac':cmd+=['arch='+a.arch,'CFLAGS=-include math.h']
  elif a.platform=='windows':
   cmd+=['bits=64','use_mingw=yes','use_llvm=yes']
   if a.mingw_prefix:cmd+=['mingw_prefix_64='+a.mingw_prefix]
