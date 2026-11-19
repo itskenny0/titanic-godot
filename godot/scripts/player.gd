@@ -469,7 +469,12 @@ func show_next_achievement():
 	var event = achievement_queue.pop_front()
 	var toast = PanelContainer.new()
 	toast.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	toast.add_stylebox_override("panel", UIStyle.plate(Color(0.07, 0.07, 0.06, 0.88), Color("d0b983"), 6))
+	var plate = UIStyle.plate(Color(0.07, 0.07, 0.06, 0.88), Color("d0b983"), 6)
+	for side in ["left", "right"]:
+		plate.set("content_margin_" + side, 10)
+	for side in ["top", "bottom"]:
+		plate.set("content_margin_" + side, 6)
+	toast.add_stylebox_override("panel", plate)
 	var box = VBoxContainer.new()
 	box.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	box.add_constant_override("separation", 2)
@@ -493,9 +498,21 @@ func show_next_achievement():
 	box.add_child(about)
 	add_child(toast)
 	toast.rect_size = Vector2(320, 0)
-	toast.rect_position = Vector2((layout_size.x - 320) / 2, layout_size.y - 96)
 	achievement_toast = toast
+	place_achievement_toast()
 	get_tree().create_timer(4.0 if achievement_queue.empty() else 2.5).connect("timeout", self, "finish_achievement_toast", [toast])
+
+# Top right, clear of the toolbar and dialogue at the bottom. A checkpoint
+# notice in the top left can reach across a narrow screen, so go below it.
+func place_achievement_toast():
+	if not is_instance_valid(achievement_toast):
+		return
+	var size = achievement_toast.get_combined_minimum_size()
+	achievement_toast.rect_size = Vector2(320, size.y)
+	var spot = Vector2(layout_size.x - 320 - 12, 12)
+	if is_instance_valid(checkpoint_toast) and Rect2(spot, achievement_toast.rect_size).intersects(checkpoint_toast.get_rect()):
+		spot.y = checkpoint_toast.get_rect().end.y + 8
+	achievement_toast.rect_position = spot
 
 func finish_achievement_toast(toast):
 	if is_instance_valid(toast):
@@ -2767,8 +2784,9 @@ func update_touch_layout(_device = 0, _connected = false):
 	if is_instance_valid(backdrop):
 		backdrop.rect_size = layout_size
 	for child in get_children():
-		if child is PanelContainer:
+		if child is PanelContainer and child != achievement_toast:
 			child.rect_position = (layout_size - child.rect_size) / 2
+	place_achievement_toast()
 	if touch_strip == null:
 		return
 	touch_strip.visible = touch_enabled and modal == null

@@ -8,20 +8,20 @@ Perfectly playable with original assets.
 
 ## Play quickly (Windows, Linux, macOS)
 
-Download and extract [the release](https://github.com/itskenny0/titanic-godot/releases/tag/v0.7.0) for your platform, then use either source:
+Download and extract [the release](https://github.com/itskenny0/titanic-godot/releases/tag/v0.7.1) for your platform, then use either source:
 
 - **ISOs:** Drop both images beside the executable, or beside `Titanic.app` on macOS. Their filenames just need to contain `cd1` and `cd2`, for example `Titanic_CD1.iso` and `Titanic_CD2.iso`. Run Titanic; it finds them automatically. No mounting or extraction needed.
 - **GOG / Steam:** Run Titanic and choose your installed game folder or its `LOCAL` folder. No conversion needed. You can also place a copy of `LOCAL` beside the player for automatic detection (on Windows, you can literally unzip the release into the installed game directory and launch titanic.exe).
 
 ## Play quickly (Android)
 
-Install the [APK](https://github.com/itskenny0/titanic-godot/releases/tag/v0.7.0) and choose the folder containing both ISOs or your GOG/Steam game files. For ISOs, use filenames containing `cd1` and `cd2`. For GOG/Steam, select the game folder or `LOCAL` directly. Put the files somewhere selectable, such as a subfolder of Downloads.
+Install the [APK](https://github.com/itskenny0/titanic-godot/releases/tag/v0.7.1) and choose the folder containing both ISOs or your GOG/Steam game files. For ISOs, use filenames containing `cd1` and `cd2`. For GOG/Steam, select the game folder or `LOCAL` directly. Put the files somewhere selectable, such as a subfolder of Downloads.
 
 Android imports the files into app storage. Keep the app open until it finishes. Both gamepad and touchscreen play are supported.
 
 ## Play quickly (PortMaster)
 
-Extract the [PortMaster ZIP](https://github.com/itskenny0/titanic-godot/releases/tag/v0.7.0) into your handheld's ports folder, then add your game files:
+Extract the [PortMaster ZIP](https://github.com/itskenny0/titanic-godot/releases/tag/v0.7.1) into your handheld's ports folder, then add your game files:
 
 - **ISOs:** Put both images inside `titanic`, with `cd1` and `cd2` in their filenames. They also work in `titanic/gamedata` or beside `Titanic.sh`.
 - **GOG / Steam:** Copy the game's `LOCAL` folder into `titanic/gamedata`, keeping the folder name.
@@ -48,7 +48,7 @@ Use the arrow keys to move or select dialogue replies, and Enter to confirm the 
 
 Hold the right mouse button, the Home key, or the left stick button (L3) on a controller, to mark everything in the room that responds to a click. **Settings > Picture / sound** can keep the marks on permanently, which suits touchscreens, or turn them off. The same page has fullscreen, sharp or smooth scaling, a 30 fps battery saver and the overall volume.
 
-**Achievements** in the menu lists 244 achievements for the story's turning points, conversations, puzzles, rooms, endings and deaths, plus milestones. Secret ones stay hidden until you earn them. An unlock shows a short notice at the bottom of the screen. Achievements belong to you, not to a saved game: loading an older save never removes one, and loading a later save awards what it has already reached. They are stored in `achievements.cfg` in the user data folder and never touch the `.ti` saves or the game's scripts. The guided tour counts only towards its own achievements. The first start asks whether to play with achievements; **Settings > Achievements** turns them off or back on at any time, and switching off hides the menu entry and the notices while keeping what you have earned.
+**Achievements** in the menu lists 244 achievements for the story's turning points, conversations, puzzles, rooms, endings and deaths, plus milestones. Secret ones stay hidden until you earn them. An unlock shows a short notice in the top right corner. Achievements belong to you, not to a saved game: loading an older save never removes one, and loading a later save awards what it has already reached. They are stored in `achievements.cfg` in the user data folder and never touch the `.ti` saves or the game's scripts. The guided tour counts only towards its own achievements. The first start asks whether to play with achievements; **Settings > Achievements** turns them off or back on at any time, and switching off hides the menu entry and the notices while keeping what you have earned.
 
 Cutscenes during play queue a checkpoint, saved once normal gameplay returns and manual saving is allowed. The newest 25 autosaves appear in **Load game**, marked in blue and labelled **Autosave**. They use separate storage and never replace or rotate your manual saves. **Settings > Game files / mods** lets you turn checkpoints off. Manual saves are still useful between cutscenes.
 
