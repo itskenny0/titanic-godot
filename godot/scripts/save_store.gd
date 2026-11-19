@@ -3,6 +3,7 @@ var root = "user://Saves"
 var archives = "user://Save Archives"
 var error = ""
 var autosave_prune_after = -1
+var last_written = ""
 
 func _init():
 	var d = Directory.new()
@@ -62,6 +63,62 @@ func display_name(name):
 		return "Autosave: " + name.get_file().substr(26).get_basename()
 	return "Manual: " + name.get_file().get_basename()
 
+# Default names end in the moment they were made. A list that already shows
+# the time beside each save reads better without it.
+func list_name(name):
+	var text = display_name(name)
+	if text.length() > 21:
+		var stamp = text.substr(text.length() - 20)
+		var plain = text.substr(0, text.length() - 20).strip_edges()
+		if stamp[0] == " " and stamp.substr(1).replace("-", "").is_valid_integer() and stamp.substr(1).split("-").size() == 6 and not plain.ends_with(":"):
+			return plain
+	return text
+
+# Pictures live beside the saves as separate files. The .ti data stays
+# byte-identical to the original format and loads without its picture.
+func thumbnail_path(path):
+	return path + ".png"
+
+func write_thumbnail(path, frame):
+	if path.empty() or frame == null or frame.is_empty():
+		return false
+	var img = Image.new()
+	img.copy_from(frame)
+	img.resize(160, 120, Image.INTERPOLATE_BILINEAR)
+	return img.save_png(thumbnail_path(path)) == OK
+
+func load_thumbnail(name):
+	var path = thumbnail_path(path_for(name))
+	if not File.new().file_exists(path):
+		return null
+	var img = Image.new()
+	if img.load(path) != OK or img.is_empty():
+		return null
+	return img
+
+func newest():
+	var names = list_saves()
+	return "" if names.empty() else names[0]
+
+func modified_time(name):
+	return File.new().get_modified_time(path_for(name))
+
+# "Today 14:02", "Yesterday 09:15" or a plain date, in the device's time zone.
+func describe_time(modified, now = -1):
+	if modified <= 0:
+		return ""
+	if now < 0:
+		now = OS.get_unix_time()
+	var zone = OS.get_time_zone_info().bias * 60
+	var then = OS.get_datetime_from_unix_time(modified + zone)
+	var clock = "%02d:%02d" % [then.hour, then.minute]
+	var days = int(floor((now + zone) / 86400.0)) - int(floor((modified + zone) / 86400.0))
+	if days == 0:
+		return "Today " + clock
+	if days == 1:
+		return "Yesterday " + clock
+	return "%04d-%02d-%02d %s" % [then.year, then.month, then.day, clock]
+
 func path_for(name):
 	if is_autosave(name):
 		return root.plus_file("Autosaves").plus_file(safe_name(name.get_file()))
@@ -75,7 +132,8 @@ func manual_path_for(name):
 	return root.plus_file(clean)
 
 func write(name, bytes):
-	return write_file(manual_path_for(name), bytes)
+	last_written = manual_path_for(name)
+	return write_file(last_written, bytes)
 
 func checkpoint_entries():
 	var entries = []
@@ -103,6 +161,7 @@ func write_autosave(label, bytes):
 	var name = safe_name("Checkpoint %012d - %s" % [sequence, safe_name(label).get_basename()])
 	if not write_file(folder.plus_file(name), bytes, false):
 		return false
+	last_written = folder.plus_file(name)
 	# Give slow removable storage a quiet interval after publishing the new file.
 	# The player's regular polling handles cleanup without a blocking sleep.
 	autosave_prune_after = OS.get_ticks_msec() + 3000
@@ -123,6 +182,7 @@ func service_autosaves(now = -1):
 	while entries.size() > 25:
 		if Directory.new().remove(folder.plus_file(entries[0].name)) != OK:
 			return "Checkpoint saved, but an old autosave could not be removed."
+		Directory.new().remove(thumbnail_path(folder.plus_file(entries[0].name)))
 		entries.pop_front()
 	return ""
 

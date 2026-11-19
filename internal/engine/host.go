@@ -150,6 +150,7 @@ func (h *GameHost) ActivateSet(name, scene, view string, opts ActivateOptions) e
 		return err
 	}
 	h.Viewer = v
+	v.Art = h.Screen().HD
 	h.Director.SetRoom(v)
 	if s.NavGestureActive {
 		v.ArmNavHooks()

@@ -10,6 +10,7 @@ r1 = enter
 l2 = pageup
 r2 = pagedown
 r3 = mouse_left
+l3 = home
 up = up
 up = repeat
 down = down

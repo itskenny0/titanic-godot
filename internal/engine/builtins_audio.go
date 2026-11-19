@@ -33,6 +33,9 @@ func registerAudioBuiltins(c builtinContext) {
 			return nil
 		}
 		voiceName = strings.ToLower(name)
+		if s.OnVoice != nil {
+			s.OnVoice(voiceName)
+		}
 		voice = s.Audio.Play(VoiceChannel, audio, PlayOptions{})
 		return nil
 	})

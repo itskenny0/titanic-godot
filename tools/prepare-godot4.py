@@ -45,7 +45,7 @@ s=s.replace('for key in "1234567890qwertyuiopasdfghjklzxcvbnm.,-":','for key in 
 s=s.replace('var ready =', 'var game_ready =').replace('ready = false','game_ready = false').replace('ready = true','game_ready = true').replace('not ready','not game_ready').replace('if ready and','if game_ready and').replace('game_game_ready','game_ready')
 s=s.replace('Label.ALIGNMENT_CENTER', 'HORIZONTAL_ALIGNMENT_CENTER').replace('MainLoop.NOTIFICATION_WM_QUIT_REQUEST','NOTIFICATION_WM_CLOSE_REQUEST').replace('MainLoop.NOTIFICATION_WM_GO_BACK_REQUEST', 'NOTIFICATION_WM_GO_BACK_REQUEST')
 s=re.sub(r'(?<![a-z_])update\(\)', 'queue_redraw()', s)
-for old,new in {'JOY_R':'JOY_BUTTON_RIGHT_SHOULDER','JOY_AXIS_6':'JOY_AXIS_TRIGGER_LEFT','JOY_AXIS_7':'JOY_AXIS_TRIGGER_RIGHT','JOY_START':'JOY_BUTTON_START','JOY_R3':'JOY_BUTTON_RIGHT_STICK','JOY_L':'JOY_BUTTON_LEFT_SHOULDER','JOY_BUTTON_0':'JOY_BUTTON_A','JOY_BUTTON_1':'JOY_BUTTON_B','JOY_BUTTON_2':'JOY_BUTTON_X','JOY_BUTTON_3':'JOY_BUTTON_Y','JOY_DPAD_UP':'JOY_BUTTON_DPAD_UP','JOY_DPAD_DOWN':'JOY_BUTTON_DPAD_DOWN','JOY_DPAD_LEFT':'JOY_BUTTON_DPAD_LEFT','JOY_DPAD_RIGHT':'JOY_BUTTON_DPAD_RIGHT','JOY_AXIS_0':'JOY_AXIS_LEFT_X','JOY_AXIS_1':'JOY_AXIS_LEFT_Y','JOY_AXIS_2':'JOY_AXIS_RIGHT_X','JOY_AXIS_3':'JOY_AXIS_RIGHT_Y'}.items():
+for old,new in {'JOY_R':'JOY_BUTTON_RIGHT_SHOULDER','JOY_AXIS_6':'JOY_AXIS_TRIGGER_LEFT','JOY_AXIS_7':'JOY_AXIS_TRIGGER_RIGHT','JOY_START':'JOY_BUTTON_START','JOY_R3':'JOY_BUTTON_RIGHT_STICK','JOY_L3':'JOY_BUTTON_LEFT_STICK','JOY_L':'JOY_BUTTON_LEFT_SHOULDER','JOY_BUTTON_0':'JOY_BUTTON_A','JOY_BUTTON_1':'JOY_BUTTON_B','JOY_BUTTON_2':'JOY_BUTTON_X','JOY_BUTTON_3':'JOY_BUTTON_Y','JOY_DPAD_UP':'JOY_BUTTON_DPAD_UP','JOY_DPAD_DOWN':'JOY_BUTTON_DPAD_DOWN','JOY_DPAD_LEFT':'JOY_BUTTON_DPAD_LEFT','JOY_DPAD_RIGHT':'JOY_BUTTON_DPAD_RIGHT','JOY_AXIS_0':'JOY_AXIS_LEFT_X','JOY_AXIS_1':'JOY_AXIS_LEFT_Y','JOY_AXIS_2':'JOY_AXIS_RIGHT_X','JOY_AXIS_3':'JOY_AXIS_RIGHT_Y'}.items():
  s=re.sub(r'\b'+old+r'\b',new,s)
 s=s.replace('get_tree().set_screen_stretch(SceneTree.STRETCH_MODE_2D, SceneTree.STRETCH_ASPECT_KEEP, layout_size)','get_window().content_scale_size = Vector2i(layout_size)')
 s=s.replace('img.create(52, 52, false, Image.FORMAT_RGBA8)','img = Image.create(52, 52, false, Image.FORMAT_RGBA8)')
@@ -75,6 +75,7 @@ for path in (out/'scripts').glob('*.gd'):
   text=re.sub(r'texture\.create_from_image\(img\).*', 'texture = ImageTexture.create_from_image(img)', text)
   text=text.replace('picture.expand = true', 'picture.expand_mode = TextureRect.EXPAND_IGNORE_SIZE')
  text=re.sub(r'\bevent\.(control|meta|alt|shift)\b', lambda m: 'event.' + {'control':'ctrl_pressed','meta':'meta_pressed','alt':'alt_pressed','shift':'shift_pressed'}[m[1]], text)
+ text=text.replace('OS.get_time_zone_info()', 'Time.get_time_zone_from_system()').replace('Time.get_datetime_dict_from_system_from_unix_time(', 'Time.get_datetime_dict_from_unix_time(')
  text=text.replace('self, "update"', 'self, "queue_redraw"')
  text=text.replace('caption,Style.INK)', 'caption,HORIZONTAL_ALIGNMENT_LEFT,-1,11,Style.INK)')
  text=re.sub(r'(?<![a-z_])update\(\)', 'queue_redraw()', text)

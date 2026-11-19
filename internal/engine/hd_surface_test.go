@@ -9,6 +9,7 @@ import (
 	"image/color"
 	"image/png"
 	"testing"
+	"time"
 
 	"github.com/itskenny0/titanic-godot/internal/df"
 	"github.com/itskenny0/titanic-godot/internal/hdpack"
@@ -165,5 +166,87 @@ func TestHDSpriteKeyIsCachedPerPalette(t *testing.T) {
 	hd.Sprite(screenSprite(f, 0, 0), palB, 2, 2, nil, 0)
 	if hd.Hits != 1 || hd.Pixels[0] != 9 {
 		t.Fatal("unmatched palette did not fall back to original pixels")
+	}
+}
+
+func serviceUntil(t *testing.T, hd *HDSurface) {
+	t.Helper()
+	for deadline := time.Now().Add(5 * time.Second); !hd.Service(); time.Sleep(time.Millisecond) {
+		if time.Now().After(deadline) {
+			t.Fatal("artwork never finished decoding")
+		}
+	}
+}
+func TestHDAsyncShowsOriginalUntilArtworkArrives(t *testing.T) {
+	src := []byte{10, 20, 30, 255, 40, 50, 60, 255, 70, 80, 90, 255, 100, 110, 120, 255}
+	screen := NewScreenPresenter(2, 2)
+	screen.HD = hdFixture(t, src, 2, 2)
+	screen.HD.Pack.Async = true
+	sig := new(DrawSignature)
+	screen.ShouldPaint(sig)
+	screen.ClearFrame()
+	screen.BlitTop(src, 2, 2)
+	screen.presented, screen.FrameValid = true, true
+	hd := screen.HD
+	if hd.Hits != 0 || !bytes.Equal(hd.Pixels[:8], []byte{10, 20, 30, 255, 10, 20, 30, 255}) {
+		t.Fatalf("original was not shown while decoding: %v", hd.Pixels[:8])
+	}
+	if screen.ShouldPaint(sig) {
+		t.Fatal("unchanged screen repainted")
+	}
+	serviceUntil(t, hd)
+	screen.Invalidate()
+	if !screen.ShouldPaint(sig) {
+		t.Fatal("arrived artwork did not force a repaint")
+	}
+	screen.ClearFrame()
+	screen.BlitTop(src, 2, 2)
+	if hd.Hits != 1 || !bytes.Equal(hd.Pixels[:4], []byte{30, 80, 120, 255}) {
+		t.Fatalf("decoded artwork not shown: hits=%d %v", hd.Hits, hd.Pixels[:4])
+	}
+	if hd.hashed != 1 {
+		t.Fatalf("unchanged picture hashed %d times", hd.hashed)
+	}
+}
+func TestHDMovementUsesOnlyDecodedArtworkAndWarmsAhead(t *testing.T) {
+	palette := make([]byte, 1024)
+	copy(palette, []byte{10, 20, 30, 255, 40, 50, 60, 255})
+	frame := &CachedFrame{Pixels: []byte{0, 1, 1, 0}, Width: 2, Height: 2, ID: newDrawID()}
+	src := make([]byte, 16)
+	if err := df.IndexedRGBA(frame.Pixels, palette, src); err != nil {
+		t.Fatal(err)
+	}
+	hd := hdFixture(t, src, 2, 2)
+	hd.Pack.Async = true
+	hd.Moving()
+	hd.Clear()
+	hd.Blit(src, 2, 2, 0, 0)
+	if hd.Hits != 0 || hd.Pack.Loading() != 0 || hd.late != 1 {
+		t.Fatal("a frame already on screen started a decode", hd.Pack.Loading(), hd.late)
+	}
+	if !hd.WarmLanding(frame, palette) || hd.Pack.Loading() != 1 || hd.keep == "" {
+		t.Fatal("landing picture was not requested")
+	}
+	if !hd.WarmMotion(frame, palette) || hd.hashed != 1 {
+		t.Fatal("known frame was hashed again", hd.hashed)
+	}
+	serviceUntil(t, hd)
+	hd.Moving()
+	hd.Clear()
+	hd.Blit(src, 2, 2, 0, 0)
+	if hd.Hits != 1 || hd.shown != 1 {
+		t.Fatal("warmed artwork not used during movement")
+	}
+	// Two movements that were mostly late turn movement artwork off.
+	for i := 0; i < 2; i++ {
+		hd.late, hd.shown = 3, 1
+		hd.moving = 1
+		hd.Service()
+	}
+	if !hd.motionOff || hd.WarmMotion(&CachedFrame{Pixels: []byte{1, 1, 1, 1}, Width: 2, Height: 2, ID: newDrawID()}, palette) {
+		t.Fatal("slow movement artwork stayed enabled")
+	}
+	if !hd.WarmLanding(frame, palette) {
+		t.Fatal("landing artwork must stay enabled")
 	}
 }

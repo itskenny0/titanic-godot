@@ -51,6 +51,11 @@ type SetViewer struct {
 	animationPace, lastTick float64
 	animationDone           func() error
 	current                 *CachedFrame
+	// Art, when set, is told about movement so replacement artwork can be
+	// decoded ahead of the frames that need it.
+	Art                 *HDSurface
+	landScene, landView int
+	landWanted          bool
 }
 
 func NewSetViewer(set *df.Set, s *Session, startScene, startView string, gamma *ScreenGamma, director ViewerDirector) (*SetViewer, error) {

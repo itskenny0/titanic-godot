@@ -1,0 +1,1954 @@
+[
+ {
+  "id": "prologue_begins",
+  "title": "London, 1942",
+  "description": "Wake up in your shabby Blitz-era bedsit as the story begins.",
+  "category": "story",
+  "hidden": false,
+  "trigger": "movie:datebed.mov"
+ },
+ {
+  "id": "blitz_bomb",
+  "title": "Bombed Out of 1942",
+  "description": "Survive the German bomb that hurls you back through time.",
+  "category": "story",
+  "hidden": false,
+  "trigger": "movie:bedex.mov"
+ },
+ {
+  "id": "opening_credits",
+  "title": "What If the Past...",
+  "description": "Watch the opening flyover as the past opens up again.",
+  "category": "story",
+  "hidden": false,
+  "trigger": "movie:ocredits.mov"
+ },
+ {
+  "id": "arrive_aboard",
+  "title": "Welcome Aboard, Mr. Carlson",
+  "description": "Wake up in cabin C73 aboard the Titanic on 14 April 1912.",
+  "category": "story",
+  "hidden": false,
+  "trigger": "movie:datecab.mov"
+ },
+ {
+  "id": "mission_two",
+  "title": "Late Morning Intrigues",
+  "description": "Make it through the first stretch of the day; the clock moves on to 10:40.",
+  "category": "story",
+  "hidden": false,
+  "trigger": "global:mission>=2"
+ },
+ {
+  "id": "mission_three",
+  "title": "Eleven Fifteen and Counting",
+  "description": "Reach the last phase of the day before the iceberg.",
+  "category": "story",
+  "hidden": false,
+  "trigger": "global:mission>=3"
+ },
+ {
+  "id": "iceberg_strikes",
+  "title": "Iceberg, Right Ahead!",
+  "description": "The Titanic strikes the iceberg and the sinking begins.",
+  "category": "story",
+  "hidden": false,
+  "trigger": "movie:datehit.mov"
+ },
+ {
+  "id": "sink_stage1",
+  "title": "Water Below Decks",
+  "description": "Witness the first stage of the Titanic's sinking.",
+  "category": "story",
+  "hidden": false,
+  "trigger": "movie:sink1.mov"
+ },
+ {
+  "id": "sink_stage2",
+  "title": "Listing to Starboard",
+  "description": "Stay aboard through the second stage of the sinking.",
+  "category": "story",
+  "hidden": false,
+  "trigger": "movie:sink2.mov"
+ },
+ {
+  "id": "sink_stage3",
+  "title": "Bow Under",
+  "description": "Stay aboard as the bow slips beneath the sea.",
+  "category": "story",
+  "hidden": true,
+  "trigger": "movie:sink3.mov"
+ },
+ {
+  "id": "sink_stage4",
+  "title": "The Band Played On",
+  "description": "Hold on through the fourth stage of the sinking.",
+  "category": "story",
+  "hidden": true,
+  "trigger": "movie:sink4.mov"
+ },
+ {
+  "id": "sink_stage5",
+  "title": "Last Boats Away",
+  "description": "Stay aboard into the ship's final minutes.",
+  "category": "story",
+  "hidden": true,
+  "trigger": "movie:sink5.mov"
+ },
+ {
+  "id": "leave_ship",
+  "title": "A Seat in the Boat",
+  "description": "Escape the sinking Titanic in a lifeboat.",
+  "category": "story",
+  "hidden": true,
+  "trigger": "movie:leave.mov"
+ },
+ {
+  "id": "leave_with_rescues",
+  "title": "Women and Children First",
+  "description": "Leave the ship after you have saved both Lady Georgia and Shailagh.",
+  "category": "story",
+  "hidden": true,
+  "trigger": "movie:leave.mov & actor:ga=rescued & actor:shay=rescued"
+ },
+ {
+  "id": "leave_boatpass_asea",
+  "title": "The Devil Himself",
+  "description": "Show your boat pass to the seaman and board early.",
+  "category": "story",
+  "hidden": true,
+  "trigger": "speak:asea02.01"
+ },
+ {
+  "id": "leave_boatpass_bsea",
+  "title": "Get In, Then",
+  "description": "Make a grudging seaman honour your boat pass.",
+  "category": "story",
+  "hidden": true,
+  "trigger": "speak:bsea2.06"
+ },
+ {
+  "id": "leave_with_joneses",
+  "title": "Hoist a Leg, Old Bean",
+  "description": "Accept the Joneses' invitation to share their lifeboat.",
+  "category": "story",
+  "hidden": true,
+  "trigger": "speak:jones2.40"
+ },
+ {
+  "id": "leave_by_morrow_order",
+  "title": "It's an Order!",
+  "description": "Do what Morrow tells you and take the last seat in his boat.",
+  "category": "story",
+  "hidden": true,
+  "trigger": "speak:morrow2.55"
+ },
+ {
+  "id": "debris_field",
+  "title": "Flotsam and Regret",
+  "description": "Look back on the debris left where the Titanic sank.",
+  "category": "story",
+  "hidden": true,
+  "trigger": "movie:debris.mov"
+ },
+ {
+  "id": "second_chance",
+  "title": "Back to the Boat Deck",
+  "description": "After a failed future, choose to go back to the Titanic and try again.",
+  "category": "story",
+  "hidden": true,
+  "trigger": "movie:bktoship.mov"
+ },
+ {
+  "id": "rubaiyat_to_vlad",
+  "title": "Rubaiyat Gone Red",
+  "description": "Vlad takes the Rubaiyat from the coal chute.",
+  "category": "story",
+  "hidden": true,
+  "trigger": "prop:rubaiyat=vlad"
+ },
+ {
+  "id": "diamonds_for_passage",
+  "title": "Bet the Diamonds",
+  "description": "Lose the real necklace to Buick at the blackjack table.",
+  "category": "story",
+  "hidden": true,
+  "trigger": "prop:realneck=buick"
+ },
+ {
+  "id": "carter_keys_cargo",
+  "title": "Mistaken for a Carter",
+  "description": "Flash the Carters' car keys and get waved into the cargo hold.",
+  "category": "story",
+  "hidden": false,
+  "trigger": "speak:bsea1.09"
+ },
+ {
+  "id": "bsea_painting_gossip",
+  "title": "Blooming Art Lovers",
+  "description": "Hear from the cargo-hold guard that a young German came down hunting for a painting.",
+  "category": "story",
+  "hidden": false,
+  "trigger": "speak:bsea1.23a"
+ },
+ {
+  "id": "burns_new_photos",
+  "title": "Fresh from the Darkroom",
+  "description": "Get Eric Burns to show you his newly developed photographs.",
+  "category": "story",
+  "hidden": false,
+  "trigger": "movie:brncl.mov"
+ },
+ {
+  "id": "beatrix_zeitel_books",
+  "title": "A Colonel for Rare Books",
+  "description": "Learn from Beatrix Conkling that Colonel Zeitel takes a great interest in rare books.",
+  "category": "story",
+  "hidden": false,
+  "trigger": "speak:bx1.23"
+ },
+ {
+  "id": "cash_carter_keys_clue",
+  "title": "A Motorcar in the Hold",
+  "description": "Learn from Daisy that the Carters keep their car keys with the purser.",
+  "category": "story",
+  "hidden": false,
+  "trigger": "speak:cash01.22"
+ },
+ {
+  "id": "conkling_summons",
+  "title": "A Matter of Extreme Urgency",
+  "description": "Receive Andrew Conkling's sealed note asking you to meet him on Scotland Road.",
+  "category": "story",
+  "hidden": false,
+  "trigger": "movie:cash.mov"
+ },
+ {
+  "id": "black_hand_secret",
+  "title": "Hands of Serbia",
+  "description": "Hear from Charles that Sasha's gallery is the London meeting place of the Black Hand.",
+  "category": "story",
+  "hidden": false,
+  "trigger": "speak:charl1.27"
+ },
+ {
+  "id": "fake_necklace_revealed",
+  "title": "Paste and Pretence",
+  "description": "Get a drunk Lord Lambeth to admit that Georgia's necklace is a fake and the real one is in Sasha's cabin.",
+  "category": "story",
+  "hidden": true,
+  "trigger": "speak:charl1.54"
+ },
+ {
+  "id": "sanitorium_plot",
+  "title": "The Husband's Prerogative",
+  "description": "Uncover Charles's plan to have Georgia committed to a sanitorium.",
+  "category": "story",
+  "hidden": true,
+  "trigger": "speak:charl1.58"
+ },
+ {
+  "id": "sasha_twenty_percent",
+  "title": "Love at Twenty Percent",
+  "description": "Learn from Charles that Sasha has betrayed Georgia for a commission.",
+  "category": "story",
+  "hidden": true,
+  "trigger": "speak:charl1.61"
+ },
+ {
+  "id": "claris_ring_notebook",
+  "title": "Whoever Bears the Ring",
+  "description": "Show Claris Willie's ring and learn that he hid a notebook on board.",
+  "category": "story",
+  "hidden": true,
+  "trigger": "speak:claris01.23"
+ },
+ {
+  "id": "conkling_hires_you",
+  "title": "Retained by Conkling",
+  "description": "Take on Conkling's job of recovering the stolen letter from Shailagh Hacker.",
+  "category": "story",
+  "hidden": false,
+  "trigger": "speak:conk1.29"
+ },
+ {
+  "id": "conkling_ransom_report",
+  "title": "Five Thousand Reasons",
+  "description": "Tell Conkling that Jack Hacker wants $5,000 for the letter, and meet Mrs. Conkling.",
+  "category": "story",
+  "hidden": false,
+  "trigger": "speak:conk1.34"
+ },
+ {
+  "id": "lift_claris_hint",
+  "title": "Cabin Nineteen, D Deck",
+  "description": "Get the lift attendant to tell you where Willie's sweetheart is staying.",
+  "category": "story",
+  "hidden": false,
+  "trigger": "speak:elev1.39"
+ },
+ {
+  "id": "b70_charles_interrupts",
+  "title": "Three's a Crowd",
+  "description": "Visit Georgia in B-70, only for her drunken husband to walk in on you.",
+  "category": "story",
+  "hidden": false,
+  "trigger": "speak:charl1.08"
+ },
+ {
+  "id": "balkan_aid_society",
+  "title": "The Balkan Aid Society",
+  "description": "Learn from Georgia that Sasha's rough foreign friends are hunting for guns and bombs.",
+  "category": "story",
+  "hidden": false,
+  "trigger": "speak:ga1.53"
+ },
+ {
+  "id": "rubaiyat_clue",
+  "title": "The Vine Her Ancient Ruby Yields",
+  "description": "Get Jack Hacker to recite, and hand over, Willie's coded verse from the Rubaiyat.",
+  "category": "story",
+  "hidden": false,
+  "trigger": "speak:hack1.14"
+ },
+ {
+  "id": "trask_message",
+  "title": "Where Honour and Glory Crown Time",
+  "description": "Receive Mr. Trask's cryptic invitation from Mrs. Gorse-Jones.",
+  "category": "story",
+  "hidden": false,
+  "trigger": "speak:jones1.062"
+ },
+ {
+  "id": "meet_zeitel",
+  "title": "Waltz with the Colonel",
+  "description": "Let Max introduce you to Colonel Zeitel and Willie Haderlitz at the Café Parisien.",
+  "category": "story",
+  "hidden": false,
+  "trigger": "speak:max1.66"
+ },
+ {
+  "id": "max_old_reds_clue",
+  "title": "Smoke 'Em If You Got 'Em",
+  "description": "Return the pack of Old Reds to Max and hear that Willie climbed the last smokestack at Queenstown.",
+  "category": "story",
+  "hidden": false,
+  "trigger": "speak:max1.81"
+ },
+ {
+  "id": "admiralty_plans_leak",
+  "title": "Desk-Top Espionage",
+  "description": "Learn from Morrow that the Admiralty's troop deployment plans against Germany have gone missing.",
+  "category": "story",
+  "hidden": false,
+  "trigger": "speak:morrow1.051"
+ },
+ {
+  "id": "haderlitz_investigation",
+  "title": "Not Pretty",
+  "description": "Get Officer Morrow's permission to look into Willie Haderlitz's death at the Turkish bath.",
+  "category": "story",
+  "hidden": true,
+  "trigger": "speak:morrow1.105"
+ },
+ {
+  "id": "rubaiyat_shown_to_penny",
+  "title": "Poetry in Motion",
+  "description": "Show Penny the recovered Rubaiyat and earn a rare 'Well done!'",
+  "category": "story",
+  "hidden": false,
+  "trigger": "speak:penny1.075"
+ },
+ {
+  "id": "photo_identifies_barbicon",
+  "title": "Caught on Film",
+  "description": "Hand Penny a photograph that ties Sasha Barbicon to Colonel Zeitel.",
+  "category": "story",
+  "hidden": false,
+  "trigger": "speak:penny1.090"
+ },
+ {
+  "id": "painting_plans_revealed",
+  "title": "The Back of the Canvas",
+  "description": "Bring Penny the painting and find the Allied troop plans hidden on its back.",
+  "category": "story",
+  "hidden": true,
+  "trigger": "speak:penny1.112"
+ },
+ {
+  "id": "painting_beaten_to_it",
+  "title": "Someone Got There First",
+  "description": "Arrive at the cargo crate to find the painting already gone.",
+  "category": "story",
+  "hidden": false,
+  "trigger": "speak:penny1.098"
+ },
+ {
+  "id": "bolshevik_notebook_briefing",
+  "title": "A List for the Ochrana",
+  "description": "Learn from Penny why Haderlitz's notebook of Russian revolutionaries matters.",
+  "category": "story",
+  "hidden": false,
+  "trigger": "speak:penny1.120"
+ },
+ {
+  "id": "penny_tracks_conspirators",
+  "title": "Eavesdropper's Errand",
+  "description": "Penny sends you to the stern to listen in on Zeitel and Sasha.",
+  "category": "story",
+  "hidden": false,
+  "trigger": "speak:penny1.095"
+ },
+ {
+  "id": "willie_found_dead",
+  "title": "Most Irregular Indeed",
+  "description": "Hear from Smethells that Willie Haderlitz has died in the electric bath.",
+  "category": "story",
+  "hidden": true,
+  "trigger": "speak:smeth1.077"
+ },
+ {
+  "id": "trask_reads_ring",
+  "title": "Russian on the Inside",
+  "description": "Have Trask read Haderlitz's ring and see a vision of Willie.",
+  "category": "story",
+  "hidden": false,
+  "trigger": "speak:trask1.008"
+ },
+ {
+  "id": "vlad_steals_notebook",
+  "title": "A Nasty Bump",
+  "description": "Lose the notebook to Vlad in the smokestack ambush.",
+  "category": "story",
+  "hidden": true,
+  "trigger": "speak:vlad1.23"
+ },
+ {
+  "id": "notebook_to_zeitel",
+  "title": "Neither Are You",
+  "description": "Hand the notebook to Zeitel and learn what his gratitude is worth.",
+  "category": "story",
+  "hidden": true,
+  "trigger": "speak:zeit1.03"
+ },
+ {
+  "id": "wake_after_berg",
+  "title": "An Hour, Maybe More",
+  "description": "Come to with Penny at your side and learn the ship is sinking.",
+  "category": "story",
+  "hidden": true,
+  "trigger": "speak:penny2.11"
+ },
+ {
+  "id": "all_evidence_secured",
+  "title": "Mission Complete, Now Swim",
+  "description": "Report to Penny during the sinking with the Rubaiyat, the painting and the notebook all in hand.",
+  "category": "story",
+  "hidden": true,
+  "trigger": "speak:penny2.50"
+ },
+ {
+  "id": "zeitel_bomb_c59",
+  "title": "Bedside Reading",
+  "description": "Walk into Zeitel's trap in cabin C-59 and get locked in with a bomb.",
+  "category": "story",
+  "hidden": true,
+  "trigger": "movie:zeitlock.mov"
+ },
+ {
+  "id": "georgia_poisoned",
+  "title": "The Evening's Last Request",
+  "description": "Learn that Zeitel has poisoned Lady Georgia to force your hand.",
+  "category": "story",
+  "hidden": true,
+  "trigger": "speak:zeit2.27"
+ },
+ {
+  "id": "painting_for_antidote",
+  "title": "A Man of His Word",
+  "description": "Give Zeitel the painting in exchange for Lady Georgia's antidote.",
+  "category": "story",
+  "hidden": true,
+  "trigger": "speak:zeit2.38"
+ },
+ {
+  "id": "save_georgia",
+  "title": "Antidote Delivered",
+  "description": "Find the poisoned Lady Georgia and give her the antidote in time.",
+  "category": "story",
+  "hidden": true,
+  "trigger": "speak:ga2.09"
+ },
+ {
+  "id": "boatpass_for_painting",
+  "title": "A Living Patriot",
+  "description": "Trade Zeitel your boat pass to get the painting back.",
+  "category": "story",
+  "hidden": true,
+  "trigger": "speak:zeit2.60"
+ },
+ {
+  "id": "vlad_and_dead_sasha",
+  "title": "Deserters Are Shot",
+  "description": "Find Vlad standing over Sasha's body below decks.",
+  "category": "story",
+  "hidden": true,
+  "trigger": "speak:vlad2.17"
+ },
+ {
+  "id": "baby_reunited",
+  "title": "Eddie Comes Home",
+  "description": "Bring the baby back to Shailagh and Jack Hacker.",
+  "category": "story",
+  "hidden": true,
+  "trigger": "speak:shahack2.08"
+ },
+ {
+  "id": "shailagh_to_first_class",
+  "title": "First Class at Last",
+  "description": "Escort Shailagh and her baby up to the First Class boat deck.",
+  "category": "story",
+  "hidden": true,
+  "trigger": "speak:shahack2.14"
+ },
+ {
+  "id": "conkling_shot",
+  "title": "No More Room",
+  "description": "See Andrew Conkling rush the lifeboats and get shot by Officer Morrow.",
+  "category": "story",
+  "hidden": true,
+  "trigger": "movie:conkdead.mov"
+ },
+ {
+  "id": "lost_rubaiyat_at_cards",
+  "title": "Bestseller Tonight",
+  "description": "Bet the Rubaiyat at Buick's table and lose it.",
+  "category": "story",
+  "hidden": true,
+  "trigger": "speak:blkjack2.40b"
+ },
+ {
+  "id": "lost_necklace_at_cards",
+  "title": "Fortune Favours Buick",
+  "description": "Bet the real Lambeth diamonds at blackjack and lose them.",
+  "category": "story",
+  "hidden": true,
+  "trigger": "speak:blkjack2.40"
+ },
+ {
+  "id": "bomb_found",
+  "title": "Ticking in C-59",
+  "description": "Get into cabin C-59 during the sinking and find the bomb.",
+  "category": "story",
+  "hidden": true,
+  "trigger": "global:bombphase>=2"
+ },
+ {
+  "id": "willie_dead",
+  "title": "A Shock in the Bath",
+  "description": "Find Willie dead in the Electric Bath.",
+  "category": "story",
+  "hidden": true,
+  "trigger": "set:ebath & global:mission=3"
+ },
+ {
+  "id": "zeitel_funnel",
+  "title": "Ambush Aloft",
+  "description": "Meet Zeitel at the top of the funnel.",
+  "category": "story",
+  "hidden": true,
+  "trigger": "set:smstack3 & global:mission=3 & global:phase=3"
+ },
+ {
+  "id": "vlad_pipe",
+  "title": "Welcome Back Down",
+  "description": "Climb out of the funnel and find Vladimir waiting for you.",
+  "category": "story",
+  "hidden": true,
+  "trigger": "movie:vladpipe.mov"
+ },
+ {
+  "id": "sinking_boat_deck",
+  "title": "Lower Away",
+  "description": "Reach the Boat Deck as the lifeboats are lowered.",
+  "category": "story",
+  "hidden": true,
+  "trigger": "set:deckbd2"
+ },
+ {
+  "id": "georgia_rescued",
+  "title": "Lady Georgia Saved",
+  "description": "Make sure Georgia, cured of the poison, gets into a lifeboat.",
+  "category": "character",
+  "hidden": true,
+  "trigger": "actor:ga=rescued"
+ },
+ {
+  "id": "shailagh_rescued",
+  "title": "Up Top, Safe and Sound",
+  "description": "Get Shailagh and her baby off the ship in a lifeboat.",
+  "category": "character",
+  "hidden": true,
+  "trigger": "actor:shay=rescued"
+ },
+ {
+  "id": "alex_fusebox_errand",
+  "title": "Gone for a Screwdriver",
+  "description": "Catch seaman Alex at the fusebox before he hurries below for the screwdriver he forgot.",
+  "category": "character",
+  "hidden": false,
+  "trigger": "speak:asea01.08"
+ },
+ {
+  "id": "meet_buick_riviera",
+  "title": "Bon Soir, Monsieur Riviera",
+  "description": "Sit down at Buick Riviera's blackjack table for the first time.",
+  "category": "character",
+  "hidden": false,
+  "trigger": "speak:blkjack1.01"
+ },
+ {
+  "id": "meet_burns",
+  "title": "Shutterbug on a Honeymoon",
+  "description": "Knock on photographer Eric Burns's door for the first time.",
+  "category": "character",
+  "hidden": false,
+  "trigger": "speak:burns1.09"
+ },
+ {
+  "id": "burns_fanatic",
+  "title": "Tactless Candour",
+  "description": "Tell Eric Burns that only a fanatic would develop photographs on his honeymoon.",
+  "category": "character",
+  "hidden": false,
+  "trigger": "speak:burns1.18"
+ },
+ {
+  "id": "burns_door_slam",
+  "title": "Pain in the Neck",
+  "description": "Annoy Eric Burns so much that he slams the door on you.",
+  "category": "character",
+  "hidden": false,
+  "trigger": "speak:burns1.23"
+ },
+ {
+  "id": "burns_marriage_advice",
+  "title": "Agony Uncle",
+  "description": "Give Eric Burns good advice about his wife and send him off to make up with her.",
+  "category": "character",
+  "hidden": false,
+  "trigger": "speak:burns1.31"
+ },
+ {
+  "id": "meet_daisy_cashmore",
+  "title": "Cornered by Daisy",
+  "description": "Get buttonholed by the society gossip Daisy Cashmore.",
+  "category": "character",
+  "hidden": false,
+  "trigger": "speak:cash01.09"
+ },
+ {
+  "id": "cash_favor_accepted",
+  "title": "A Tiny, Tiny Favour",
+  "description": "Agree to find out who the mysterious G.Q.C. is for Daisy Cashmore.",
+  "category": "character",
+  "hidden": false,
+  "trigger": "speak:cash01.29"
+ },
+ {
+  "id": "drink_with_charles",
+  "title": "One for the Cold",
+  "description": "Accept Lord Lambeth's invitation and follow him into the smoking room for a drink.",
+  "category": "character",
+  "hidden": false,
+  "trigger": "speak:charl1.39"
+ },
+ {
+  "id": "meet_claris",
+  "title": "A Rose from a German Boy",
+  "description": "Meet Claris Limehouse, Willie's sweetheart.",
+  "category": "character",
+  "hidden": false,
+  "trigger": "speak:claris01.14"
+ },
+ {
+  "id": "meet_conkling",
+  "title": "The Steel Baron Calls",
+  "description": "Meet Andrew Conkling at the discreet rendezvous on Scotland Road.",
+  "category": "character",
+  "hidden": false,
+  "trigger": "speak:conk1.09"
+ },
+ {
+  "id": "white_star_inspector",
+  "title": "From Head Office, Naturally",
+  "description": "Bluff your way past the engine-room seaman by claiming to be on official business.",
+  "category": "character",
+  "hidden": false,
+  "trigger": "speak:csea1.24"
+ },
+ {
+  "id": "meet_lift_attendant",
+  "title": "Going Up",
+  "description": "Meet the lift attendant, who says nobody is better at getting you where you want to go.",
+  "category": "character",
+  "hidden": false,
+  "trigger": "speak:elev1.06"
+ },
+ {
+  "id": "georgia_reunion",
+  "title": "An Old Flame",
+  "description": "Run into Lady Georgia on the boat deck; she is overjoyed to see you after five years.",
+  "category": "character",
+  "hidden": false,
+  "trigger": "speak:ga1.10"
+ },
+ {
+  "id": "georgia_spurned",
+  "title": "No Emotion Touches You",
+  "description": "Deny knowing Georgia until she calls you a bastard.",
+  "category": "character",
+  "hidden": false,
+  "trigger": "speak:ga1.33"
+ },
+ {
+  "id": "georgia_poop_farewell",
+  "title": "Until New York",
+  "description": "Say goodbye to Georgia on the poop deck after promising to return her necklace in New York.",
+  "category": "character",
+  "hidden": false,
+  "trigger": "speak:ga1.68"
+ },
+ {
+  "id": "gorse_jones_burns_hint",
+  "title": "Snap! Snap! Snap!",
+  "description": "Bump into the bickering Gorse-Joneses and learn that Burns has been photographing a German colonel.",
+  "category": "character",
+  "hidden": false,
+  "trigger": "speak:jones1.048"
+ },
+ {
+  "id": "meet_max",
+  "title": "Sharpie of Spruce Street",
+  "description": "Meet Max Seidlemann, sulking after Riviera cleaned him out at cards.",
+  "category": "character",
+  "hidden": false,
+  "trigger": "speak:max1.37"
+ },
+ {
+  "id": "max_cardsharp",
+  "title": "Them's Fighting Words",
+  "description": "Accuse Max of being a cardsharp.",
+  "category": "character",
+  "hidden": false,
+  "trigger": "speak:max1.57"
+ },
+ {
+  "id": "morrow_teetotal",
+  "title": "Temperance Lesson",
+  "description": "Offer a drink to the teetotal Officer Morrow and get dismissed for it.",
+  "category": "character",
+  "hidden": false,
+  "trigger": "speak:morrow1.037"
+ },
+ {
+  "id": "morrow_moonless_insight",
+  "title": "No Moon, No Surprises",
+  "description": "Connect Morrow's dread of moonless nights to the Boer War and win his trust.",
+  "category": "character",
+  "hidden": false,
+  "trigger": "speak:morrow1.057"
+ },
+ {
+  "id": "meet_penny_pringle",
+  "title": "Fashionably Late",
+  "description": "Finally meet your contact, Penny Pringle of the Secret Service Bureau, in the gymnasium.",
+  "category": "character",
+  "hidden": false,
+  "trigger": "speak:penny1.035"
+ },
+ {
+  "id": "meet_sasha",
+  "title": "Barbicon Galleries",
+  "description": "Knock on cabin A-14 and introduce yourself to the art dealer Sasha Barbicon.",
+  "category": "character",
+  "hidden": false,
+  "trigger": "speak:sasha1.22"
+ },
+ {
+  "id": "blackmail_terms",
+  "title": "Five Thousand, Do You Hear?",
+  "description": "Meet Jack and Shailagh Hacker and hear their price for Conkling's letter.",
+  "category": "character",
+  "hidden": false,
+  "trigger": "speak:shahack1.05b"
+ },
+ {
+  "id": "meet_smethells",
+  "title": "Touch of Mal de Mer",
+  "description": "Meet Smethells, your steward, in cabin C-73 at the start of the mission.",
+  "category": "character",
+  "hidden": false,
+  "trigger": "speak:smeth1.032"
+ },
+ {
+  "id": "meet_trask",
+  "title": "Astral Bureau of Circulation",
+  "description": "Meet Leyland Trask, the spiritualist, during the mission.",
+  "category": "character",
+  "hidden": false,
+  "trigger": "speak:trask1.051"
+ },
+ {
+  "id": "troutt_donation_pledge",
+  "title": "For the Mission Funds",
+  "description": "Promise Reverend Troutt a donation to his Nyasaland mission.",
+  "category": "character",
+  "hidden": false,
+  "trigger": "speak:trout1.25"
+ },
+ {
+  "id": "cafe_with_zeitel_willie",
+  "title": "Linzer Torte Diplomacy",
+  "description": "Join Colonel Zeitel and Willie Haderlitz at their table in the Café Parisien.",
+  "category": "character",
+  "hidden": false,
+  "trigger": "speak:wilzeit1.01b"
+ },
+ {
+  "id": "vlad_favor",
+  "title": "Friend of a Stowaway",
+  "description": "Agree to fetch the stowaway Vlad's package from cabin A-14.",
+  "category": "character",
+  "hidden": false,
+  "trigger": "speak:vlad1.38"
+ },
+ {
+  "id": "vlad_left_to_drown",
+  "title": "Long Live Serbia",
+  "description": "Leave Vlad to go down with the ship.",
+  "category": "character",
+  "hidden": true,
+  "trigger": "speak:vlad2.33"
+ },
+ {
+  "id": "stephanie_boat_pass",
+  "title": "Only Twenty-One",
+  "description": "Give your boat pass to Eric Burns so his wife Stephanie gets a seat.",
+  "category": "character",
+  "hidden": true,
+  "trigger": "speak:burns2.11"
+ },
+ {
+  "id": "buick_souls_stakes",
+  "title": "We Play for Souls",
+  "description": "Learn that Buick Riviera is staking a lifeboat pass on a hand of blackjack.",
+  "category": "character",
+  "hidden": true,
+  "trigger": "movie:buick.mov"
+ },
+ {
+  "id": "leave_with_all_three",
+  "title": "Full Diplomatic Bag",
+  "description": "Escape the Titanic carrying the Rubaiyat, the painting and Willie's notebook.",
+  "category": "item",
+  "hidden": true,
+  "trigger": "movie:leave.mov & prop:rubaiyat=frank & prop:painting=frank & prop:notebook=frank"
+ },
+ {
+  "id": "got_rubaiyat",
+  "title": "The Jeweled Rubaiyat",
+  "description": "Get your hands on the priceless jeweled Rubaiyat.",
+  "category": "item",
+  "hidden": false,
+  "trigger": "prop:rubaiyat=frank"
+ },
+ {
+  "id": "got_painting",
+  "title": "Art Collector",
+  "description": "Take the painting that hides the plans for yourself.",
+  "category": "item",
+  "hidden": false,
+  "trigger": "prop:painting=frank"
+ },
+ {
+  "id": "got_notebook",
+  "title": "Willie's Little Black Book",
+  "description": "Get hold of Willie's incriminating notebook.",
+  "category": "item",
+  "hidden": false,
+  "trigger": "prop:notebook=frank"
+ },
+ {
+  "id": "got_real_diamonds",
+  "title": "The Real Lambeth Diamonds",
+  "description": "Get the genuine diamond necklace back from Vlad.",
+  "category": "item",
+  "hidden": false,
+  "trigger": "prop:realneck=frank"
+ },
+ {
+  "id": "got_boatpass",
+  "title": "Ticket to Survival",
+  "description": "Get hold of a lifeboat pass during the sinking.",
+  "category": "item",
+  "hidden": true,
+  "trigger": "prop:boatpass=frank"
+ },
+ {
+  "id": "got_baby",
+  "title": "Nursemaid in a Crisis",
+  "description": "Take charge of the baby during the sinking.",
+  "category": "item",
+  "hidden": true,
+  "trigger": "prop:baby=frank"
+ },
+ {
+  "id": "got_icewarning",
+  "title": "Ice Warning Ignored",
+  "description": "Find one of the ice warning telegrams the bridge ignored.",
+  "category": "item",
+  "hidden": false,
+  "trigger": "prop:icewarning=frank"
+ },
+ {
+  "id": "prayer_card_trade",
+  "title": "A Gift for Steffie",
+  "description": "Swap the prayer card for Burns's photograph of a man peering out of the last smokestack.",
+  "category": "item",
+  "hidden": false,
+  "trigger": "movie:brnss.mov"
+ },
+ {
+  "id": "claris_keeps_ring",
+  "title": "A Keepsake for Claris",
+  "description": "Give Willie's ring to Claris to keep.",
+  "category": "item",
+  "hidden": true,
+  "trigger": "speak:claris01.30"
+ },
+ {
+  "id": "georgia_necklace",
+  "title": "Keeper of the Diamonds",
+  "description": "Accept Lady Georgia's diamond necklace and promise to keep it from her husband.",
+  "category": "item",
+  "hidden": false,
+  "trigger": "prop:fakeneck=frank"
+ },
+ {
+  "id": "morrow_binoculars",
+  "title": "Eyes of the Watch",
+  "description": "Return Third Officer Morrow's missing binoculars.",
+  "category": "item",
+  "hidden": false,
+  "trigger": "speak:morrow1.001"
+ },
+ {
+  "id": "receive_gas_pen",
+  "title": "Mightier Than the Sword",
+  "description": "Receive Penny's knock-out gas pen for your protection.",
+  "category": "item",
+  "hidden": false,
+  "trigger": "speak:penny1.128"
+ },
+ {
+  "id": "purser_safekeeping_rubaiyat",
+  "title": "Locked in the Safe",
+  "description": "Hand the Rubaiyat to the Purser to keep in the ship's safe.",
+  "category": "item",
+  "hidden": false,
+  "trigger": "speak:purs1.02"
+ },
+ {
+  "id": "purser_safekeeping_painting",
+  "title": "Hung Out of Sight",
+  "description": "Leave the painting in the Purser's safe.",
+  "category": "item",
+  "hidden": false,
+  "trigger": "speak:purs1.09"
+ },
+ {
+  "id": "sasha_package_for_vlad",
+  "title": "Care Package",
+  "description": "Get Sasha to hand over the package meant for Vlad.",
+  "category": "item",
+  "hidden": false,
+  "trigger": "speak:sasha1.40"
+ },
+ {
+  "id": "willie_ring_via_smethells",
+  "title": "A Token of Friendship",
+  "description": "Lose to Haderlitz at fencing and still get his ring through Smethells.",
+  "category": "item",
+  "hidden": false,
+  "trigger": "speak:smeth1.004"
+ },
+ {
+  "id": "troutt_prayer_card",
+  "title": "Pocket Piety",
+  "description": "Get a prayer card from Reverend Troutt's own collection.",
+  "category": "item",
+  "hidden": false,
+  "trigger": "speak:trout1.33"
+ },
+ {
+  "id": "vlad_package_delivered",
+  "title": "Room Service, Steerage",
+  "description": "Deliver Sasha's package to Vlad.",
+  "category": "item",
+  "hidden": false,
+  "trigger": "prop:vladfood=vlad"
+ },
+ {
+  "id": "penny_recovers_rubaiyat",
+  "title": "Back from the Purser",
+  "description": "Penny brings you the Rubaiyat she reclaimed from the Purser's safe.",
+  "category": "item",
+  "hidden": true,
+  "trigger": "speak:penny2.17"
+ },
+ {
+  "id": "claris_shawl",
+  "title": "Stars Over Central Park",
+  "description": "Comfort Claris in the lounge and receive her shawl.",
+  "category": "item",
+  "hidden": true,
+  "trigger": "speak:claris02.12"
+ },
+ {
+  "id": "zeitgram_taken",
+  "title": "Reading Other Men's Mail",
+  "description": "Take Zeitel's telegram from the Marconi room message stack.",
+  "category": "item",
+  "hidden": false,
+  "trigger": "prop:zeitgram=frank"
+ },
+ {
+  "id": "trunk_opened",
+  "title": "Unpacking the Past",
+  "description": "Open your cabin trunk with the trunk key.",
+  "category": "item",
+  "hidden": false,
+  "trigger": "stage:trunk.stg"
+ },
+ {
+  "id": "cufflink_found",
+  "title": "Down the Back of the Chair",
+  "description": "Find the lost cufflink in the Reception Room chair.",
+  "category": "item",
+  "hidden": false,
+  "trigger": "prop:cufflink=frank"
+ },
+ {
+  "id": "rubiclue_taken",
+  "title": "Dead Man's Clue",
+  "description": "Search Willie's body and find his clue to the Rubaiyat.",
+  "category": "item",
+  "hidden": true,
+  "trigger": "prop:rubiclue=frank"
+ },
+ {
+  "id": "old_reds",
+  "title": "A Smoke for the Stoker",
+  "description": "Get the pack of Old Reds cigarettes the clue points to.",
+  "category": "item",
+  "hidden": false,
+  "trigger": "prop:oldreds=frank"
+ },
+ {
+  "id": "pipe_found",
+  "title": "Pipe Dream",
+  "description": "Pick up the pipe left in the Café Parisien.",
+  "category": "item",
+  "hidden": false,
+  "trigger": "prop:pipe=frank"
+ },
+ {
+  "id": "car_keys",
+  "title": "Behind the Purser's Back",
+  "description": "Take the car keys from the Purser's office while he's away.",
+  "category": "item",
+  "hidden": false,
+  "trigger": "prop:carkeys=frank"
+ },
+ {
+  "id": "necklace_swap",
+  "title": "Paste for a Bolshevik",
+  "description": "Plant the fake necklace in Vlad's bag in place of the real one.",
+  "category": "puzzle",
+  "hidden": true,
+  "trigger": "prop:fakeneck=vlad"
+ },
+ {
+  "id": "beat_riviera",
+  "title": "Fleecing the Fleecer",
+  "description": "Win a hand of blackjack against the professional cardsharp Buick Riviera.",
+  "category": "puzzle",
+  "hidden": false,
+  "trigger": "global:winner=player"
+ },
+ {
+  "id": "natural_blackjack",
+  "title": "Twenty-One Off the Deal",
+  "description": "Draw a natural blackjack in your first two cards against Riviera.",
+  "category": "puzzle",
+  "hidden": false,
+  "trigger": "speak:blkjack1.17 & global:winner=player"
+ },
+ {
+  "id": "cash_name_delivered",
+  "title": "Filthy or Merely Stinking",
+  "description": "Tell Daisy that her admirer is George Quincy Clifford.",
+  "category": "puzzle",
+  "hidden": false,
+  "trigger": "speak:cash01.37"
+ },
+ {
+  "id": "turbine_fixed_first",
+  "title": "Into the Green",
+  "description": "Tune the turbine control panel and earn a look at the engine room.",
+  "category": "puzzle",
+  "hidden": false,
+  "trigger": "speak:csea1.09"
+ },
+ {
+  "id": "turbine_fixed_again",
+  "title": "Ship's Engineer Emeritus",
+  "description": "Fix the troublesome turbines a second time.",
+  "category": "puzzle",
+  "hidden": false,
+  "trigger": "actor:csea=thanks2"
+ },
+ {
+  "id": "wireless_permission",
+  "title": "Phillips Needn't Know",
+  "description": "Win Officer Morrow over so that he lets you into the wireless room.",
+  "category": "puzzle",
+  "hidden": false,
+  "trigger": "speak:morrow1.043"
+ },
+ {
+  "id": "thayer_telegram_sent",
+  "title": "Special Delivery",
+  "description": "Send Mr. Thayer's telegram for the Purser and report back.",
+  "category": "puzzle",
+  "hidden": false,
+  "trigger": "speak:purs1.52"
+ },
+ {
+  "id": "straus_cufflink_returned",
+  "title": "Cufflinked to Macy's",
+  "description": "Return Mr. Straus's lost gold cufflink to the Purser.",
+  "category": "puzzle",
+  "hidden": false,
+  "trigger": "speak:purs1.24"
+ },
+ {
+  "id": "necklace_swap_unnoticed",
+  "title": "Sleight of Hand",
+  "description": "Swap the necklaces in Sasha's cabin without him noticing.",
+  "category": "puzzle",
+  "hidden": true,
+  "trigger": "speak:sasha1.13"
+ },
+ {
+  "id": "trask_reads_pipe",
+  "title": "Steamed Up",
+  "description": "Have Trask read the pipe and get pointed to the Turkish bath.",
+  "category": "puzzle",
+  "hidden": false,
+  "trigger": "speak:trask1.004"
+ },
+ {
+  "id": "trask_reads_rubaiyat_clue",
+  "title": "Many Knots Unravelled",
+  "description": "Show Trask Haderlitz's first Rubaiyat verse clue.",
+  "category": "puzzle",
+  "hidden": false,
+  "trigger": "speak:trask1.014"
+ },
+ {
+  "id": "willie_ring_fencing",
+  "title": "Three-Time Champion Bested",
+  "description": "Beat Willie Haderlitz twice at fencing and win his ring yourself.",
+  "category": "puzzle",
+  "hidden": false,
+  "trigger": "speak:wilfenc1.18"
+ },
+ {
+  "id": "gas_zeitel",
+  "title": "A Whiff of Victory",
+  "description": "Knock Colonel Zeitel out with the gas pen instead of handing him the notebook.",
+  "category": "puzzle",
+  "hidden": true,
+  "trigger": "speak:zeit1.01"
+ },
+ {
+  "id": "vlad_shawl_trade",
+  "title": "Disguised in a Shawl",
+  "description": "Trade Vlad Claris's shawl as a disguise for one of the items he took.",
+  "category": "puzzle",
+  "hidden": true,
+  "trigger": "speak:vlad2.42"
+ },
+ {
+  "id": "baby_for_letter",
+  "title": "The Letter for the Child",
+  "description": "Trade Conkling's letter to Mrs. Conkling for Shailagh's stolen baby.",
+  "category": "puzzle",
+  "hidden": true,
+  "trigger": "speak:bx2.15"
+ },
+ {
+  "id": "won_boat_pass",
+  "title": "Deliverance of a Kind",
+  "description": "Beat Buick Riviera at blackjack and win the boat pass.",
+  "category": "puzzle",
+  "hidden": true,
+  "trigger": "speak:blkjack2.29"
+ },
+ {
+  "id": "bomb_defused",
+  "title": "Clockwork Disarmed",
+  "description": "Disarm Zeitel's time bomb in cabin C-59 and take its key.",
+  "category": "puzzle",
+  "hidden": true,
+  "trigger": "prop:bombkey=frank"
+ },
+ {
+  "id": "enigma_decoded",
+  "title": "Cipher Cracked",
+  "description": "Decode Zeitel's telegram on the Enigma machine.",
+  "category": "puzzle",
+  "hidden": false,
+  "trigger": "global:zeitclue=decoder"
+ },
+ {
+  "id": "turk_mirror_message",
+  "title": "Writing in the Steam",
+  "description": "Steam up the Turkish Bath and read the hidden message on the mirror.",
+  "category": "puzzle",
+  "hidden": false,
+  "trigger": "movie:turkmes.mov"
+ },
+ {
+  "id": "fence_won",
+  "title": "Touché, Herr Haderlitz",
+  "description": "Beat Willie Haderlitz in a fencing bout on the squash court.",
+  "category": "puzzle",
+  "hidden": false,
+  "trigger": "global:fencewins>=1"
+ },
+ {
+  "id": "fence_lost",
+  "title": "Outfenced",
+  "description": "Lose a fencing bout to Willie.",
+  "category": "puzzle",
+  "hidden": false,
+  "trigger": "actor:willie=lost"
+ },
+ {
+  "id": "vlad_fight_won",
+  "title": "Queensberry Rules",
+  "description": "Knock Vladimir out in the engine room fight.",
+  "category": "puzzle",
+  "hidden": true,
+  "trigger": "actor:vlad=lostfight"
+ },
+ {
+  "id": "vlad_fight_lost",
+  "title": "Down for the Count",
+  "description": "Take Vladimir's uppercut and lose the engine room fight.",
+  "category": "puzzle",
+  "hidden": true,
+  "trigger": "actor:vlad=wonfight"
+ },
+ {
+  "id": "car_lights",
+  "title": "Headlamps in the Hold",
+  "description": "Switch on the car's headlamps in the dark cargo hold.",
+  "category": "puzzle",
+  "hidden": false,
+  "trigger": "movie:lightson.mov"
+ },
+ {
+  "id": "fuse_blackout",
+  "title": "Lights Out on A Deck",
+  "description": "Cut the corridor lights at the fuse box to draw Sasha out of his cabin.",
+  "category": "puzzle",
+  "hidden": false,
+  "trigger": "global:neckphase>=7"
+ },
+ {
+  "id": "doll_opened",
+  "title": "Patty's Secret",
+  "description": "Set the doll's dials to open its hidden compartment.",
+  "category": "puzzle",
+  "hidden": false,
+  "trigger": "flat:patty.stg/patty 3"
+ },
+ {
+  "id": "photo_developed",
+  "title": "Darkroom Alchemy",
+  "description": "Develop a photograph in the C-deck darkroom and bag it.",
+  "category": "puzzle",
+  "hidden": false,
+  "trigger": "prop:photo1=frank"
+ },
+ {
+  "id": "all_photos",
+  "title": "Full Contact Sheet",
+  "description": "Develop and collect all three photographs.",
+  "category": "puzzle",
+  "hidden": false,
+  "trigger": "prop:photo1=frank & prop:photo2=frank & prop:photo3=frank"
+ },
+ {
+  "id": "photo_ruined",
+  "title": "Let There Be Light",
+  "description": "Ruin a print by working under white light.",
+  "category": "puzzle",
+  "hidden": false,
+  "trigger": "prop:pic1=bad"
+ },
+ {
+  "id": "bedsit_memory",
+  "title": "Ghosts of 1912",
+  "description": "Revisit Frank's memory of the night the Titanic went down.",
+  "category": "exploration",
+  "hidden": false,
+  "trigger": "movie:bedmem.mov"
+ },
+ {
+  "id": "bedsit_obituary",
+  "title": "Reading the Obituaries",
+  "description": "Study the obituary kept in your bedsit.",
+  "category": "exploration",
+  "hidden": false,
+  "trigger": "movie:bedobit.mov"
+ },
+ {
+  "id": "bedsit_cards",
+  "title": "The Cards Are Dealt",
+  "description": "Look through the cards on the bedsit table.",
+  "category": "exploration",
+  "hidden": false,
+  "trigger": "movie:bedcards.mov"
+ },
+ {
+  "id": "bedsit_snoop_all",
+  "title": "Thorough Tenant",
+  "description": "Examine the memory, paper, cabinet, obituary, cards, poster and mantle in the bedsit.",
+  "category": "exploration",
+  "hidden": false,
+  "trigger": "global:xxmem=true & global:xxpaper=true & global:xxcab=true & global:xxobit=true & global:xxcards=true & global:xxpost=true & global:xxmant=true"
+ },
+ {
+  "id": "tour_mode",
+  "title": "Sightseer",
+  "description": "Start the guided tour of the Titanic.",
+  "category": "exploration",
+  "hidden": false,
+  "trigger": "movie:opentour.mov & global:tour=true"
+ },
+ {
+  "id": "tour_map",
+  "title": "Cook's Tour",
+  "description": "Open the tour map to jump to the ship's famous spaces.",
+  "category": "exploration",
+  "hidden": false,
+  "trigger": "stage:tour.stg & global:tour=true"
+ },
+ {
+  "id": "tour_bridge",
+  "title": "Captain for a Day",
+  "description": "Use the tour to visit the Titanic's bridge.",
+  "category": "exploration",
+  "hidden": false,
+  "trigger": "set:bridge & global:tour=true"
+ },
+ {
+  "id": "sasha_cabin",
+  "title": "Uninvited Guest",
+  "description": "Slip into Sasha's cabin A-14 while he's out.",
+  "category": "exploration",
+  "hidden": true,
+  "trigger": "set:a14"
+ },
+ {
+  "id": "funnel_climb",
+  "title": "Up the Chimney",
+  "description": "Climb the ladders inside the funnel all the way to the top.",
+  "category": "exploration",
+  "hidden": false,
+  "trigger": "movie:topup.mov"
+ },
+ {
+  "id": "room_bridge",
+  "title": "On the Bridge",
+  "description": "Visit the Titanic's navigating bridge.",
+  "category": "exploration",
+  "hidden": false,
+  "trigger": "set:bridge"
+ },
+ {
+  "id": "room_wireless",
+  "title": "The Marconi Room",
+  "description": "Visit the wireless operators' room.",
+  "category": "exploration",
+  "hidden": false,
+  "trigger": "set:wireless"
+ },
+ {
+  "id": "room_turkish_bath",
+  "title": "A Turkish Delight",
+  "description": "Visit the ornate Turkish Bath.",
+  "category": "exploration",
+  "hidden": false,
+  "trigger": "set:turk"
+ },
+ {
+  "id": "room_squash",
+  "title": "Court Appearance",
+  "description": "Visit the squash court.",
+  "category": "exploration",
+  "hidden": false,
+  "trigger": "set:squash"
+ },
+ {
+  "id": "room_gym",
+  "title": "Physical Culture",
+  "description": "Visit the first-class gymnasium.",
+  "category": "exploration",
+  "hidden": false,
+  "trigger": "set:gym"
+ },
+ {
+  "id": "room_cafe",
+  "title": "Café Society",
+  "description": "Visit the Café Parisien.",
+  "category": "exploration",
+  "hidden": false,
+  "trigger": "set:cafe"
+ },
+ {
+  "id": "room_smoking",
+  "title": "Gentlemen Only",
+  "description": "Visit the first-class Smoking Room.",
+  "category": "exploration",
+  "hidden": false,
+  "trigger": "set:smoke"
+ },
+ {
+  "id": "room_lounge",
+  "title": "Taking the Lounge",
+  "description": "Visit the first-class Lounge.",
+  "category": "exploration",
+  "hidden": false,
+  "trigger": "set:lounge1c"
+ },
+ {
+  "id": "room_scotland_road",
+  "title": "Down Scotland Road",
+  "description": "Walk the crew's long working corridor, Scotland Road.",
+  "category": "exploration",
+  "hidden": false,
+  "trigger": "set:scot1"
+ },
+ {
+  "id": "room_boiler",
+  "title": "Stoking the Fires",
+  "description": "Go down to the boiler rooms.",
+  "category": "exploration",
+  "hidden": false,
+  "trigger": "set:boil"
+ },
+ {
+  "id": "room_engine",
+  "title": "Heart of the Ship",
+  "description": "Visit the reciprocating engine room.",
+  "category": "exploration",
+  "hidden": false,
+  "trigger": "set:engine"
+ },
+ {
+  "id": "room_cargo",
+  "title": "Below the Waterline",
+  "description": "Go down into the cargo hold.",
+  "category": "exploration",
+  "hidden": false,
+  "trigger": "set:cargo"
+ },
+ {
+  "id": "room_forecastle",
+  "title": "Forward Lookout",
+  "description": "Visit the forecastle deck at the bow.",
+  "category": "exploration",
+  "hidden": false,
+  "trigger": "set:fore"
+ },
+ {
+  "id": "room_poop",
+  "title": "The Stern Watch",
+  "description": "Visit the poop deck at the stern.",
+  "category": "exploration",
+  "hidden": false,
+  "trigger": "set:poop"
+ },
+ {
+  "id": "room_reception",
+  "title": "Receiving Line",
+  "description": "Visit the first-class Reception Room.",
+  "category": "exploration",
+  "hidden": false,
+  "trigger": "set:recept1c"
+ },
+ {
+  "id": "room_turbine",
+  "title": "Turbine Hall",
+  "description": "Visit the turbine engine room.",
+  "category": "exploration",
+  "hidden": false,
+  "trigger": "set:turb"
+ },
+ {
+  "id": "hard_drive_saloon",
+  "title": "Old Friends from Diamondback",
+  "description": "Tell Riviera you met at the Hard Drive Saloon, and he brings out his special deck.",
+  "category": "secret",
+  "hidden": false,
+  "trigger": "speak:blkjack1.05"
+ },
+ {
+  "id": "trask_lusitania",
+  "title": "Never Steered Wrong",
+  "description": "Hear that Beatrix's psychic adviser told her to sail only on the Titanic and the Lusitania.",
+  "category": "secret",
+  "hidden": false,
+  "trigger": "speak:bx1.27"
+ },
+ {
+  "id": "conkling_benefactor",
+  "title": "Merely a Benefactor",
+  "description": "Press Conkling until he squirms about his relationship with the maid Shailagh.",
+  "category": "secret",
+  "hidden": false,
+  "trigger": "speak:conk1.25"
+ },
+ {
+  "id": "lift_turbine_stumper",
+  "title": "Every Nook but One",
+  "description": "Stump the lift attendant, who claims to know every nook, by asking the way to the turbine room.",
+  "category": "secret",
+  "hidden": false,
+  "trigger": "speak:elev1.122"
+ },
+ {
+  "id": "fourth_funnel_fake",
+  "title": "A Marketer's Trick",
+  "description": "Hear from Morrow that the Titanic's fourth funnel is a fake.",
+  "category": "secret",
+  "hidden": false,
+  "trigger": "speak:morrow1.092"
+ },
+ {
+  "id": "bridge_kickout",
+  "title": "Hands Off the Wheel",
+  "description": "Play with the ship's wheel until Morrow throws you off the bridge.",
+  "category": "secret",
+  "hidden": false,
+  "trigger": "speak:morrow1.012"
+ },
+ {
+  "id": "purser_no_demonic",
+  "title": "No Such Passenger",
+  "description": "Ask the Purser for a stowaway's cabin and find he isn't on the list.",
+  "category": "secret",
+  "hidden": false,
+  "trigger": "speak:purs1.93"
+ },
+ {
+  "id": "bad_steel_secret",
+  "title": "High in Sulphur",
+  "description": "Learn from Shailagh that the steel in Titanic's hull was bad.",
+  "category": "secret",
+  "hidden": false,
+  "trigger": "speak:shay1.20"
+ },
+ {
+  "id": "stoker_insult_duel",
+  "title": "Landlubber!",
+  "description": "Win a stoker's respect in the boiler room by out-insulting him.",
+  "category": "secret",
+  "hidden": false,
+  "trigger": "speak:stok1.46"
+ },
+ {
+  "id": "stoker_liverpool",
+  "title": "Built in Belfast, Mate",
+  "description": "Tell a stoker the Titanic was built in Liverpool and enjoy the response.",
+  "category": "secret",
+  "hidden": false,
+  "trigger": "speak:stok1.29"
+ },
+ {
+  "id": "trask_reads_cigarettes",
+  "title": "Smoke Signals",
+  "description": "Hand Trask the cigarettes and have him name their owner.",
+  "category": "secret",
+  "hidden": false,
+  "trigger": "speak:trask1.036"
+ },
+ {
+  "id": "willie_confides",
+  "title": "Friends Before Fatherland",
+  "description": "Fence with Willie a third time and hear his confession.",
+  "category": "secret",
+  "hidden": false,
+  "trigger": "speak:wilfenc1.40"
+ },
+ {
+  "id": "zeitel_electrifying",
+  "title": "Shocking News",
+  "description": "Hear Zeitel promise that Willie will find the news 'most electrifying'.",
+  "category": "secret",
+  "hidden": false,
+  "trigger": "speak:zeit1.49"
+ },
+ {
+  "id": "fake_diamonds",
+  "title": "Paste, Not Diamonds",
+  "description": "Offer Buick Lady Georgia's necklace and learn the diamonds are glass.",
+  "category": "secret",
+  "hidden": true,
+  "trigger": "speak:blkjack2.16"
+ },
+ {
+  "id": "troutt_flood_quiz",
+  "title": "Forty Days and Nights",
+  "description": "Answer Reverend Troutt's question about the Great Flood correctly while the ship sinks.",
+  "category": "secret",
+  "hidden": true,
+  "trigger": "speak:trout2.22"
+ },
+ {
+  "id": "troutt_paul_quiz",
+  "title": "All Roads Lead to Rome",
+  "description": "Tell Reverend Troutt correctly where Paul was sailing when he was shipwrecked.",
+  "category": "secret",
+  "hidden": true,
+  "trigger": "speak:trout2.21"
+ },
+ {
+  "id": "troutt_confession",
+  "title": "The Mission Funds",
+  "description": "Hear Reverend Troutt confess his theft at the very end.",
+  "category": "secret",
+  "hidden": true,
+  "trigger": "speak:trout2.27"
+ },
+ {
+  "id": "trask_changed_past",
+  "title": "Change the Future",
+  "description": "Ask Trask during the sinking whether he knew, and hear what he says about your journey.",
+  "category": "secret",
+  "hidden": true,
+  "trigger": "speak:trask2.34"
+ },
+ {
+  "id": "gramophone_played",
+  "title": "His Master's Cylinder",
+  "description": "Load a wax cylinder in the trunk gramophone and wind it up.",
+  "category": "secret",
+  "hidden": false,
+  "trigger": "voice:grammyon"
+ },
+ {
+  "id": "manifest_peek",
+  "title": "Checking the Manifest",
+  "description": "Look through the Purser's papers while his back is turned.",
+  "category": "secret",
+  "hidden": false,
+  "trigger": "movie:maino1.mov"
+ },
+ {
+  "id": "binoculars",
+  "title": "The Missing Binoculars",
+  "description": "Take the binoculars left lying on the Boat Deck.",
+  "category": "secret",
+  "hidden": false,
+  "trigger": "prop:binoculars=frank"
+ },
+ {
+  "id": "georgia_note",
+  "title": "A Note on the Desk",
+  "description": "Find the note left on your cabin desk.",
+  "category": "secret",
+  "hidden": false,
+  "trigger": "movie:ganote.mov"
+ },
+ {
+  "id": "camel_ride",
+  "title": "Ship of the Desert",
+  "description": "Ride the electric camel in the gymnasium.",
+  "category": "secret",
+  "hidden": false,
+  "trigger": "movie:camride.mov"
+ },
+ {
+  "id": "bow_view",
+  "title": "Top of the World",
+  "description": "Look out from the very bow of the forecastle.",
+  "category": "secret",
+  "hidden": false,
+  "trigger": "movie:bow.mov"
+ },
+ {
+  "id": "history_judged",
+  "title": "The Verdict of History",
+  "description": "Reach the scrapbook epilogue, where you learn how the world turned out.",
+  "category": "ending",
+  "hidden": true,
+  "trigger": "stage:narend.stg"
+ },
+ {
+  "id": "ww1_averted",
+  "title": "Peace in Our Time",
+  "description": "Keep the Rubaiyat and the real diamonds from Vlad so the Black Hand never gets its war chest.",
+  "category": "ending",
+  "hidden": true,
+  "trigger": "flat:narend.stg/07"
+ },
+ {
+  "id": "ww1_sarajevo",
+  "title": "Shots at Sarajevo",
+  "description": "Vlad's loot pays for the Archduke's assassination and the Great War follows.",
+  "category": "ending",
+  "hidden": true,
+  "trigger": "voice:n.04"
+ },
+ {
+  "id": "ww1_vlad_both",
+  "title": "Double Dealing Bolshevik",
+  "description": "Let Vlad leave the Titanic with both the Rubaiyat and the real necklace.",
+  "category": "ending",
+  "hidden": true,
+  "trigger": "flat:narend.stg/03"
+ },
+ {
+  "id": "hitler_painter",
+  "title": "Alpine Vistas, Overpriced",
+  "description": "Save the painting yourself, and its Austrian artist sticks to painting.",
+  "category": "ending",
+  "hidden": true,
+  "trigger": "voice:n.19"
+ },
+ {
+  "id": "painting_sank",
+  "title": "Lost With All Hands",
+  "description": "Leave the painting with Jack Hacker, so it goes down with the ship while Shailagh and the baby survive.",
+  "category": "ending",
+  "hidden": true,
+  "trigger": "flat:narend.stg/15"
+ },
+ {
+  "id": "painting_to_germans",
+  "title": "Plans in a Dusty File",
+  "description": "Zeitel takes the painting, though the plans it hides come to nothing.",
+  "category": "ending",
+  "hidden": true,
+  "trigger": "flat:narend.stg/13"
+ },
+ {
+  "id": "revolution_aborted",
+  "title": "Lenin Who?",
+  "description": "Deliver Willie's notebook so that Stalin, Lenin and Trotsky vanish from history.",
+  "category": "ending",
+  "hidden": true,
+  "trigger": "voice:n.24"
+ },
+ {
+  "id": "revolution_continues",
+  "title": "The Notebook Got Away",
+  "description": "Lose Willie's notebook, and Germany keeps funding the Russian revolutionaries.",
+  "category": "ending",
+  "hidden": true,
+  "trigger": "flat:narend.stg/21"
+ },
+ {
+  "id": "good_ending",
+  "title": "Mission Accomplished",
+  "description": "Change history completely and retire in 1942 to a world at peace.",
+  "category": "ending",
+  "hidden": true,
+  "trigger": "movie:prozac.mov"
+ },
+ {
+  "id": "ending_unchanged",
+  "title": "Depressingly Familiar",
+  "description": "Fail on every front and find yourself fighting the Second World War all over again.",
+  "category": "ending",
+  "hidden": true,
+  "trigger": "movie:boom.mov"
+ },
+ {
+  "id": "ending_nuclear",
+  "title": "Hitler's Head Start",
+  "description": "Arrive at the future where a Nazi Germany races to the atomic bomb.",
+  "category": "ending",
+  "hidden": true,
+  "trigger": "movie:nuke.mov"
+ },
+ {
+  "id": "ending_nazi_europe",
+  "title": "They Hung Churchill",
+  "description": "Arrive at the future where Nazi Germany conquers Russia and Britain surrenders.",
+  "category": "ending",
+  "hidden": true,
+  "trigger": "movie:germend.mov"
+ },
+ {
+  "id": "ending_soviet_europe",
+  "title": "Workers of Britain, Unite",
+  "description": "Arrive at a future where communism sweeps across Europe and reaches Britain.",
+  "category": "ending",
+  "hidden": true,
+  "trigger": "movie:rushend.mov"
+ },
+ {
+  "id": "ending_berlin_politburo",
+  "title": "Ruled From Berlin",
+  "description": "Arrive at the future where a communist Germany rules a Europe that includes Britain.",
+  "category": "ending",
+  "hidden": true,
+  "trigger": "flat:narend.stg/28"
+ },
+ {
+  "id": "death_sinking",
+  "title": "Went Down With Her",
+  "description": "Fail to get off the Titanic before she goes under.",
+  "category": "death",
+  "hidden": true,
+  "trigger": "global:playerdeath=by sinking"
+ },
+ {
+  "id": "death_sasha",
+  "title": "Light-Fingered, Short-Lived",
+  "description": "Get caught stealing from Sasha and pay with your life.",
+  "category": "death",
+  "hidden": true,
+  "trigger": "global:playerdeath=by sasha"
+ },
+ {
+  "id": "death_vlad",
+  "title": "Thank You, Comrade",
+  "description": "Run into Vladimir while carrying the Rubaiyat, and it is the last thing you do.",
+  "category": "death",
+  "hidden": true,
+  "trigger": "global:playerdeath=by vlad"
+ },
+ {
+  "id": "death_zeitel",
+  "title": "No Is Not an Answer",
+  "description": "Refuse Zeitel's deal one time too many.",
+  "category": "death",
+  "hidden": true,
+  "trigger": "global:playerdeath=by zeitel"
+ },
+ {
+  "id": "bomb_exploded",
+  "title": "Rather Too Loud",
+  "description": "Make a wrong move on the bomb and set it off.",
+  "category": "death",
+  "hidden": true,
+  "trigger": "movie:bombblow.mov"
+ },
+ {
+  "id": "first_steps",
+  "title": "A Matter of Record",
+  "description": "Unlock your first achievement.",
+  "category": "meta",
+  "hidden": false,
+  "trigger": "count:*>=1"
+ },
+ {
+  "id": "ten_down",
+  "title": "Agent in Training",
+  "description": "Unlock 10 achievements.",
+  "category": "meta",
+  "hidden": false,
+  "trigger": "count:*>=10"
+ },
+ {
+  "id": "quarter_century",
+  "title": "Seasoned Operative",
+  "description": "Unlock 25 achievements.",
+  "category": "meta",
+  "hidden": false,
+  "trigger": "count:*>=25"
+ },
+ {
+  "id": "fifty",
+  "title": "Bureau Commendation",
+  "description": "Unlock 50 achievements.",
+  "category": "meta",
+  "hidden": false,
+  "trigger": "count:*>=50"
+ },
+ {
+  "id": "hundred",
+  "title": "Legend of the Secret Service",
+  "description": "Unlock 100 achievements.",
+  "category": "meta",
+  "hidden": false,
+  "trigger": "count:*>=100"
+ },
+ {
+  "id": "social_butterfly",
+  "title": "Social Butterfly",
+  "description": "Unlock 20 character achievements.",
+  "category": "meta",
+  "hidden": false,
+  "trigger": "count:character>=20"
+ },
+ {
+  "id": "ear_to_the_door",
+  "title": "Ear to the Door",
+  "description": "Unlock 15 secret achievements.",
+  "category": "meta",
+  "hidden": false,
+  "trigger": "count:secret>=15"
+ },
+ {
+  "id": "historian",
+  "title": "Student of History",
+  "description": "Unlock 5 ending achievements.",
+  "category": "meta",
+  "hidden": false,
+  "trigger": "count:ending>=5"
+ },
+ {
+  "id": "many_futures",
+  "title": "Many Possible Futures",
+  "description": "Unlock 10 ending achievements.",
+  "category": "meta",
+  "hidden": false,
+  "trigger": "count:ending>=10"
+ },
+ {
+  "id": "all_deaths",
+  "title": "Nine Lives Short",
+  "description": "Die in every way the voyage allows.",
+  "category": "meta",
+  "hidden": false,
+  "trigger": "count:death>=5"
+ },
+ {
+  "id": "completionist",
+  "title": "Out of Time",
+  "description": "Unlock every other achievement.",
+  "category": "meta",
+  "hidden": false,
+  "trigger": "count:*>=243"
+ }
+]

@@ -303,6 +303,9 @@ func registerPuppetBuiltins(c builtinContext) {
 		if err != nil {
 			return err
 		}
+		if c.s.OnSpeak != nil {
+			c.s.OnSpeak(strings.ToLower(strArg(a, 0)))
+		}
 		p.Speak(task, strArg(a, 0))
 		return nil
 	})

@@ -156,7 +156,7 @@ func TestNativePlayerIntegration(t *testing.T) {
 	p := NewPlayer(bridge)
 	defer p.Close()
 	p.Now = func() time.Time { return time.Date(2026, 9, 13, 12, 34, 56, 0, time.UTC) }
-	if err := p.Boot(PlayerConfig{Index: files.Index, HDPack: os.Getenv("TAOOT_HD_PACK")}); err != nil {
+	if err := p.Boot(PlayerConfig{Index: files.Index, HDPack: os.Getenv("TAOOT_HD_PACK"), HDSync: true}); err != nil {
 		t.Fatal(err)
 	}
 	audioEnds := map[uint64]float64{}
@@ -250,6 +250,17 @@ func TestNativePlayerIntegration(t *testing.T) {
 	data := bridge.written["save:native player test"]
 	if len(data) == 0 || playerEvent(events, "saved") == nil || s.Clock.Frozen() {
 		t.Fatal("save did not write or resume game")
+	}
+	// A quick save asks nothing and joins the rotating checkpoints.
+	events = nil
+	p.Command(PlayerCommand{Action: "quicksave"})
+	collect()
+	quick := playerEvent(events, "saved")
+	if quick == nil || quick["quick"] != true || playerEvent(events, "dialog") != nil || s.Clock.Frozen() {
+		t.Fatal("quick save asked for a name, did not finish or left the game frozen", quick)
+	}
+	if saved := bridge.written["autosave:Quick save bedsit1 2026-09-13-12-34-56"]; !bytes.Equal(saved, bridge.written["save:native player test"]) {
+		t.Fatal("quick save differs from a manual save of the same moment")
 	}
 	before := s.CurrentViewName()
 	p.Command(PlayerCommand{Action: "key", Key: "rightarrow"})

@@ -190,8 +190,70 @@ func (v *SetViewer) startAnimation(frames []*CachedFrame, pace float64, done fun
 	v.lastTick = 0
 	return nil
 }
+
+// peekStand is standFrame for another standpoint without decoding anything:
+// ready is false while its rings are still being decoded.
+func (v *SetViewer) peekStand(sceneIdx, viewIdx int) (frame *CachedFrame, ready bool) {
+	if sceneIdx < 0 || sceneIdx >= len(v.Set.Scenes) {
+		return nil, true
+	}
+	scene := &v.Set.Scenes[sceneIdx]
+	fi := standFrameInfo(scene, viewIdx)
+	if fi == nil {
+		return nil, true
+	}
+	images, ok := v.Rings.Peek(&scene.Turns[RightTurns])
+	if !ok {
+		return nil, false
+	}
+	own := images[fi.FrameContainerLoc]
+	if v.Session.PictureMode == "soft" && own != nil {
+		return own, true
+	}
+	reg := &scene.Turns[LeftTurns]
+	for _, f := range reg.Frames {
+		if f.MotionInfo == 2 && f.FramePairID == fi.FramePairID {
+			twins, ok := v.Rings.Peek(reg)
+			if !ok {
+				return nil, false
+			}
+			if hi := twins[f.FrameContainerLoc]; hi != nil {
+				return hi, true
+			}
+			break
+		}
+	}
+	return own, true
+}
+
+// warmArt keeps replacement artwork ahead of a walk or turn: first the
+// picture it stops on, then the next few movement frames. At most one new
+// picture is hashed per tick.
+func (v *SetViewer) warmArt() {
+	if v.Art == nil {
+		return
+	}
+	v.Art.Moving()
+	hashed := v.Art.hashed
+	if v.landWanted {
+		frame, ready := v.peekStand(v.landScene, v.landView)
+		if !ready {
+			return
+		}
+		if frame != nil && !v.Art.WarmLanding(frame, v.palette) {
+			return
+		}
+		v.landWanted = false
+	}
+	for i := v.animationPos; i < len(v.animation) && i < v.animationPos+4 && v.Art.hashed == hashed; i++ {
+		if !v.Art.WarmMotion(v.animation[i], v.palette) {
+			return
+		}
+	}
+}
 func (v *SetViewer) AdvanceRoom(now float64) (*CachedFrame, error) {
 	if v.animation != nil {
+		v.warmArt()
 		if v.lastTick == 0 {
 			v.lastTick = now - v.animationPace
 		}

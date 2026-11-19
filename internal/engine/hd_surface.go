@@ -1,6 +1,7 @@
 package engine
 
 import (
+	"hash/maphash"
 	"image"
 	"math"
 
@@ -18,6 +19,23 @@ type HDSurface struct {
 	Hits           uint64
 	FrameStartHits uint64
 	spriteKeys     map[spriteKeyID]string
+	// pixelKeys remembers the artwork key of pictures already hashed, found
+	// again by a cheap fingerprint instead of SHA-256 on every repaint.
+	pixelKeys map[pixelKeyID]string
+	seed      maphash.Seed
+	// While the room is moving, pictures are only taken from the cache: one
+	// that is not decoded yet would arrive after its frame has gone.
+	moving, hashed    int
+	late, shown, slow int
+	motionOff         bool
+	frameKeys         map[spriteKeyID]string
+	keep              string
+	keepW, keepH      int
+	convert           []byte
+}
+type pixelKeyID struct {
+	w, h int
+	sum  uint64
 }
 
 // A sprite's artwork key depends only on its decoded pixels and the palette
@@ -29,7 +47,105 @@ type spriteKeyID struct {
 }
 
 func NewHDSurface(pack *hdpack.Reader, w, h int) *HDSurface {
-	return &HDSurface{Pack: pack, Width: w, Height: h, Pixels: make([]byte, w*h*4*hdpack.Scale*hdpack.Scale)}
+	return &HDSurface{Pack: pack, Width: w, Height: h, Pixels: make([]byte, w*h*4*hdpack.Scale*hdpack.Scale), seed: maphash.MakeSeed()}
+}
+
+// pixelKey is hdpack.Key, remembered per distinct picture.
+func (s *HDSurface) pixelKey(src []byte, w, h int) string {
+	id := pixelKeyID{w, h, maphash.Bytes(s.seed, src)}
+	if key, ok := s.pixelKeys[id]; ok {
+		return key
+	}
+	if s.pixelKeys == nil || len(s.pixelKeys) >= 1024 {
+		s.pixelKeys = map[pixelKeyID]string{}
+	}
+	key := hdpack.Key(w, h, src)
+	s.hashed++
+	s.pixelKeys[id] = key
+	return key
+}
+
+// Service adopts artwork decoded in the background. It reports whether the
+// screen should repaint to show it.
+func (s *HDSurface) Service() bool {
+	if s.moving > 0 {
+		if s.moving--; s.moving == 0 {
+			s.endMovement()
+		}
+	}
+	return s.Pack.Collect()
+}
+
+// Moving is called by the room on every tick of a walk or turn.
+func (s *HDSurface) Moving() { s.moving = 2 }
+
+// A device that cannot decode movement artwork as fast as it is shown would
+// flicker between original and replacement frames. After two movements that
+// were mostly late, movement keeps the original artwork for this session.
+func (s *HDSurface) endMovement() {
+	if s.late > s.shown {
+		if s.slow++; s.slow >= 2 {
+			s.motionOff = true
+		}
+	} else if s.shown > 0 {
+		s.slow = 0
+	}
+	s.late, s.shown = 0, 0
+}
+func (s *HDSurface) frameKey(f *CachedFrame, palette []byte) (string, bool) {
+	if f == nil || f.Width < 1 || f.Height < 1 || f.Width > 512 || f.Height > 384 || len(f.Pixels) < f.Width*f.Height || !s.Pack.HasSize(f.Width, f.Height) {
+		return "", false
+	}
+	id := spriteKeyID{palette: f.ID ^ maphash.Bytes(s.seed, palette)}
+	if key, ok := s.frameKeys[id]; ok {
+		return key, true
+	}
+	n := f.Width * f.Height * 4
+	if len(s.convert) < n {
+		s.convert = make([]byte, n)
+	}
+	if err := df.IndexedRGBA(f.Pixels[:f.Width*f.Height], palette, s.convert[:n]); err != nil {
+		return "", false
+	}
+	if s.frameKeys == nil || len(s.frameKeys) >= 1024 {
+		s.frameKeys = map[spriteKeyID]string{}
+	}
+	key := s.pixelKey(s.convert[:n], f.Width, f.Height)
+	s.frameKeys[id] = key
+	return key, true
+}
+
+// WarmLanding starts decoding the picture a walk or turn will stop on, and
+// keeps it cached until it is shown. It reports false while every worker is
+// busy, so the caller asks again.
+func (s *HDSurface) WarmLanding(f *CachedFrame, palette []byte) bool {
+	key, ok := s.frameKey(f, palette)
+	if !ok {
+		return true
+	}
+	_, state := s.Pack.Lookup(key, f.Width, f.Height, true)
+	if state == hdpack.Busy {
+		return false
+	}
+	s.keep, s.keepW, s.keepH = "", 0, 0
+	if state == hdpack.Ready || state == hdpack.Pending {
+		s.keep, s.keepW, s.keepH = key, f.Width, f.Height
+	}
+	return true
+}
+
+// WarmMotion starts decoding an upcoming movement frame. It reports whether
+// asking for later frames is worthwhile.
+func (s *HDSurface) WarmMotion(f *CachedFrame, palette []byte) bool {
+	if s.motionOff {
+		return false
+	}
+	key, ok := s.frameKey(f, palette)
+	if !ok {
+		return true
+	}
+	_, state := s.Pack.Lookup(key, f.Width, f.Height, true)
+	return state != hdpack.Busy
 }
 
 // fillOpaqueBlack writes 0,0,0,255 pixels by doubling a seeded prefix.
@@ -46,14 +162,25 @@ func (s *HDSurface) Clear() {
 	fillOpaqueBlack(s.Pixels)
 	s.Valid = true
 	s.FrameStartHits = s.Hits
+	if s.keep != "" {
+		// Later requests must not push the landing picture out of the cache.
+		s.Pack.Lookup(s.keep, s.keepW, s.keepH, false)
+	}
 }
 func (s *HDSurface) lookup(src []byte, w, h int) *image.NRGBA {
 	if w < 1 || h < 1 || w > 512 || h > 384 || len(src) < w*h*4 || !s.Pack.HasSize(w, h) {
 		return nil
 	}
-	img := s.Pack.Get(hdpack.Key(w, h, src[:w*h*4]), w, h)
+	img, state := s.Pack.Lookup(s.pixelKey(src[:w*h*4], w, h), w, h, s.moving == 0)
 	if img != nil {
 		s.Hits++
+	}
+	if s.moving > 0 && w == s.Width && h == s.Height {
+		if img != nil {
+			s.shown++
+		} else if state == hdpack.Busy || state == hdpack.Pending {
+			s.late++
+		}
 	}
 	return img
 }

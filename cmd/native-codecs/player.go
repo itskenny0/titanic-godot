@@ -245,6 +245,8 @@ func taoot_player_call(handle C.uintptr_t, method, args *C.char, out *C.TaootRes
 		value = p.Overlay()
 	case "timings":
 		value = p.Timings()
+	case "achievements":
+		value = engine.AchievementCatalog()
 	case "test":
 		var c engine.PlayerTestCommand
 		err = json.Unmarshal(raw, &c)

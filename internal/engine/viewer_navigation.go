@@ -199,6 +199,7 @@ func (v *SetViewer) Turn(dir int, pace ...float64) error {
 		p = pace[0]
 	}
 	departure := v.departScene("turn-closescene")
+	v.landScene, v.landView, v.landWanted = v.SceneIdx, target, true
 	return v.startAnimation(frames, p, func() error {
 		v.ViewIdx = target
 		if err := v.ShowView(); err != nil {
@@ -298,6 +299,10 @@ func (v *SetViewer) Walk(pace ...float64) error {
 		}
 	}
 	departure := v.departScene("walk-closescene")
+	v.landScene, v.landView, v.landWanted = v.SceneIdx, v.ViewIdx, true
+	if arrival != nil {
+		v.landScene, v.landView = arrival.SceneIdx, arrival.ViewIdx
+	}
 	p := v.PlayerPace()
 	if len(pace) > 0 {
 		p = pace[0]

@@ -23,9 +23,14 @@ type PlayerConfig struct {
 	DisableAutosave bool              `json:"disable_autosave"`
 	VectorUI        string            `json:"vector_ui"`
 	HDPack          string            `json:"hd_pack"`
+	HDSync          bool              `json:"hd_sync"`
 	Index           map[string]string `json:"index"`
 	Save            string            `json:"save"`
 	Testing         bool              `json:"testing"`
+	// Achievements already unlocked on this device; they are not announced again.
+	Achievements []string `json:"achievements"`
+	// DisableAchievements plays without tracking or announcing any.
+	DisableAchievements bool `json:"disable_achievements"`
 }
 type PlayerCommand struct {
 	Action             string `json:"action"`
@@ -62,6 +67,8 @@ type Player struct {
 	profileTick, profileRender                           time.Duration
 	autosaveDisabled, checkpointArmed, checkpointPending bool
 	checkpointQuiet                                      float64
+	achievements                                         *AchievementTracker
+	achievementPoll                                      int
 }
 
 func NewPlayer(bridge PlayerBridge) *Player {
@@ -148,6 +155,9 @@ func (p *Player) Boot(config PlayerConfig) error {
 			p.emit("log", map[string]any{"text": fmt.Sprintf("HD pack unavailable: %v; using original artwork", err)})
 		} else {
 			pack.SVG = renderSVG
+			// Play decodes artwork off the game thread and shows the original
+			// until it is ready. Scripted test runs keep the immediate result.
+			pack.Async = !config.Testing && !config.HDSync
 			p.Host.Screen().HD = NewHDSurface(pack, ScreenWidth, ScreenHeight)
 			p.emit("log", map[string]any{"text": fmt.Sprintf("HD pack: %d images, 2x display, 24 MiB image cache", len(pack.Manifest.Images))})
 		}
@@ -186,7 +196,22 @@ func (p *Player) Boot(config PlayerConfig) error {
 	s.OnSaveGame = func(data []byte, _ string) error { p.fail(p.save(data)); return nil }
 	s.OnLoadGame = func(string) ([]byte, error) { data, err := p.chooseSave(); p.fail(err); return data, nil }
 	p.Host.Director.OnCursor = func(name string) { p.emit("cursor", map[string]any{"name": name}) }
-	p.Host.Director.Movies.OnStarted = p.checkpointMovieStarted
+	p.Host.Director.Movies.OnStarted = func(name string) {
+		p.checkpointMovieStarted(name)
+		p.achievements.Event(p.Host.Session, "movie", name)
+	}
+	tracker, err := NewAchievementTracker(config.Achievements, func(a Achievement) {
+		p.emit("achievement", map[string]any{"id": a.ID, "title": a.Title, "description": a.Description, "category": a.Category})
+	})
+	if err != nil {
+		p.emit("log", map[string]any{"text": "achievements unavailable: " + err.Error()})
+	}
+	if tracker != nil {
+		tracker.Off = config.DisableAchievements
+	}
+	p.achievements = tracker
+	s.OnSpeak = func(id string) { p.achievements.Event(s, "speak", id) }
+	s.OnVoice = func(name string) { p.achievements.Event(s, "voice", name) }
 	p.Host.Director.Movies.OnCutsceneFinished = p.checkpointMovieFinished
 	s.Track("coldBoot", false, func(*Task) error {
 		p.Host.Preload()
@@ -239,6 +264,9 @@ func (p *Player) Tick(dt float64) error {
 	}
 	began := time.Now()
 	p.now += dt
+	if screen := p.Host.Screen(); screen.HD != nil && screen.HD.Service() {
+		screen.Invalidate()
+	}
 	if _, err := p.Host.Director.Tick(p.now); err != nil {
 		return err
 	}
@@ -248,6 +276,11 @@ func (p *Player) Tick(dt float64) error {
 		return err
 	}
 	p.serviceCheckpoint(dt)
+	// Room, item and story state change slowly; four checks a second suffice.
+	if p.achievementPoll++; p.achievementPoll >= 15 && p.Ready {
+		p.achievementPoll = 0
+		p.achievements.Poll(p.Host.Session)
+	}
 	if p.profiling {
 		p.profileTick += renderStart.Sub(began)
 		p.profileRender += time.Since(renderStart)
@@ -472,6 +505,34 @@ func (p *Player) menuCommand(c PlayerCommand) error {
 				return err
 			}
 			return p.save(data)
+		})
+	case "achievements":
+		// The settings toggle applies at once; turning it back on catches up
+		// on whatever the current game has already reached.
+		if p.achievements != nil {
+			p.achievements.Off = !c.On
+		}
+		return nil
+	case "quicksave":
+		// One keypress, no naming dialog. Quick saves join the rotating
+		// checkpoints, so they can never replace a save the player named.
+		if !p.canSaveGame() {
+			return fmt.Errorf("finish the conversation or animation, then save while exploring")
+		}
+		return p.frozen(func() error {
+			data, err := s.SnapshotSave()
+			if err != nil {
+				return err
+			}
+			if _, err := save.Parse(data); err != nil {
+				return err
+			}
+			label := "Quick save " + s.CurrentSetFile + " " + p.Now().UTC().Format("2006-01-02-15-04-05")
+			if err := p.write("autosave:"+label, data); err != nil {
+				return err
+			}
+			p.emit("saved", map[string]any{"name": label, "quick": true})
+			return nil
 		})
 	case "load", "import":
 		return p.frozen(func() error {

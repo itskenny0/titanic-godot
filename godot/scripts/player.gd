@@ -4,6 +4,7 @@ const GameFiles = preload("res://scripts/game_files.gd")
 const UIStyle = preload("res://scripts/ui_style.gd")
 const AdaptiveLayout = preload("res://scripts/adaptive_layout.gd")
 const SaveStore = preload("res://scripts/save_store.gd")
+const AchievementStore = preload("res://scripts/achievement_store.gd")
 var runtime
 var files = GameFiles.new()
 var saves = SaveStore.new()
@@ -13,6 +14,9 @@ var hd_pack_path = ""
 var artwork_choice_dialog = null
 var artwork_choice_first = false
 var artwork_choice_save = ""
+var achievement_choice_dialog = null
+var achievement_choice_first = false
+var achievement_choice_save = ""
 var adaptive = AdaptiveLayout.new()
 var adaptive_panel_style = UIStyle.plate(Color("1b202140"),Color("645b4660"),6)
 var adaptive_button_style = UIStyle.plate(Color("24292960"),Color("4f504580"),4)
@@ -56,6 +60,10 @@ var modal
 var menu
 var status
 var checkpoint_toast = null
+var achievements = AchievementStore.new()
+var achievement_catalog = []
+var achievement_queue = []
+var achievement_toast = null
 var checkpoint_toast_serial = 0
 var current_dialog = -1
 var queued_dialogs = []
@@ -98,7 +106,7 @@ var remap_deadline = 0
 const CONTROLLER_ACTIONS = [
 	["confirm", "Confirm / click"], ["back", "Back / skip"], ["menu", "Voyage menu"],
 	["door", "Door / Space"], ["keyboard", "Keyboard"], ["mouse", "Pointer click"],
-	["previous", "Previous target"], ["next", "Next target"], ["precision", "Slow pointer"],
+	["previous", "Previous target"], ["next", "Next target"], ["precision", "Slow pointer"], ["hints", "Show hotspots"],
 	["up", "Up"], ["down", "Down"], ["left", "Left"], ["right", "Right"]]
 # Hand-drawn stand-ins for the original's cursor set, relative to the hot spot:
 # a pointing hand over anything that responds, an open hand and fist for
@@ -147,6 +155,17 @@ var patch_buttons = []
 var patch_import_copy = ""
 
 var android_selected_disc = 0
+var backdrop = null
+var importing_save = false
+var hotspots = []
+var hotspot_text = ""
+var hotspot_poll = 0.0
+var hotspot_phase = 0.0
+var hotspot_mouse_held = false
+var surface_cache = ""
+var dialogue_text = ""
+var dialogue_parsed = {}
+const HOTSPOT_TOOLBAR = ["prop:life", "prop:watch", "prop:bag", "prop:map", "prop:navarrow", "prop:light"]
 var perf_elapsed = 0.0
 var perf_frames = 0
 var perf_tick_us = 0
@@ -158,11 +177,18 @@ func _ready():
 	theme = UIStyle.create_theme()
 	files.iso_indexer = self
 	Engine.target_fps = 30 if not OS.get_environment("RETANIC_ARCH").empty() else 60
+	var unattended = false
+	for arg in OS.get_cmdline_args():
+		if arg in ["--integration-test", "--smoke-test", "--ui-test"]:
+			unattended = true
 	OS.low_processor_usage_mode = true
 	get_tree().set_auto_accept_quit(false)
 	get_tree().set_quit_on_go_back(false)
 	get_tree().connect("files_dropped", self, "files_dropped")
 	config.load("user://settings.cfg")
+	achievements.load_store()
+	if not unattended:
+		apply_display_settings()
 	load_controller_bindings()
 	Input.set_mouse_mode(Input.MOUSE_MODE_HIDDEN)
 	pointer_visible = Input.get_connected_joypads().empty() and OS.get_environment("RETANIC_ARCH").empty()
@@ -196,6 +222,12 @@ func _ready():
 	layout_switch.focus_mode = Control.FOCUS_NONE
 	layout_switch.hide()
 	add_child(layout_switch)
+	# Menus sit on a dimmed picture, so their text never competes with it.
+	backdrop = ColorRect.new()
+	backdrop.color = Color(0, 0, 0, 0.5)
+	backdrop.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	backdrop.hide()
+	add_child(backdrop)
 	var manifest_file = File.new()
 	if manifest_file.open("res://patches/manifest.json", File.READ) == OK:
 		patch_manifest = JSON.parse(manifest_file.get_as_text()).result
@@ -312,6 +344,10 @@ func start_runtime(save_path = ""):
 	runtime = null
 	ready = false
 	pending_restart = null
+	importing_save = false
+	hotspots = []
+	hotspot_text = ""
+	surface_cache = ""
 	queued_dialogs.clear()
 	current_dialog = -1
 	close_modal()
@@ -329,9 +365,12 @@ func start_runtime(save_path = ""):
 	if not automated and needs_dialogue_choice():
 		show_dialogue_options(save_path, true)
 		return
+	if not automated and needs_achievement_choice():
+		show_achievement_choice(save_path, true)
+		return
 	var error = ""
 	runtime.execute("profile", JSON.print({"on": OS.is_debug_build()}))
-	error = runtime.execute("boot", JSON.print({"index": game_index, "save": save_path, "hd_pack": active_hd_pack(), "vector_ui": "res://artwork/ui" if config.get_value("graphics", "redrawn_ui", true) else "", "timed_subtitles": config.get_value("dialogue", "timed_subtitles", false), "disable_autosave": not config.get_value("saves", "autosave_enabled", true), "testing": "--integration-test" in OS.get_cmdline_args()}))
+	error = runtime.execute("boot", JSON.print({"index": game_index, "save": save_path, "hd_pack": active_hd_pack(), "vector_ui": "res://artwork/ui" if config.get_value("graphics", "redrawn_ui", true) else "", "timed_subtitles": config.get_value("dialogue", "timed_subtitles", false), "disable_autosave": not config.get_value("saves", "autosave_enabled", true), "testing": "--integration-test" in OS.get_cmdline_args(), "achievements": achievements.ids(), "disable_achievements": not achievements_enabled()}))
 	if not error.empty():
 		show_note(error)
 		return
@@ -422,6 +461,121 @@ func hide_checkpoint_toast(serial):
 		checkpoint_toast.queue_free()
 	checkpoint_toast = null
 
+# Unlocks queue up: a milestone often arrives with the event that earned it.
+func show_next_achievement():
+	if achievement_queue.empty():
+		achievement_toast = null
+		return
+	var event = achievement_queue.pop_front()
+	var toast = PanelContainer.new()
+	toast.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	toast.add_stylebox_override("panel", UIStyle.plate(Color(0.07, 0.07, 0.06, 0.88), Color("d0b983"), 6))
+	var box = VBoxContainer.new()
+	box.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	box.add_constant_override("separation", 2)
+	toast.add_child(box)
+	var heading = Label.new()
+	heading.text = "Achievement unlocked"
+	heading.add_font_override("font", get_font_for("11px Arial"))
+	heading.add_color_override("font_color", Color("d0b983"))
+	box.add_child(heading)
+	var title = Label.new()
+	title.name = "Title"
+	title.text = event.title
+	title.add_font_override("font", get_font_for("15px Arial"))
+	box.add_child(title)
+	var about = Label.new()
+	about.text = event.description
+	about.autowrap = true
+	about.rect_min_size.x = 300
+	about.add_font_override("font", get_font_for("11px Arial"))
+	about.add_color_override("font_color", Color("b8ad94"))
+	box.add_child(about)
+	add_child(toast)
+	toast.rect_size = Vector2(320, 0)
+	toast.rect_position = Vector2((layout_size.x - 320) / 2, layout_size.y - 96)
+	achievement_toast = toast
+	get_tree().create_timer(4.0 if achievement_queue.empty() else 2.5).connect("timeout", self, "finish_achievement_toast", [toast])
+
+func finish_achievement_toast(toast):
+	if is_instance_valid(toast):
+		toast.queue_free()
+	if toast == achievement_toast:
+		show_next_achievement()
+
+func load_achievement_catalog():
+	if achievement_catalog.empty() and runtime != null:
+		var list = JSON.parse(runtime.query("achievements")).result
+		if list is Array:
+			achievement_catalog = list
+	return achievement_catalog
+
+func show_achievements():
+	var catalog = load_achievement_catalog()
+	var box = panel("Achievements  %d / %d" % [achievements.unlocked_count(catalog), catalog.size()])
+	var scroll = ScrollContainer.new()
+	scroll.rect_min_size = Vector2(390, 228)
+	scroll.follow_focus = true
+	scroll.scroll_horizontal_enabled = false
+	box.add_child(scroll)
+	var list = VBoxContainer.new()
+	list.size_flags_horizontal = SIZE_EXPAND_FILL
+	scroll.add_child(list)
+	var first = null
+	for a in achievements.sorted(catalog):
+		var row = achievement_row(list, a)
+		if first == null:
+			first = row
+	var back = button(box, "Back", "controller_settings_back")
+	if first != null:
+		first.grab_focus()
+	else:
+		back.grab_focus()
+
+# Rows are buttons so a controller can scroll through them; pressing one does nothing.
+func achievement_row(list, a):
+	var earned = achievements.has(a.id)
+	var secret = a.get("hidden", false) and not earned
+	var row = Button.new()
+	row.rect_min_size = Vector2(370, 40)
+	row.focus_mode = Control.FOCUS_ALL
+	row.set_meta("achievement", a.id)
+	list.add_child(row)
+	var title = Label.new()
+	title.name = "Title"
+	title.text = ("Secret achievement" if secret else a.title)
+	title.clip_text = true
+	title.rect_position = Vector2(10, 3)
+	title.rect_size = Vector2(250, 18)
+	title.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	title.add_font_override("font", get_font_for("13px Arial"))
+	title.add_color_override("font_color", Color("e9d9a6") if earned else Color("8f8a7c"))
+	row.add_child(title)
+	var about = Label.new()
+	about.name = "About"
+	about.text = "Keep playing to discover it." if secret else a.description
+	about.clip_text = true
+	about.rect_position = Vector2(10, 20)
+	about.rect_size = Vector2(352, 16)
+	about.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	about.add_font_override("font", get_font_for("11px Arial"))
+	about.add_color_override("font_color", Color("b8ad94") if earned else Color("6f6b60"))
+	row.add_child(about)
+	row.hint_tooltip = about.text
+	if earned:
+		var when = Label.new()
+		when.name = "When"
+		when.text = saves.describe_time(achievements.unlocked[a.id])
+		when.rect_position = Vector2(256, 3)
+		when.rect_size = Vector2(106, 18)
+		when.set("align", 2)
+		when.set("horizontal_alignment", 2)
+		when.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		when.add_font_override("font", get_font_for("11px Arial"))
+		when.add_color_override("font_color", Color("a39a84"))
+		row.add_child(when)
+	return row
+
 func toggle_autosave():
 	var enabled = not config.get_value("saves", "autosave_enabled", true)
 	config.set_value("saves", "autosave_enabled", enabled)
@@ -494,10 +648,19 @@ func bridge_call(method, args_json, bytes):
 		"write":
 			if args.path.begins_with("autosave:"):
 				var saved = saves.write_autosave(args.path.substr(9), bytes)
+				if saved and has_frame:
+					saves.write_thumbnail(saves.last_written, frame_image)
 				return JSON.print({"ok": true} if saved else {"error": saves.error})
 			if not args.path.begins_with("save:"):
 				return JSON.print({"error": "Invalid save destination"})
 			var ok = saves.write(args.path.substr(5), bytes)
+			if ok:
+				# An imported file was saved somewhere else: the picture on
+				# screen is not its picture, and an older one would mislead.
+				if importing_save or not has_frame:
+					Directory.new().remove(saves.thumbnail_path(saves.last_written))
+				else:
+					saves.write_thumbnail(saves.last_written, frame_image)
 			return JSON.print({"error": saves.error} if not ok else {"ok": true})
 		"measure":
 			return JSON.print(get_font_for(args.font).get_string_size(args.text).x)
@@ -737,6 +900,8 @@ func display_cursor_name():
 	return pointer_name
 
 func draw_cursor():
+	if modal == null and not hotspots.empty():
+		draw_hotspots()
 	if touch_enabled and modal != null:
 		return
 	if modal == null and controller_selection >= 0 and controller_selection < controller_surface.targets.size():
@@ -809,6 +974,7 @@ func _process(delta):
 	poll_patches(delta)
 	process_touch(delta)
 	process_controller(delta)
+	process_hotspots(delta)
 	refresh_cursor()
 	if runtime != null:
 		var wide_requested = wide_dialogue_enabled() and adaptive_widescreen()
@@ -835,15 +1001,18 @@ func _process(delta):
 			frame_image.create_from_data(512 * scale, 384 * scale, false, Image.FORMAT_RGBA8, bytes)
 			if resized:
 				frame_texture.create_from_image(frame_image, 0)
+				apply_picture_filter()
 				has_frame = true
 			else:
 				frame_texture.set_data(frame_image)
 			overlays = JSON.parse(runtime.query("overlay")).result
 			update()
 		var present_finished = OS.get_ticks_usec()
-		var events = JSON.parse(runtime.query("events")).result
-		for event in events:
-			handle_event(event)
+		# Most frames carry no events; skip the parser for those.
+		var events_text = runtime.query("events")
+		if events_text != "[]":
+			for event in JSON.parse(events_text).result:
+				handle_event(event)
 		if pending_restart != null:
 			start_runtime(pending_restart)
 		sync_dialogue_layout()
@@ -874,7 +1043,7 @@ func _process(delta):
 
 func refresh_cursor():
 	var name = display_cursor_name()
-	cursor_layer.visible = not ((touch_enabled and modal != null) or (name == "none" and controller_selection < 0))
+	cursor_layer.visible = not ((touch_enabled and modal != null) or (name == "none" and controller_selection < 0 and hotspots.empty()))
 	var origin = Vector2.ZERO if adaptive_active or dialogue_active else game_origin
 	var origin_changed = cursor_layer.position != origin
 	# Godot 3 invalidates the canvas even when the assigned position is equal.
@@ -929,8 +1098,14 @@ func handle_event(event):
 		"autosave_failed":
 			show_checkpoint_toast("Autosave failed: " + event.text)
 			print("AUTOSAVE ERROR: ", event.text)
+		"achievement":
+			if achievements_enabled() and achievements.unlock(event.id):
+				achievement_queue.append(event)
+				if not is_instance_valid(achievement_toast):
+					show_next_achievement()
 		"saved":
 			print("Saved: ", event.name)
+			show_checkpoint_toast("Quick save stored" if event.get("quick", false) else "Game saved")
 
 func play_sound(event):
 	var bytes = runtime.buffer("audio", JSON.print({"id": event.id}))
@@ -974,6 +1149,7 @@ func update_audio_pause():
 
 func clear_interrupted_input():
 	pointer_pressed = false
+	hotspot_mouse_held = false
 	controller_held.clear()
 	controller_triggers = [false, false]
 	controller_neutral_required = true
@@ -1084,7 +1260,13 @@ func _input(event):
 			cursor_layer.update()
 	if event is InputEventKey and event.pressed and not event.echo:
 		if event.scancode == KEY_F11 or (event.scancode == KEY_F and event.control and event.meta):
-			OS.window_fullscreen = not OS.window_fullscreen
+			set_fullscreen(not OS.window_fullscreen)
+			get_tree().set_input_as_handled()
+		elif modal == null and (event.control or event.meta) and event.shift and event.scancode in [KEY_S, KEY_O]:
+			if event.scancode == KEY_S:
+				send({"action": "quicksave"})
+			else:
+				quick_load()
 			get_tree().set_input_as_handled()
 		elif modal == null and (event.control or event.meta) and event.scancode in [KEY_S, KEY_O]:
 			send({"action": "save" if event.scancode == KEY_S else "load"})
@@ -1113,6 +1295,10 @@ func _unhandled_input(event):
 			return
 		pointer_pressed = event.pressed
 		send({"action": "pointer", "kind": "press" if event.pressed else "release", "x": pointer.x, "y": pointer.y, "shift": event.shift, "radius": interaction_radius(event)})
+	elif event is InputEventMouseButton and event.button_index == BUTTON_RIGHT:
+		# The original never used the second button: hold it to see what
+		# in the room responds to a click.
+		hotspot_mouse_held = event.pressed
 	elif event is InputEventKey and event.pressed:
 		if event.scancode == KEY_F12:
 			show_keyboard(null)
@@ -1214,11 +1400,19 @@ func process_controller(delta):
 func refresh_controller_surface(include_room = false):
 	if runtime == null or runtime_failed or modal != null:
 		return
-	var surface = JSON.parse(runtime.query("targets" if include_room else "controls")).result
+	# Polled ten times a second; the answer is almost always the same text.
+	var text = runtime.query("targets" if include_room else "controls")
+	var cache = text + ("A" if adaptive_available else "a") + ("V" if adaptive_active else "v")
+	if cache == surface_cache:
+		return
+	var surface = JSON.parse(text).result
 	if surface is Dictionary:
 		set_controller_surface(surface)
+		surface_cache = cache
 
 func set_controller_surface(surface):
+	# A surface set from anywhere else must not be mistaken for the engine's.
+	surface_cache = ""
 	if adaptive_available and surface.context == "room" and not surface.targets.empty():
 		surface.targets = surface.targets.duplicate()
 		surface.targets.append({"id":"ui:layout","aim_x":-1,"aim_y":-1,"w":32,"h":26})
@@ -1368,6 +1562,11 @@ func controller_back():
 		if not dialogue_choice_first:
 			finish_dialogue_options()
 		return
+	if is_instance_valid(achievement_choice_dialog) and modal == achievement_choice_dialog:
+		if not achievement_choice_first:
+			achievement_choice_dialog = null
+			show_settings()
+		return
 	if is_instance_valid(artwork_choice_dialog) and modal == artwork_choice_dialog:
 		if not artwork_choice_first:
 			artwork_choice_dialog = null
@@ -1418,7 +1617,7 @@ func default_controller_bindings():
 		"menu": ["b:" + str(JOY_START), "k:" + str(KEY_F10)],
 		"door": ["b:" + str(JOY_BUTTON_2), "k:" + str(KEY_SPACE)],
 		"keyboard": ["b:" + str(JOY_BUTTON_3), "k:" + str(KEY_F12)],
-		"mouse": ["b:" + str(JOY_R3)], "precision": ["b:" + str(JOY_L)],
+		"mouse": ["b:" + str(JOY_R3)], "precision": ["b:" + str(JOY_L)], "hints": ["b:" + str(JOY_L3), "k:" + str(KEY_HOME)],
 		"previous": ["t:0", "k:" + str(KEY_PAGEUP)], "next": ["t:1", "k:" + str(KEY_PAGEDOWN)],
 		"up": ["b:" + str(JOY_DPAD_UP), "k:" + str(KEY_UP)],
 		"down": ["b:" + str(JOY_DPAD_DOWN), "k:" + str(KEY_DOWN)],
@@ -1480,7 +1679,8 @@ func controller_binding_input(event):
 		var navigation = event.scancode in [KEY_UP, KEY_DOWN, KEY_LEFT, KEY_RIGHT]
 		var confirmation = event.scancode in [KEY_ENTER, KEY_KP_ENTER] and modal == null and controller_selection >= 0
 		var custom = config.get_value(controller_config_section(), "keyboard_remapped", false)
-		if not portable and not navigation and not confirmation and not custom:
+		var hinting = token in controller_bindings.get("hints", [])
+		if not portable and not navigation and not confirmation and not custom and not hinting:
 			return false
 	for action in controller_bindings:
 		if token in controller_bindings[action]:
@@ -1548,7 +1748,7 @@ func show_first_layout():
 	var box = panel("Choose your layout")
 	add_layout_preview(box)
 	var hint = Label.new()
-	hint.text = "Side panels work on wide screens. Held items and special screens use Classic. Change your choice later in Menu > Controls / display."
+	hint.text = "Side panels work on wide screens. Held items and special screens use Classic. Change your choice later in Menu > Settings > Controls / display."
 	hint.autowrap = true
 	hint.rect_min_size = Vector2(390,64)
 	hint.add_font_override("font",get_font_for("13px Arial"))
@@ -1586,7 +1786,7 @@ func show_control_options():
 		bindings.grab_focus()
 	button(row,"Touch controls","show_touch_help")
 	button(box,"Dialogue / subtitles","show_dialogue_options")
-	button(box,"Back","controller_settings_back")
+	button(box,"Back","show_settings")
 
 func toggle_adaptive_size():
 	config.set_value("graphics","adaptive_roomy",not adaptive_roomy())
@@ -1822,7 +2022,7 @@ func controller_settings_back():
 
 func show_controller_help():
 	var box = panel("Controller controls")
-	text_scroller(box, "Left stick / D-pad: move, or select dialogue replies and menus.\nA / R1: confirm or click. Hold to drag.\nB: back or skip speech / movies.\nL2 / R2: previous / next clickable target.\nRight stick: mouse pointer. Hold L1 for precision.\nX: door / Space. Y: keyboard.\nStart: voyage menu.\n\nUse the D-pad and A on the keyboard to enter save names or solve text puzzles.", 230)
+	text_scroller(box, "Left stick / D-pad: move, or select dialogue replies and menus.\nA / R1: confirm or click. Hold to drag.\nB: back or skip speech / movies.\nL2 / R2: previous / next clickable target.\nRight stick: mouse pointer. Hold L1 for precision.\nX: door / Space. Y: keyboard.\nL3 (press the left stick): hold to mark what you can click.\nStart: voyage menu.\n\nUse the D-pad and A on the keyboard to enter save names or solve text puzzles.", 230)
 	button(box, "Back", "show_controller_settings").grab_focus()
 
 func panel(title):
@@ -1854,6 +2054,10 @@ func panel(title):
 	label.add_font_override("font", get_font_for("16px Arial"))
 	box.add_child(label)
 	modal = p
+	hotspot_mouse_held = false
+	if is_instance_valid(backdrop):
+		backdrop.rect_size = layout_size
+		backdrop.visible = has_frame
 	controller_selection = -1
 	cursor_layer.update()
 	touch_strip.hide()
@@ -1881,6 +2085,8 @@ func close_modal():
 	if is_instance_valid(modal):
 		modal.queue_free()
 	modal = null
+	if is_instance_valid(backdrop):
+		backdrop.hide()
 	if touch_strip != null:
 		touch_strip.visible = touch_enabled
 
@@ -1908,14 +2114,171 @@ func show_menu():
 	var box = panel("Titanic — Voyage menu")
 	menu = modal
 	button(box, "Resume", "resume_game").grab_focus()
+	button(box, "Quick save", "menu_command", ["quicksave"])
 	button(box, "Save game", "menu_command", ["save"])
 	button(box, "Load game", "menu_command", ["load"])
+	if achievements_enabled():
+		button(box, "Achievements", "show_achievements")
 	button(box, "Import / export .ti saves", "save_tools")
-	button(box, "Game files / mods", "setup_from_menu")
+	button(box, "Settings", "show_settings")
 	button(box, "Main menu", "menu_command", ["new"])
-	button(box, "Controls / display", "show_control_options")
-	button(box, "Credits", "show_credits")
 	button(box, "Quit", "quit_game")
+
+func show_settings():
+	var box = panel("Settings")
+	button(box, "Picture / sound", "show_display_options").grab_focus()
+	button(box, "Controls / display", "show_control_options")
+	button(box, "Game files / mods", "setup_from_menu")
+	button(box, "Achievements: %s" % ("On" if achievements_enabled() else "Off"), "show_achievement_choice")
+	button(box, "Credits", "show_credits")
+	button(box, "Back", "controller_settings_back")
+
+func desktop_window():
+	return not OS.get_name() in ["Android", "iOS", "HTML5", "Web"] and OS.get_environment("RETANIC_ARCH").empty()
+
+func set_fullscreen(on):
+	OS.window_fullscreen = on
+	config.set_value("display", "fullscreen", on)
+	config.save("user://settings.cfg")
+
+func default_frame_rate():
+	return 30 if not OS.get_environment("RETANIC_ARCH").empty() else 60
+
+func master_volume():
+	return clamp(float(config.get_value("audio", "master", 1.0)), 0.0, 1.0)
+
+func apply_master_volume():
+	var level = master_volume()
+	AudioServer.set_bus_mute(0, level <= 0.001)
+	AudioServer.set_bus_volume_db(0, linear2db(max(0.001, level)))
+
+func apply_picture_filter():
+	var smooth = config.get_value("graphics", "smooth_picture", false)
+	if Engine.get_version_info().major >= 4:
+		set("texture_filter", 2 if smooth else 1)
+	else:
+		frame_texture.set("flags", 4 if smooth else 0)
+	update()
+
+func apply_display_settings():
+	if desktop_window() and config.get_value("display", "fullscreen", false):
+		OS.window_fullscreen = true
+	Engine.target_fps = int(config.get_value("display", "frame_rate", default_frame_rate()))
+	apply_master_volume()
+
+func hotspot_mode():
+	return config.get_value("accessibility", "hotspots", "hold")
+
+func show_display_options(focus = 0):
+	var box = panel("Picture / sound")
+	var buttons = []
+	if desktop_window():
+		buttons.append(button(box, "Fullscreen: %s" % ("On" if OS.window_fullscreen else "Off"), "toggle_display_option", ["fullscreen", buttons.size()]))
+	buttons.append(button(box, "Picture: %s" % ("Smooth" if config.get_value("graphics", "smooth_picture", false) else "Sharp pixels"), "toggle_display_option", ["smooth", buttons.size()]))
+	buttons.append(button(box, "Frame rate: %s" % ("30 (battery saver)" if Engine.target_fps == 30 else "60"), "toggle_display_option", ["frame_rate", buttons.size()]))
+	var row = HBoxContainer.new()
+	box.add_child(row)
+	var quieter = button(row, "Volume -", "toggle_display_option", ["quieter", buttons.size()])
+	quieter.size_flags_horizontal = SIZE_EXPAND_FILL
+	buttons.append(quieter)
+	var level = Label.new()
+	level.name = "Volume"
+	level.text = "  %d%%  " % int(round(master_volume() * 100))
+	level.add_font_override("font", get_font_for("14px Arial"))
+	row.add_child(level)
+	var louder = button(row, "Volume +", "toggle_display_option", ["louder", buttons.size()])
+	louder.size_flags_horizontal = SIZE_EXPAND_FILL
+	buttons.append(louder)
+	buttons.append(button(box, "Hotspot hints: %s" % {"hold": "While held", "always": "Always", "off": "Off"}[hotspot_mode()], "toggle_display_option", ["hotspots", buttons.size()]))
+	var hint = Label.new()
+	hint.text = "Hold the right mouse button, Home or the left stick button to mark what you can click. Always suits touchscreens.\nBrightness: F1 darker, F2 brighter, F9 reset."
+	hint.autowrap = true
+	hint.rect_min_size.x = 390
+	hint.add_font_override("font", get_font_for("12px Arial"))
+	hint.add_color_override("font_color", Color("a39a84"))
+	box.add_child(hint)
+	buttons.append(button(box, "Back", "show_settings"))
+	buttons[clamp(focus, 0, buttons.size() - 1)].grab_focus()
+
+func toggle_display_option(key, focus):
+	match key:
+		"fullscreen":
+			set_fullscreen(not OS.window_fullscreen)
+		"smooth":
+			config.set_value("graphics", "smooth_picture", not config.get_value("graphics", "smooth_picture", false))
+			apply_picture_filter()
+		"frame_rate":
+			Engine.target_fps = 60 if Engine.target_fps == 30 else 30
+			config.set_value("display", "frame_rate", Engine.target_fps)
+		"quieter", "louder":
+			config.set_value("audio", "master", clamp(round(master_volume() * 10 + (1 if key == "louder" else -1)) / 10.0, 0.0, 1.0))
+			apply_master_volume()
+		"hotspots":
+			config.set_value("accessibility", "hotspots", {"hold": "always", "always": "off", "off": "hold"}[hotspot_mode()])
+	config.save("user://settings.cfg")
+	show_display_options(focus)
+
+# Marks are gathered a few times a second, and only while they are wanted.
+func hotspots_wanted():
+	if modal != null or runtime == null or runtime_failed or not ready or touch_editing or interrupted():
+		return false
+	var mode = hotspot_mode()
+	return mode == "always" or (mode == "hold" and (hotspot_mouse_held or controller_action_held("hints")))
+
+func process_hotspots(delta):
+	if not hotspots_wanted():
+		if not hotspots.empty() or not hotspot_text.empty():
+			hotspots = []
+			hotspot_text = ""
+			cursor_layer.update()
+		hotspot_poll = 0.0
+		return
+	hotspot_poll -= delta
+	if hotspot_poll <= 0:
+		hotspot_poll = 0.25 if hotspot_mode() == "hold" else 0.5
+		var text = runtime.query("targets")
+		if text != hotspot_text:
+			hotspot_text = text
+			var surface = JSON.parse(text).result
+			hotspots = []
+			if surface is Dictionary and surface.context in ["room", "panel", "movie"]:
+				for target in surface.targets:
+					if not target.id in HOTSPOT_TOOLBAR:
+						hotspots.append(target)
+			cursor_layer.update()
+	# Only the held marks breathe; permanent ones stay still, so an idle
+	# room still costs nothing to draw.
+	if hotspot_mode() == "hold" and not hotspots.empty():
+		hotspot_phase = fmod(hotspot_phase + delta, 1.2)
+		cursor_layer.update()
+
+func draw_hotspots():
+	var breath = 0.5 - 0.5 * cos(hotspot_phase / 1.2 * TAU) if hotspot_mode() == "hold" else 0.0
+	for target in hotspots:
+		var center = game_to_display(Vector2(target.aim_x, target.aim_y), target.id) - cursor_layer.position
+		var radius = 7.0 + 2.5 * breath
+		cursor_layer.draw_arc(center, radius + 1.2, 0, TAU, 32, Color(0, 0, 0, 0.55), 2.4, true)
+		cursor_layer.draw_arc(center, radius, 0, TAU, 32, Color(0.97, 0.90, 0.64, 0.95 - 0.35 * breath), 1.4, true)
+		cursor_layer.draw_circle(center, 1.8, Color(0.97, 0.90, 0.64, 0.9))
+
+func quick_load():
+	if modal != null or runtime == null:
+		return
+	var name = saves.newest()
+	send({"action": "pause", "on": true})
+	manual_pause = true
+	if name.empty():
+		var empty = panel("No saved games yet")
+		button(empty, "OK", "resume_game").grab_focus()
+		return
+	var box = panel("Load the latest save?")
+	text_scroller(box, saves.display_name(name) + "\n" + saves.describe_time(saves.modified_time(name)) + "\n\nProgress since your last save will be lost.", 90)
+	button(box, "Load", "quick_load_confirmed", [name]).grab_focus()
+	button(box, "Cancel", "resume_game")
+
+func quick_load_confirmed(name):
+	resume_game()
+	send({"action": "load", "path": saves.path_for(name)})
 
 func resume_game():
 	manual_pause = false
@@ -2015,6 +2378,52 @@ func show_hd_settings():
 		missing.add_font_override("font", get_font_for("13px Arial"))
 		box.add_child(missing)
 	button(box, "Back", "show_setup")
+
+func achievements_enabled():
+	return config.get_value("achievements", "enabled", true)
+
+func needs_achievement_choice():
+	return not config.get_value("achievements", "chosen", false)
+
+# Asked once on first start; Settings can change it at any time.
+func show_achievement_choice(save_path = "", first_start = false):
+	achievement_choice_first = first_start
+	achievement_choice_save = save_path
+	var box = panel("Achievements")
+	achievement_choice_dialog = modal
+	status.hide()
+	var hint = Label.new()
+	hint.text = "Earn achievements for the story's turning points, conversations, puzzles, rooms and endings. A short notice appears at the bottom of the screen when you unlock one.\n\nThey never change the game or your saves. You can change this later in Settings."
+	if not first_start:
+		hint.text = "Achievements you have already earned are kept either way. Turning them back on awards what your current game has already reached."
+	hint.autowrap = true
+	hint.rect_min_size = Vector2(396, 110)
+	hint.add_font_override("font", get_font_for("13px Arial"))
+	box.add_child(hint)
+	var on = button(box, "Play with achievements", "choose_achievements", [true])
+	var off = button(box, "Play without achievements", "choose_achievements", [false])
+	if first_start or achievements_enabled():
+		on.grab_focus()
+	else:
+		off.grab_focus()
+	if not first_start:
+		button(box, "Back", "show_settings")
+
+func choose_achievements(enabled):
+	config.set_value("achievements", "enabled", enabled)
+	config.set_value("achievements", "chosen", true)
+	config.save("user://settings.cfg")
+	achievement_choice_dialog = null
+	if achievement_choice_first:
+		start_runtime(achievement_choice_save)
+		return
+	if not enabled:
+		achievement_queue.clear()
+		if is_instance_valid(achievement_toast):
+			achievement_toast.queue_free()
+		achievement_toast = null
+	send({"action": "achievements", "on": enabled})
+	show_settings()
 
 func needs_artwork_choice():
 	# Separate from the old on/off setting, so existing players see this once.
@@ -2161,6 +2570,8 @@ func submit_text(kind):
 		reply_dialog(text)
 
 func reply_dialog(value):
+	if value == null:
+		importing_save = false
 	var id = current_dialog
 	current_dialog = -1
 	close_modal()
@@ -2184,10 +2595,11 @@ func show_save_list(action):
 	scroll.add_child(list)
 	var first = null
 	for name in saves.list_saves():
-		var b = button(list, saves.display_name(name), "save_selected", [name, action])
+		var b = button(list, saves.list_name(name), "save_selected", [name, action])
 		b.clip_text = true
 		b.hint_tooltip = saves.display_name(name)
 		b.set_meta("autosave", saves.is_autosave(name))
+		decorate_save_row(b, name)
 		if saves.is_autosave(name):
 			for state in ["font_color", "font_color_hover", "font_color_pressed", "font_color_focus"]:
 				b.add_color_override(state, Color("b5d8ef"))
@@ -2196,6 +2608,30 @@ func show_save_list(action):
 	button(box, "Cancel", "reply_dialog", [null]).grab_focus()
 	if first != null:
 		first.grab_focus()
+
+# A picture of the moment and when it was saved, like any current game.
+func decorate_save_row(b, name):
+	b.rect_min_size.y = 42
+	b.set("align", 0)
+	b.set("alignment", 0)
+	var img = saves.load_thumbnail(name)
+	if img != null:
+		var texture = ImageTexture.new()
+		texture.create_from_image(img, 4)
+		b.icon = texture
+		b.expand_icon = true
+		b.set_meta("thumbnail", true)
+	var when = Label.new()
+	when.name = "When"
+	when.text = saves.describe_time(saves.modified_time(name)) + "  "
+	when.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	when.set("align", 2)
+	when.set("horizontal_alignment", 2)
+	when.valign = Label.VALIGN_CENTER
+	when.add_font_override("font", get_font_for("11px Arial"))
+	when.add_color_override("font_color", Color("a39a84"))
+	b.add_child(when)
+	when.set_anchors_and_margins_preset(15)
 
 func save_selected(name, action):
 	if action == "load":
@@ -2217,6 +2653,7 @@ func save_tools():
 
 func import_save():
 	close_modal()
+	importing_save = true
 	send({"action": "import"})
 
 func export_selected(path, name):
@@ -2327,6 +2764,8 @@ func update_touch_layout(_device = 0, _connected = false):
 	status.rect_position = game_origin + Vector2(20, 160)
 	if is_instance_valid(checkpoint_toast):
 		checkpoint_toast.rect_position = game_origin + Vector2(16, 16)
+	if is_instance_valid(backdrop):
+		backdrop.rect_size = layout_size
 	for child in get_children():
 		if child is PanelContainer:
 			child.rect_position = (layout_size - child.rect_size) / 2
@@ -2695,7 +3134,7 @@ func show_dialogue_options(save_path = "", first_start = false):
 	box.add_child(dialogue_preview)
 	button(box,"Layout: " + ("Widescreen" if wide_dialogue_enabled() else "Classic"),"toggle_dialogue_option",["widescreen"]).disabled = classic_format_device()
 	button(box,"Speech-timed words: " + ("On" if config.get_value("dialogue","timed_subtitles",false) else "Off"),"toggle_dialogue_option",["timed_subtitles"]).grab_focus()
-	text_scroller(box,"Words gently fade in over the length of each spoken line. Timing is approximate. Change either option later in Controls / display.\n" + ("This 4:3 display uses Classic dialogue." if classic_format_device() else "Widescreen uses translucent answers in landscape; narrow screens keep Classic."),65)
+	text_scroller(box,"Words gently fade in over the length of each spoken line. Timing is approximate. Change either option later in Settings > Controls / display.\n" + ("This 4:3 display uses Classic dialogue." if classic_format_device() else "Widescreen uses translucent answers in landscape; narrow screens keep Classic."),65)
 	button(box,"Continue" if first_start else "Back","finish_dialogue_options")
 
 func toggle_dialogue_option(key):
@@ -2716,7 +3155,14 @@ func finish_dialogue_options():
 		show_control_options()
 
 func sync_dialogue_layout():
-	var metadata = JSON.parse(runtime.query("dialogue_layout")).result if wide_dialogue_enabled() and adaptive_widescreen() else {}
+	var metadata = {}
+	if wide_dialogue_enabled() and adaptive_widescreen():
+		# As with the side panels, the answer is the same on most frames.
+		var text = runtime.query("dialogue_layout")
+		if text != dialogue_text:
+			dialogue_text = text
+			dialogue_parsed = JSON.parse(text).result
+		metadata = dialogue_parsed
 	var active = metadata is Dictionary and metadata.get("eligible",false) and wide_dialogue_enabled() and adaptive_widescreen() and not runtime_failed and has_frame
 	if metadata is Dictionary:
 		dialogue_metadata = metadata

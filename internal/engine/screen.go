@@ -52,6 +52,10 @@ func (s *ScreenPresenter) ShouldPaint(sig *DrawSignature) bool {
 	s.haveSignature = true
 	return true
 }
+
+// Invalidate makes the next render repaint even if nothing the signature
+// covers has changed, such as artwork that finished decoding.
+func (s *ScreenPresenter) Invalidate() { s.haveSignature = false }
 func (s *ScreenPresenter) BlitAt(src []byte, w, h, x, y int) {
 	if s.HD != nil {
 		s.HD.Blit(src, w, h, x, y)

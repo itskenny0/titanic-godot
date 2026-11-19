@@ -81,15 +81,18 @@ type Session struct {
 	OnQuestionDialog                  func(string) (bool, error)
 	OnTextDialog                      func(string, string) (string, error)
 	OnQuit                            func() error
-	OnSaveGame                        func([]byte, string) error
-	OnLoadGame                        func(string) ([]byte, error)
-	MovieActions                      map[int]bool
-	XRay                              *XRayReveal
-	StarRegistry                      orderedMap[df.Actor]
-	instancedActors                   map[string]bool
-	inflight, idleInflight            orderedMap[*Task]
-	coreLoaded                        bool
-	plan                              *BootPlan
+	// OnSpeak and OnVoice observe dialogue lines and voice clips as they
+	// start, for achievements. They must not change game state.
+	OnSpeak, OnVoice       func(string)
+	OnSaveGame             func([]byte, string) error
+	OnLoadGame             func(string) ([]byte, error)
+	MovieActions           map[int]bool
+	XRay                   *XRayReveal
+	StarRegistry           orderedMap[df.Actor]
+	instancedActors        map[string]bool
+	inflight, idleInflight orderedMap[*Task]
+	coreLoaded             bool
+	plan                   *BootPlan
 }
 
 func NewSession(read func(string) ([]byte, error), audio AudioSink) *Session {

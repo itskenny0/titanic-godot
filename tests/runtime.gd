@@ -21,6 +21,8 @@ func _init():
 	var state = JSON.parse(engine.query("state")).result
 	check(state.ready, "native startup finishes")
 	check(JSON.parse(engine.query("memory")).result.runtime == "go", "gameplay runtime is Go")
+	var catalog = JSON.parse(engine.query("achievements")).result
+	check(catalog is Array and catalog.size() >= 100 and catalog[0].has("title"), "achievement catalog")
 	check(engine.execute("test", JSON.print({"op": "set_global", "name": "answer", "value": 42})) == "", "test state assignment")
 	check(JSON.parse(engine.query("test", JSON.print({"op": "get_global", "name": "answer"}))).result == 42, "state query")
 	check(not engine.execute("unsupported").empty(), "invalid operation is reported")

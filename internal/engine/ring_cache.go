@@ -188,6 +188,16 @@ func (c *RingCache) Touch(reg *df.FrameRegister) {
 		ring.Used = c.clock
 	}
 }
+
+// Peek returns a ring's frames only if they are already decoded.
+func (c *RingCache) Peek(reg *df.FrameRegister) (map[int]*CachedFrame, bool) {
+	c.collect()
+	ring := c.index[reg]
+	if ring == nil {
+		return map[int]*CachedFrame{}, true
+	}
+	return ring.Frames, ring.Frames != nil
+}
 func (c *RingCache) Ensure(reg *df.FrameRegister) (map[int]*CachedFrame, error) {
 	ring := c.index[reg]
 	if ring == nil {
