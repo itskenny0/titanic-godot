@@ -24,8 +24,14 @@ type AdaptiveControl struct {
 	Slot  int     `json:"slot"`
 }
 type AdaptiveLayout struct {
-	Eligible   bool              `json:"eligible"`
-	Reason     string            `json:"reason"`
+	Eligible bool   `json:"eligible"`
+	Reason   string `json:"reason"`
+	// Hold marks a moment that needs nothing outside the world picture: the
+	// set closed between movies, a fade, the bag opening, an item in hand.
+	// The frontend may keep the side panels through it instead of flashing
+	// the classic layout for a few frames. Without Hold the original
+	// screen is needed now: a full-screen movie, a close-up, a conversation.
+	Hold       bool              `json:"hold"`
 	Revision   uint64            `json:"revision"`
 	AtlasScale int               `json:"atlas_scale"`
 	Controls   []AdaptiveControl `json:"controls"`
@@ -46,25 +52,43 @@ func (p *Player) AdaptiveLayout() AdaptiveLayout {
 	if d.Movies.Playing() {
 		movie, err := d.Movies.Frame()
 		if err != nil || movie == nil || movie.MovieImage == nil || movie.OriginX < 0 || movie.OriginY < 0 || movie.OriginX+movie.Width > 512 || movie.OriginY+movie.Height > 264 {
+			out.Reason = "full-screen movie"
 			return out
 		}
 		worldMovie = true
 	}
-	transition := s.Fade.Active() || s.Fade.PendingReveal || s.Fade.Snapshot != nil || s.Wipe.Compositing()
-	if (!s.ViewShowing() && !worldMovie && !transition) || d.Conversing() || s.PhotoOverlay != nil || s.XRay != nil && s.XRay.Aimed {
+	if d.Conversing() {
+		out.Reason = "conversation"
+		return out
+	}
+	if s.PhotoOverlay != nil || s.XRay != nil && s.XRay.Aimed {
+		out.Reason = "picture overlay"
 		return out
 	}
 	for _, label := range s.TextOverlay {
 		if label.Y < 0 || label.Y > 264 {
+			out.Reason = "text outside the world"
 			return out
 		}
 	}
 	if s.StageCtrl.Name != "main.stg" || s.StageCtrl.CurrentFlat != "main 1" {
 		return out
 	}
-	frame := d.roomFrame()
 	flat := d.flatImage()
-	if (frame == nil && !worldMovie && !transition) || (frame != nil && (frame.Width != 512 || frame.Height != 264)) || flat == nil || flat.Width != 512 || flat.Height != 384 {
+	if flat == nil || flat.Width != 512 || flat.Height != 384 {
+		return out
+	}
+	// From here on the screen is the ordinary exploration picture, only not
+	// ready for side panels at this moment.
+	out.Hold = true
+	transition := s.Fade.Active() || s.Fade.PendingReveal || s.Fade.Snapshot != nil || s.Wipe.Compositing()
+	if !s.ViewShowing() && !worldMovie && !transition {
+		out.Reason = "room not showing"
+		return out
+	}
+	frame := d.roomFrame()
+	if (frame == nil && !worldMovie && !transition) || (frame != nil && (frame.Width != 512 || frame.Height != 264)) {
+		out.Reason = "room not showing"
 		return out
 	}
 	if hand, _ := s.Interp.Globals.Get("handitem"); hand.IsString && hand.Text != "" {
@@ -95,13 +119,16 @@ func (p *Player) AdaptiveLayout() AdaptiveLayout {
 			if spec[0] == "navarrow" || worldMovie || transition {
 				continue
 			}
+			out.Reason = "interface hidden"
 			return out
 		}
 		if spec[0] == "bag" && !strings.HasSuffix(prop.StateName, "closed") {
+			out.Reason = "bag open"
 			return out
 		}
 		r, err := prop.ScreenRect()
 		if err != nil || r == nil || r.K != 1 || r.W > 128 || r.H > 128 || r.X < 0 || r.X+float64(r.W) > 512 || r.Y < 250 || r.Y+float64(r.H) > 384 {
+			out.Reason = "interface moved"
 			return out
 		}
 		target := AdaptiveControl{Name: spec[0], Label: spec[1], X: r.X, Y: r.Y, W: float64(r.W), H: float64(r.H), Slot: slot}
@@ -125,11 +152,12 @@ func (p *Player) AdaptiveLayout() AdaptiveLayout {
 			}
 		}
 		if !found {
+			out.Reason = "interface covered"
 			return out
 		}
 		out.Controls = append(out.Controls, target)
 	}
-	out.Eligible, out.Reason = true, "exploration"
+	out.Eligible, out.Reason, out.Hold = true, "exploration", false
 	return out
 }
 

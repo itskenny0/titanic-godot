@@ -904,12 +904,12 @@
   "trigger": "prop:baby=frank"
  },
  {
-  "id": "got_icewarning",
-  "title": "Ice Warning Ignored",
-  "description": "Find one of the ice warning telegrams the bridge ignored.",
+  "id": "got_conkletter",
+  "title": "A Letter Worth a Child",
+  "description": "Take the letter Shailagh and Jack Hacker want traded to Mrs. Conkling for their baby.",
   "category": "item",
-  "hidden": false,
-  "trigger": "prop:icewarning=frank"
+  "hidden": true,
+  "trigger": "prop:conkletter=frank"
  },
  {
   "id": "prayer_card_trade",

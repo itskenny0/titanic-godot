@@ -44,8 +44,13 @@ func begin():
 		{"id": "first", "label": "First reply", "x": 0, "y": 264, "w": 512, "h": 24, "aim_x": 256, "aim_y": 276},
 		{"id": "second", "label": "Second reply", "x": 0, "y": 288, "w": 512, "h": 24, "aim_x": 256, "aim_y": 300}]}
 	player.refresh_controller_surface()
-	check(player.controller_selection == 0, "dialogue focuses first reply")
-	check(not player.pointer_visible, "controller focus hides mouse pointer")
+	check(player.controller_selection == 0 and player.dialogue_preselected, "new replies start on the first, without showing it")
+	for command in recorder.commands:
+		check(command.action != "pointer", "a hidden preselection does not move the pointer")
+	player.controller_confirm(true)
+	player.controller_confirm(false)
+	check(not recorder.commands.empty() and recorder.commands.back().kind == "release" and recorder.commands.back().y == 276, "confirm answers the preselected first reply")
+	check(not player.pointer_visible and not player.dialogue_preselected, "controller focus hides mouse pointer")
 	player.controller_direction("downarrow")
 	check(player.controller_selection == 1, "D-pad selects next reply")
 	player.controller_confirm(true)
@@ -55,6 +60,22 @@ func begin():
 		check(command.action != "key", "dialogue directions never leak into room movement")
 	player.controller_direction("downarrow")
 	check(player.controller_selection == 0, "dialogue wraps at last reply")
+	player.controller_direction("downarrow")
+	check(player.controller_selection == 1, "second reply selected before new replies")
+	var previous_replies = recorder.surface
+	recorder.surface = {"context": "dialogue", "key": "conversation", "targets": [
+		{"id": "third", "label": "Third reply", "x": 0, "y": 264, "w": 512, "h": 24, "aim_x": 256, "aim_y": 276},
+		{"id": "fourth", "label": "Fourth reply", "x": 0, "y": 288, "w": 512, "h": 24, "aim_x": 256, "aim_y": 300},
+		{"id": "fifth", "label": "Fifth reply", "x": 0, "y": 312, "w": 512, "h": 24, "aim_x": 256, "aim_y": 324}]}
+	player.controller_direction("downarrow")
+	check(player.controller_selection == 1 and not player.dialogue_preselected, "the first key after new replies steps from the first, not the old cursor")
+	recorder.surface = previous_replies
+	player.refresh_controller_surface()
+	check(player.controller_selection == 0 and player.dialogue_preselected, "every new set of replies starts on the first")
+	recorder.surface = {"context": "dialogue", "key": "conversation", "targets": previous_replies.targets.duplicate(true)}
+	recorder.surface.targets[1].label = "Second reply, redrawn"
+	player.refresh_controller_surface()
+	check(player.controller_selection == 0 and player.dialogue_preselected, "a redrawn reply keeps the hidden preselection")
 	# Modifier shortcuts must bypass controller mapping on both engine versions.
 	for modifier in ["alt", "control", "meta"]:
 		var shortcut = InputEventKey.new()

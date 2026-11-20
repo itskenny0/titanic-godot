@@ -31,6 +31,12 @@ type PlayerConfig struct {
 	Achievements []string `json:"achievements"`
 	// DisableAchievements plays without tracking or announcing any.
 	DisableAchievements bool `json:"disable_achievements"`
+	// OriginalItems keeps received items in the player's hand, as the
+	// original did, with no item notice. By default a new item goes into
+	// the bag and a notice names it.
+	OriginalItems bool `json:"original_items"`
+	// Clues reports dialogue lines that carry a detail worth noting down.
+	Clues bool `json:"clues"`
 }
 type PlayerCommand struct {
 	Action             string `json:"action"`
@@ -69,6 +75,8 @@ type Player struct {
 	checkpointQuiet                                      float64
 	achievements                                         *AchievementTracker
 	achievementPoll                                      int
+	items                                                itemWatch
+	clues                                                bool
 }
 
 func NewPlayer(bridge PlayerBridge) *Player {
@@ -209,8 +217,13 @@ func (p *Player) Boot(config PlayerConfig) error {
 	if tracker != nil {
 		tracker.Off = config.DisableAchievements
 	}
+	p.items = itemWatch{ToBag: !config.OriginalItems, Off: config.OriginalItems}
+	p.clues = config.Clues
 	p.achievements = tracker
-	s.OnSpeak = func(id string) { p.achievements.Event(s, "speak", id) }
+	s.OnSpeak = func(id string) {
+		p.achievements.Event(s, "speak", id)
+		p.noteClue(s, id)
+	}
 	s.OnVoice = func(name string) { p.achievements.Event(s, "voice", name) }
 	p.Host.Director.Movies.OnCutsceneFinished = p.checkpointMovieFinished
 	s.Track("coldBoot", false, func(*Task) error {
@@ -280,6 +293,9 @@ func (p *Player) Tick(dt float64) error {
 	if p.achievementPoll++; p.achievementPoll >= 15 && p.Ready {
 		p.achievementPoll = 0
 		p.achievements.Poll(p.Host.Session)
+	}
+	if p.Ready && p.achievementPoll%5 == 0 {
+		p.serviceItems()
 	}
 	if p.profiling {
 		p.profileTick += renderStart.Sub(began)
@@ -398,6 +414,21 @@ func (p *Player) Command(c PlayerCommand) error {
 		d.PuppetView.Wide = c.On
 		return nil
 	}
+	// Settings apply at once, also from the paused menu where they are set.
+	switch c.Action {
+	case "achievements":
+		// Turning them back on catches up on what the game has reached.
+		if p.achievements != nil {
+			p.achievements.Off = !c.On
+		}
+		return nil
+	case "item_notices":
+		p.items.Off, p.items.ToBag = !c.On, c.On
+		return nil
+	case "clues":
+		p.clues = c.On
+		return nil
+	}
 	if c.Action == "autosave_enabled" {
 		p.autosaveDisabled = !c.On
 		p.checkpointPending, p.checkpointQuiet = false, 0
@@ -506,13 +537,6 @@ func (p *Player) menuCommand(c PlayerCommand) error {
 			}
 			return p.save(data)
 		})
-	case "achievements":
-		// The settings toggle applies at once; turning it back on catches up
-		// on whatever the current game has already reached.
-		if p.achievements != nil {
-			p.achievements.Off = !c.On
-		}
-		return nil
 	case "quicksave":
 		// One keypress, no naming dialog. Quick saves join the rotating
 		// checkpoints, so they can never replace a save the player named.

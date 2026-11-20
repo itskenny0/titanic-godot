@@ -77,6 +77,7 @@ for path in (out/'scripts').glob('*.gd'):
  text=re.sub(r'\bevent\.(control|meta|alt|shift)\b', lambda m: 'event.' + {'control':'ctrl_pressed','meta':'meta_pressed','alt':'alt_pressed','shift':'shift_pressed'}[m[1]], text)
  text=text.replace('OS.get_time_zone_info()', 'Time.get_time_zone_from_system()').replace('Time.get_datetime_dict_from_system_from_unix_time(', 'Time.get_datetime_dict_from_unix_time(')
  text=text.replace('self, "update"', 'self, "queue_redraw"')
+ text=text.replace('.autowrap = true', '.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART')
  text=text.replace('caption,Style.INK)', 'caption,HORIZONTAL_ALIGNMENT_LEFT,-1,11,Style.INK)')
  text=re.sub(r'(?<![a-z_])update\(\)', 'queue_redraw()', text)
  path.write_text(text)

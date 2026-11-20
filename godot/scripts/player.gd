@@ -5,6 +5,7 @@ const UIStyle = preload("res://scripts/ui_style.gd")
 const AdaptiveLayout = preload("res://scripts/adaptive_layout.gd")
 const SaveStore = preload("res://scripts/save_store.gd")
 const AchievementStore = preload("res://scripts/achievement_store.gd")
+const Scratchpad = preload("res://scripts/scratchpad.gd")
 var runtime
 var files = GameFiles.new()
 var saves = SaveStore.new()
@@ -25,6 +26,12 @@ var touch_surround_style = UIStyle.plate(Color(0,0,0),Color(0,0,0),0)
 var adaptive_active = false
 var adaptive_available = false
 var prefer_classic_now = false
+# The engine marks short moments (a room loading, the bag animating, an
+# item in hand) as "hold": the side panels give way to the classic layout
+# only if one lasts adaptive_hold_ms, so short sequences stay widescreen.
+# Full-screen movies, conversations and menus still switch at once.
+var adaptive_hold_ms = 1500
+var adaptive_leaving_since = -1
 var layout_switch
 var adaptive_metadata = {}
 var adaptive_atlas_image = Image.new()
@@ -61,6 +68,9 @@ var menu
 var status
 var checkpoint_toast = null
 var achievements = AchievementStore.new()
+var scratchpad = null
+var item_queue = []
+var item_notice = null
 var achievement_catalog = []
 var achievement_queue = []
 var achievement_toast = null
@@ -79,6 +89,9 @@ var close_count = 0
 var close_menu_pending = false
 var dialogue = preload("res://scripts/dialogue_layout.gd").new()
 var dialogue_active = false
+# A new set of replies starts on the first one, selected but not drawn, so
+# the keys never continue from where the previous answers were.
+var dialogue_preselected = false
 var dialogue_request = null
 var dialogue_metadata = {}
 var dialogue_choice_dialog = null
@@ -222,6 +235,13 @@ func _ready():
 	layout_switch.focus_mode = Control.FOCUS_NONE
 	layout_switch.hide()
 	add_child(layout_switch)
+	scratchpad = Scratchpad.new()
+	scratchpad.name = "Scratchpad"
+	scratchpad.host = self
+	scratchpad.rect_size = layout_size
+	add_child(scratchpad)
+	scratchpad.load_store()
+	scratchpad.refresh()
 	# Menus sit on a dimmed picture, so their text never competes with it.
 	backdrop = ColorRect.new()
 	backdrop.color = Color(0, 0, 0, 0.5)
@@ -370,7 +390,7 @@ func start_runtime(save_path = ""):
 		return
 	var error = ""
 	runtime.execute("profile", JSON.print({"on": OS.is_debug_build()}))
-	error = runtime.execute("boot", JSON.print({"index": game_index, "save": save_path, "hd_pack": active_hd_pack(), "vector_ui": "res://artwork/ui" if config.get_value("graphics", "redrawn_ui", true) else "", "timed_subtitles": config.get_value("dialogue", "timed_subtitles", false), "disable_autosave": not config.get_value("saves", "autosave_enabled", true), "testing": "--integration-test" in OS.get_cmdline_args(), "achievements": achievements.ids(), "disable_achievements": not achievements_enabled()}))
+	error = runtime.execute("boot", JSON.print({"index": game_index, "save": save_path, "hd_pack": active_hd_pack(), "vector_ui": "res://artwork/ui" if config.get_value("graphics", "redrawn_ui", true) else "", "timed_subtitles": config.get_value("dialogue", "timed_subtitles", false), "disable_autosave": not config.get_value("saves", "autosave_enabled", true), "testing": "--integration-test" in OS.get_cmdline_args(), "achievements": achievements.ids(), "disable_achievements": not achievements_enabled(), "clues": scratchpad_enabled(), "original_items": not item_notices_enabled()}))
 	if not error.empty():
 		show_note(error)
 		return
@@ -513,6 +533,8 @@ func place_achievement_toast():
 	if is_instance_valid(checkpoint_toast) and Rect2(spot, achievement_toast.rect_size).intersects(checkpoint_toast.get_rect()):
 		spot.y = checkpoint_toast.get_rect().end.y + 8
 	achievement_toast.rect_position = spot
+	if is_instance_valid(item_notice):
+		place_item_notice()
 
 func finish_achievement_toast(toast):
 	if is_instance_valid(toast):
@@ -592,6 +614,205 @@ func achievement_row(list, a):
 		when.add_color_override("font_color", Color("a39a84"))
 		row.add_child(when)
 	return row
+
+func note_area():
+	if adaptive_active:
+		return Rect2(adaptive.rail, 0, layout_size.x - 2 * adaptive.rail, layout_size.y)
+	if dialogue_active:
+		return Rect2(Vector2.ZERO, layout_size)
+	return Rect2(game_origin, Vector2(512, 384))
+
+func scratchpad_enabled():
+	return config.get_value("scratchpad", "enabled", true)
+
+func item_notices_enabled():
+	return config.get_value("items", "notices", true)
+
+func toggle_scratchpad():
+	var enabled = not scratchpad_enabled()
+	config.set_value("scratchpad", "enabled", enabled)
+	config.save("user://settings.cfg")
+	send({"action": "clues", "on": enabled})
+	scratchpad.refresh()
+	show_settings()
+
+func toggle_item_notices():
+	var enabled = not item_notices_enabled()
+	config.set_value("items", "notices", enabled)
+	config.save("user://settings.cfg")
+	send({"action": "item_notices", "on": enabled})
+	if not enabled:
+		item_queue.clear()
+		if is_instance_valid(item_notice):
+			item_notice.queue_free()
+		item_notice = null
+	show_settings()
+
+# A received item is named for five seconds at the top of the screen, with
+# its picture; the engine has already put it in the bag.
+func show_next_item():
+	if item_queue.empty():
+		item_notice = null
+		return
+	var event = item_queue.pop_front()
+	var notice = PanelContainer.new()
+	notice.name = "ItemNotice"
+	notice.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	var plate = UIStyle.plate(Color(0.07, 0.07, 0.06, 0.88), Color("d0b983"), 6)
+	for side in ["left", "right"]:
+		plate.set("content_margin_" + side, 10)
+	for side in ["top", "bottom"]:
+		plate.set("content_margin_" + side, 6)
+	notice.add_stylebox_override("panel", plate)
+	var row = HBoxContainer.new()
+	row.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	row.add_constant_override("separation", 10)
+	notice.add_child(row)
+	var picture = item_picture(event.get("icon", ""))
+	if picture != null:
+		var icon = TextureRect.new()
+		icon.name = "Icon"
+		icon.texture = picture
+		icon.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		icon.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+		row.add_child(icon)
+	var box = VBoxContainer.new()
+	box.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	box.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	row.add_child(box)
+	var title = Label.new()
+	title.name = "Title"
+	title.text = "Item received: " + event.name
+	title.add_font_override("font", get_font_for("15px Arial"))
+	box.add_child(title)
+	if event.get("bag", false):
+		var about = Label.new()
+		about.text = "It is in your bag."
+		about.add_font_override("font", get_font_for("11px Arial"))
+		about.add_color_override("font_color", Color("b8ad94"))
+		box.add_child(about)
+	add_child(notice)
+	item_notice = notice
+	place_item_notice()
+	get_tree().create_timer(5.0).connect("timeout", self, "finish_item_notice", [notice])
+
+func item_picture(encoded):
+	if encoded.empty():
+		return null
+	var img = Image.new()
+	if img.load_png_from_buffer(Marshalls.base64_to_raw(encoded)) != OK:
+		return null
+	# Keep the original pixels, at a size that suits the notice.
+	var scale = max(1, floor(48.0 / max(img.get_width(), img.get_height())))
+	if max(img.get_width(), img.get_height()) > 56:
+		scale = 56.0 / max(img.get_width(), img.get_height())
+	img.resize(int(max(1, img.get_width() * scale)), int(max(1, img.get_height() * scale)), Image.INTERPOLATE_NEAREST)
+	var texture = ImageTexture.new()
+	texture.create_from_image(img)
+	return texture
+
+# Top centre, clear of the achievement notice at the top right.
+func place_item_notice():
+	if not is_instance_valid(item_notice):
+		return
+	item_notice.rect_size = item_notice.get_combined_minimum_size()
+	var spot = Vector2((layout_size.x - item_notice.rect_size.x) / 2, 12)
+	for other in [achievement_toast, checkpoint_toast]:
+		if is_instance_valid(other) and Rect2(spot, item_notice.rect_size).intersects(other.get_rect()):
+			spot.y = max(spot.y, other.get_rect().end.y + 8)
+	item_notice.rect_position = spot
+
+func finish_item_notice(notice):
+	if is_instance_valid(notice):
+		notice.queue_free()
+	if notice == item_notice:
+		show_next_item()
+
+var note_editor = null
+
+func show_scratchpad():
+	var box = panel("Scratchpad")
+	var hint = Label.new()
+	hint.text = "Clues from conversations collect here. Pinned notes stay on screen; drag them anywhere."
+	hint.autowrap = true
+	hint.rect_min_size = Vector2(396, 30)
+	hint.add_font_override("font", get_font_for("12px Arial"))
+	box.add_child(hint)
+	var scroll = ScrollContainer.new()
+	scroll.rect_min_size = Vector2(396, 170)
+	scroll.follow_focus = true
+	scroll.scroll_horizontal_enabled = false
+	box.add_child(scroll)
+	var list = VBoxContainer.new()
+	list.name = "Notes"
+	list.size_flags_horizontal = SIZE_EXPAND_FILL
+	scroll.add_child(list)
+	var first = null
+	for id in scratchpad.listed():
+		var focus = scratchpad_row(list, id)
+		if first == null:
+			first = focus
+	if first == null:
+		var none = Label.new()
+		none.text = "No notes yet."
+		none.add_font_override("font", get_font_for("12px Arial"))
+		list.add_child(none)
+	var write = button(box, "Write a note", "show_note_writer")
+	if scratchpad.order.size() > 0:
+		button(box, "Remove all clues", "clear_scratchpad_clues")
+	button(box, "Back", "controller_settings_back")
+	if first != null:
+		first.grab_focus()
+	else:
+		write.grab_focus()
+
+func scratchpad_row(list, id):
+	var note = scratchpad.notes[id]
+	var row = HBoxContainer.new()
+	row.set_meta("note", id)
+	list.add_child(row)
+	var text = Label.new()
+	text.name = "Text"
+	text.text = ("" if note.own else "Clue: ") + note.text
+	text.autowrap = true
+	text.rect_min_size.x = 236
+	text.size_flags_horizontal = SIZE_EXPAND_FILL
+	text.add_font_override("font", get_font_for("12px Arial"))
+	row.add_child(text)
+	var pin = button(row, "Unpin" if note.pinned else "Pin", "toggle_note_pin", [id])
+	pin.name = "Pin"
+	pin.rect_min_size.x = 58
+	var remove = button(row, "Delete", "delete_note", [id])
+	remove.name = "Delete"
+	return pin
+
+func toggle_note_pin(id):
+	scratchpad.set_pinned(id, not scratchpad.notes[id].pinned)
+	show_scratchpad()
+
+func delete_note(id):
+	scratchpad.remove(id)
+	show_scratchpad()
+
+func clear_scratchpad_clues():
+	scratchpad.clear_clues()
+	show_scratchpad()
+
+func show_note_writer():
+	var box = panel("Write a note")
+	note_editor = LineEdit.new()
+	note_editor.placeholder_text = "Something to remember"
+	note_editor.add_font_override("font", get_font_for("14px Arial"))
+	note_editor.connect("text_entered", self, "save_written_note")
+	box.add_child(note_editor)
+	button(box, "On-screen keyboard", "show_keyboard", [note_editor])
+	button(box, "Pin note", "save_written_note")
+	button(box, "Back", "show_scratchpad")
+	note_editor.grab_focus()
+
+func save_written_note(_text = ""):
+	if is_instance_valid(note_editor) and not scratchpad.write(note_editor.text).empty():
+		show_scratchpad()
 
 func toggle_autosave():
 	var enabled = not config.get_value("saves", "autosave_enabled", true)
@@ -740,6 +961,7 @@ func set_adaptive_active(active):
 		pointer_pressed = false
 	adaptive_active = active
 	controller_selection = -1
+	dialogue_preselected = false
 	update_touch_layout()
 	# Layout changes move the artwork, not the physical mouse. Reinterpret
 	# its screen position instead of projecting an old game target onto it.
@@ -750,6 +972,7 @@ func set_adaptive_active(active):
 func sync_adaptive_layout():
 	adaptive_available = false
 	if not adaptive_enabled() or not adaptive_widescreen() or modal != null or runtime == null or runtime_failed or not has_frame:
+		adaptive_leaving_since = -1
 		set_adaptive_active(false)
 		update_layout_switch()
 		return
@@ -761,9 +984,20 @@ func sync_adaptive_layout():
 		adaptive_parsed = JSON.parse(text).result
 	var metadata = adaptive_parsed
 	if not metadata is Dictionary or not metadata.get("eligible", false) or not adaptive_overlays_fit():
+		if adaptive_active and not prefer_classic_now and metadata is Dictionary and metadata.get("hold", false) and adaptive_overlays_fit():
+			var now = OS.get_ticks_msec()
+			if adaptive_leaving_since < 0:
+				adaptive_leaving_since = now
+			if now - adaptive_leaving_since < adaptive_hold_ms:
+				# Keep the last panels and artwork; the world shows the frame.
+				adaptive_available = true
+				update_layout_switch()
+				return
+		adaptive_leaving_since = -1
 		set_adaptive_active(false)
 		update_layout_switch()
 		return
+	adaptive_leaving_since = -1
 	adaptive_available = true
 	if prefer_classic_now:
 		set_adaptive_active(false)
@@ -921,7 +1155,7 @@ func draw_cursor():
 		draw_hotspots()
 	if touch_enabled and modal != null:
 		return
-	if modal == null and controller_selection >= 0 and controller_selection < controller_surface.targets.size():
+	if modal == null and not dialogue_preselected and controller_selection >= 0 and controller_selection < controller_surface.targets.size():
 		var target = controller_surface.targets[controller_selection]
 		var circle = selection_circle(target)
 		cursor_layer.draw_arc(circle.center, circle.radius, 0, TAU, 64, Color(0.78,0.68,0.45,0.50), 1.4, true)
@@ -1120,6 +1354,14 @@ func handle_event(event):
 				achievement_queue.append(event)
 				if not is_instance_valid(achievement_toast):
 					show_next_achievement()
+		"item":
+			if item_notices_enabled():
+				item_queue.append(event)
+				if not is_instance_valid(item_notice):
+					show_next_item()
+		"clue":
+			if scratchpad_enabled() and scratchpad.learn(event.id, event.text):
+				scratchpad.popup(event.id)
 		"saved":
 			print("Saved: ", event.name)
 			show_checkpoint_toast("Quick save stored" if event.get("quick", false) else "Game saved")
@@ -1274,6 +1516,7 @@ func _input(event):
 		pointer = local
 		if event is InputEventMouseMotion and controller_selection >= 0:
 			controller_selection = -1
+			dialogue_preselected = false
 			cursor_layer.update()
 	if event is InputEventKey and event.pressed and not event.echo:
 		if event.scancode == KEY_F11 or (event.scancode == KEY_F and event.control and event.meta):
@@ -1387,6 +1630,7 @@ func process_controller(delta):
 	var deadzone = 0.2
 	if motion.length() > deadzone:
 		controller_selection = -1
+		dialogue_preselected = false
 		var speed = 65.0 if controller_action_held("precision") else 240.0
 		var step = motion.normalized() * pow(min(1.0, (motion.length() - deadzone) / (1.0 - deadzone)), 1.5) * speed * delta
 		if adaptive_active or dialogue_active:
@@ -1448,12 +1692,19 @@ func set_controller_surface(surface):
 	var old_id = ""
 	if same_place and controller_selection >= 0 and controller_selection < controller_surface.targets.size():
 		old_id = controller_surface.targets[controller_selection].id
+	var new_replies = surface.context == "dialogue" and not surface.targets.empty() and (controller_surface.context != "dialogue" or target_ids(controller_surface) != target_ids(surface))
 	var changed = JSON.print(controller_surface) != JSON.print(surface)
 	controller_surface = surface
 	update_touch_context()
+	if new_replies or (dialogue_preselected and surface.context == "dialogue"):
+		controller_selection = 0
+		dialogue_preselected = true
+		cursor_layer.update()
+		return
 	if not changed:
 		return
 	controller_selection = -1
+	dialogue_preselected = false
 	for i in range(surface.targets.size()):
 		if surface.targets[i].id == old_id:
 			controller_selection = i
@@ -1462,6 +1713,12 @@ func set_controller_surface(surface):
 	if controller_selection >= 0 and not pointer_pressed:
 		focus_controller_target(controller_selection)
 	cursor_layer.update()
+
+func target_ids(surface):
+	var ids = []
+	for target in surface.get("targets", []):
+		ids.append(target.get("id", ""))
+	return ids
 
 func controller_target_position(target):
 	if target.id == "ui:layout":
@@ -1508,6 +1765,7 @@ func focus_controller_target(index):
 	if index < 0 or index >= controller_surface.targets.size():
 		return
 	controller_selection = index
+	dialogue_preselected = false
 	set_pointer_visible(false)
 	var target = controller_surface.targets[index]
 	if target.id == "ui:layout":
@@ -1557,6 +1815,9 @@ func controller_confirm(pressed):
 		return
 	if pressed:
 		refresh_controller_surface()
+		if dialogue_preselected and controller_selection >= 0 and controller_selection < controller_surface.targets.size() and not pointer_pressed:
+			# Answer with the first reply even though it was never shown.
+			focus_controller_target(controller_selection)
 		set_pointer_visible(controller_selection < 0)
 		if controller_selection >= 0 and controller_surface.targets[controller_selection].id == "ui:layout":
 			toggle_exploration_layout()
@@ -1694,6 +1955,9 @@ func controller_binding_input(event):
 		# Keyboard arrows also cover Android controllers that report a D-pad as keys.
 		var portable = not OS.get_environment("RETANIC_ARCH").empty() or OS.get_name() == "Android"
 		var navigation = event.scancode in [KEY_UP, KEY_DOWN, KEY_LEFT, KEY_RIGHT]
+		if event.scancode in [KEY_ENTER, KEY_KP_ENTER] and modal == null and event.pressed:
+			# New replies may have arrived since the last key; they start on the first.
+			refresh_controller_surface()
 		var confirmation = event.scancode in [KEY_ENTER, KEY_KP_ENTER] and modal == null and controller_selection >= 0
 		var custom = config.get_value(controller_config_section(), "keyboard_remapped", false)
 		var hinting = token in controller_bindings.get("hints", [])
@@ -2076,6 +2340,7 @@ func panel(title):
 		backdrop.rect_size = layout_size
 		backdrop.visible = has_frame
 	controller_selection = -1
+	dialogue_preselected = false
 	cursor_layer.update()
 	touch_strip.hide()
 	if is_instance_valid(layout_switch):
@@ -2136,6 +2401,8 @@ func show_menu():
 	button(box, "Load game", "menu_command", ["load"])
 	if achievements_enabled():
 		button(box, "Achievements", "show_achievements")
+	if scratchpad_enabled():
+		button(box, "Scratchpad", "show_scratchpad")
 	button(box, "Import / export .ti saves", "save_tools")
 	button(box, "Settings", "show_settings")
 	button(box, "Main menu", "menu_command", ["new"])
@@ -2147,6 +2414,8 @@ func show_settings():
 	button(box, "Controls / display", "show_control_options")
 	button(box, "Game files / mods", "setup_from_menu")
 	button(box, "Achievements: %s" % ("On" if achievements_enabled() else "Off"), "show_achievement_choice")
+	button(box, "Scratchpad clues: %s" % ("On" if scratchpad_enabled() else "Off"), "toggle_scratchpad")
+	button(box, "New items: %s" % ("Into the bag, with a notice" if item_notices_enabled() else "In hand (original)"), "toggle_item_notices")
 	button(box, "Credits", "show_credits")
 	button(box, "Back", "controller_settings_back")
 
@@ -2410,7 +2679,7 @@ func show_achievement_choice(save_path = "", first_start = false):
 	achievement_choice_dialog = modal
 	status.hide()
 	var hint = Label.new()
-	hint.text = "Earn achievements for the story's turning points, conversations, puzzles, rooms and endings. A short notice appears at the bottom of the screen when you unlock one.\n\nThey never change the game or your saves. You can change this later in Settings."
+	hint.text = "Earn achievements for the story's turning points, conversations, puzzles, rooms and endings. A short notice appears in the top right corner when you unlock one.\n\nThey never change the game or your saves. You can change this later in Settings."
 	if not first_start:
 		hint.text = "Achievements you have already earned are kept either way. Turning them back on awards what your current game has already reached."
 	hint.autowrap = true
@@ -2784,9 +3053,13 @@ func update_touch_layout(_device = 0, _connected = false):
 	if is_instance_valid(backdrop):
 		backdrop.rect_size = layout_size
 	for child in get_children():
-		if child is PanelContainer and child != achievement_toast:
+		if child is PanelContainer and child != achievement_toast and child != item_notice:
 			child.rect_position = (layout_size - child.rect_size) / 2
 	place_achievement_toast()
+	place_item_notice()
+	if is_instance_valid(scratchpad):
+		scratchpad.rect_size = layout_size
+		scratchpad.relayout()
 	if touch_strip == null:
 		return
 	touch_strip.visible = touch_enabled and modal == null
@@ -3192,6 +3465,10 @@ func sync_dialogue_layout():
 			pointer_pressed = false
 		dialogue_active = active
 		controller_selection = -1
+		dialogue_preselected = false
+		if active and controller_surface.context == "dialogue" and not controller_surface.targets.empty():
+			controller_selection = 0
+			dialogue_preselected = true
 		update_touch_layout()
 		pointer = display_to_game(display_pointer)
 		refresh_cursor()

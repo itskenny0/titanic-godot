@@ -117,6 +117,44 @@ func begin():
 	check(player.adaptive_active,"location labels and navigation fades preserve side panels")
 	yield(VisualServer, "frame_post_draw")
 	player.overlays = []
+	# Short engine moments keep the side panels; lasting ones and full screens do not.
+	var steady = recorder.metadata.duplicate(true)
+	player.adaptive_hold_ms = 400
+	recorder.metadata = steady.duplicate(true)
+	recorder.metadata["eligible"] = false
+	recorder.metadata["hold"] = true
+	recorder.metadata["reason"] = "room not showing"
+	player.sync_adaptive_layout()
+	check(player.adaptive_active and player.layout_switch.visible,"a room change holds the side panels and the quick switch")
+	recorder.metadata = steady.duplicate(true)
+	player.sync_adaptive_layout()
+	check(player.adaptive_active and player.adaptive_leaving_since < 0,"returning to exploration within the hold never showed classic")
+	recorder.metadata["eligible"] = false
+	recorder.metadata["hold"] = true
+	player.sync_adaptive_layout()
+	yield(create_timer(0.5),"timeout")
+	player.sync_adaptive_layout()
+	check(not player.adaptive_active,"a hold that lasts gives way to the classic layout")
+	recorder.metadata = steady.duplicate(true)
+	player.sync_adaptive_layout()
+	check(player.adaptive_active,"side panels return after a lasting hold")
+	recorder.metadata["eligible"] = false
+	recorder.metadata["hold"] = false
+	recorder.metadata["reason"] = "full-screen movie"
+	player.sync_adaptive_layout()
+	check(not player.adaptive_active,"a full-screen movie switches to classic at once")
+	recorder.metadata = steady.duplicate(true)
+	player.sync_adaptive_layout()
+	player.prefer_classic_now = true
+	recorder.metadata["eligible"] = false
+	recorder.metadata["hold"] = true
+	player.sync_adaptive_layout()
+	check(not player.adaptive_active,"choosing classic is not overridden by a hold")
+	player.prefer_classic_now = false
+	recorder.metadata = steady
+	player.adaptive_hold_ms = 1500
+	player.sync_adaptive_layout()
+	check(player.adaptive_active,"exploration restored after hold checks")
 	for roomy in [false,true]:
 		player.config.set_value("graphics","adaptive_roomy",roomy)
 		player.sync_adaptive_layout()
