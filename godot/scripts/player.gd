@@ -18,6 +18,10 @@ var artwork_choice_save = ""
 var achievement_choice_dialog = null
 var achievement_choice_first = false
 var achievement_choice_save = ""
+var helper_choice_save = ""
+var helper_choice_dialog = null
+var scratchpad_options_from = "settings"
+var scratchpad_options_dialog = null
 var adaptive = AdaptiveLayout.new()
 var adaptive_panel_style = UIStyle.plate(Color("1b202140"),Color("645b4660"),6)
 var adaptive_button_style = UIStyle.plate(Color("24292960"),Color("4f504580"),4)
@@ -391,9 +395,12 @@ func start_runtime(save_path = ""):
 	if not automated and needs_achievement_choice():
 		show_achievement_choice(save_path, true)
 		return
+	if not automated and needs_helper_choice():
+		show_helper_choice(save_path)
+		return
 	var error = ""
 	runtime.execute("profile", JSON.print({"on": OS.is_debug_build()}))
-	error = runtime.execute("boot", JSON.print({"index": game_index, "save": save_path, "hd_pack": active_hd_pack(), "vector_ui": "res://artwork/ui" if config.get_value("graphics", "redrawn_ui", true) else "", "timed_subtitles": config.get_value("dialogue", "timed_subtitles", false), "disable_autosave": not config.get_value("saves", "autosave_enabled", true), "testing": "--integration-test" in OS.get_cmdline_args(), "achievements": achievements.ids(), "disable_achievements": not achievements_enabled(), "clues": scratchpad_enabled(), "original_items": not item_notices_enabled()}))
+	error = runtime.execute("boot", JSON.print({"index": game_index, "save": save_path, "hd_pack": active_hd_pack(), "vector_ui": active_vector_ui(), "timed_subtitles": config.get_value("dialogue", "timed_subtitles", false), "disable_autosave": not config.get_value("saves", "autosave_enabled", true), "testing": "--integration-test" in OS.get_cmdline_args(), "achievements": achievements.ids(), "disable_achievements": not achievements_enabled(), "clues": scratchpad_enabled(), "original_items": not item_notices_enabled()}))
 	if not error.empty():
 		show_note(error)
 		return
@@ -442,11 +449,19 @@ func find_hd_pack():
 func active_hd_pack():
 	return hd_pack_path if config.get_value("graphics", "hd_enabled", true) else ""
 
+func active_vector_ui():
+	return "res://artwork/ui" if config.get_value("graphics", "redrawn_ui", true) else ""
+
+# The HD pack and the redrawn interface change in the running game at once;
+# the next frame arrives at the new size.
+func apply_artwork():
+	send({"action": "artwork", "value": {"hd_pack": active_hd_pack(), "vector_ui": active_vector_ui()}})
+
 func toggle_hd_artwork():
 	var enabled = not config.get_value("graphics", "hd_enabled", true)
 	config.set_value("graphics", "hd_enabled", enabled)
 	config.save("user://settings.cfg")
-	# Apply on next startup; preserve unsaved progress in the running game.
+	apply_artwork()
 	show_hd_settings()
 
 func show_checkpoint_toast(text):
@@ -625,22 +640,111 @@ func note_area():
 		return Rect2(Vector2.ZERO, layout_size)
 	return Rect2(game_origin, Vector2(512, 384))
 
+const CLUE_KINDS = ["places", "story", "errands", "puzzles"]
+const CLUE_KIND_NAMES = {"places": "Places: cabins and directions", "story": "People and story", "errands": "Errands: what people want", "puzzles": "Puzzle hints (gives solutions away)"}
+const SCRATCHPAD_MODE_NAMES = {"off": "Off", "own": "My notes only", "clues": "My notes and game clues"}
+
+# "off", "own" (the player's notes only) or "clues" (also notes from what
+# characters say, which amount to hints).
+func scratchpad_mode():
+	var mode = config.get_value("scratchpad", "mode", "")
+	if not mode in ["off", "own", "clues"]:
+		mode = "clues" if config.get_value("scratchpad", "enabled", true) else "off"
+	return mode
+
 func scratchpad_enabled():
-	return config.get_value("scratchpad", "enabled", true)
+	return scratchpad_mode() != "off"
+
+func clue_kinds():
+	return config.get_value("scratchpad", "kinds", ["places", "story", "errands"])
+
+func clue_kind_shown(kind):
+	return scratchpad_mode() == "clues" and (kind in clue_kinds() or not kind in CLUE_KINDS)
 
 func item_notices_enabled():
 	return config.get_value("items", "notices", true)
 
 func toggle_scratchpad():
-	var enabled = not scratchpad_enabled()
-	config.set_value("scratchpad", "enabled", enabled)
-	config.save("user://settings.cfg")
-	send({"action": "clues", "on": enabled})
-	scratchpad.refresh()
-	show_settings()
+	show_scratchpad_options("settings")
 
-func toggle_item_notices():
-	var enabled = not item_notices_enabled()
+# Off hides every note and the tray and ignores new clues; notes are kept for
+# when it is turned back on in Settings.
+func turn_scratchpad_off():
+	set_scratchpad(false)
+	close_scratchpad()
+
+func set_scratchpad(enabled):
+	set_scratchpad_mode("clues" if enabled else "off")
+
+# The game keeps reporting clues unless the scratchpad is off; which of them
+# show is the player's choice, so switching back brings them back.
+func set_scratchpad_mode(mode):
+	config.set_value("scratchpad", "mode", mode)
+	config.set_value("scratchpad", "enabled", mode != "off")
+	config.save("user://settings.cfg")
+	send({"action": "clues", "on": mode != "off"})
+	if is_instance_valid(scratchpad):
+		scratchpad.clear_popups()
+		scratchpad.refresh()
+
+func toggle_clue_kind(kind):
+	var kinds = clue_kinds().duplicate()
+	if kind in kinds:
+		kinds.erase(kind)
+	else:
+		kinds.append(kind)
+	config.set_value("scratchpad", "kinds", kinds)
+	config.save("user://settings.cfg")
+	if is_instance_valid(scratchpad):
+		scratchpad.clear_popups()
+		scratchpad.refresh()
+	show_scratchpad_options(scratchpad_options_from)
+
+func choose_scratchpad_mode(mode):
+	set_scratchpad_mode(mode)
+	show_scratchpad_options(scratchpad_options_from)
+
+# Opened from Settings or from the first-start question.
+func show_scratchpad_options(from = "settings"):
+	scratchpad_options_from = from
+	var box = panel("Scratchpad options")
+	scratchpad_options_dialog = modal
+	var hint = Label.new()
+	hint.text = "Keep your own notes, or also get notes from what characters tell you. Game clues are hints and make the game easier; choose which kinds you want."
+	hint.autowrap = true
+	hint.rect_min_size = Vector2(396, 46)
+	hint.add_font_override("font", get_font_for("12px Arial"))
+	box.add_child(hint)
+	var row = HBoxContainer.new()
+	box.add_child(row)
+	var focus = null
+	for mode in ["off", "own", "clues"]:
+		var b = button(row, ("● " if scratchpad_mode() == mode else "") + SCRATCHPAD_MODE_NAMES[mode], "choose_scratchpad_mode", [mode])
+		b.name = "mode_" + mode
+		b.size_flags_horizontal = SIZE_EXPAND_FILL
+		if scratchpad_mode() == mode:
+			focus = b
+	for kind in CLUE_KINDS:
+		var b = button(box, "%s: %s" % [CLUE_KIND_NAMES[kind], "On" if kind in clue_kinds() else "Off"], "toggle_clue_kind", [kind])
+		b.name = "kind_" + kind
+		b.disabled = scratchpad_mode() != "clues"
+	button(box, "Back", "close_scratchpad_options")
+	if focus != null:
+		focus.grab_focus()
+
+func close_scratchpad_options():
+	if scratchpad_options_from == "helpers":
+		show_helper_choice(helper_choice_save)
+	else:
+		show_settings()
+
+func scratchpad_summary():
+	if scratchpad_mode() != "clues":
+		return SCRATCHPAD_MODE_NAMES[scratchpad_mode()]
+	var kinds = clue_kinds()
+	return "Game clues" if kinds.empty() else "Notes and clues (%d of %d kinds)" % [kinds.size(), CLUE_KINDS.size()]
+
+func set_item_notices(enabled):
 	config.set_value("items", "notices", enabled)
 	config.save("user://settings.cfg")
 	send({"action": "item_notices", "on": enabled})
@@ -649,6 +753,14 @@ func toggle_item_notices():
 		if is_instance_valid(item_notice):
 			item_notice.queue_free()
 		item_notice = null
+
+func set_autosave(enabled):
+	config.set_value("saves", "autosave_enabled", enabled)
+	config.save("user://settings.cfg")
+	send({"action": "autosave_enabled", "on": enabled})
+
+func toggle_item_notices():
+	set_item_notices(not item_notices_enabled())
 	show_settings()
 
 # A received item is named for five seconds at the top of the screen, with
@@ -794,7 +906,10 @@ func show_scratchpad():
 		clues = clues or not scratchpad.notes[id].own
 	if clues:
 		button(box, "Remove this voyage's clues", "confirm_clear_scratchpad_clues")
-	button(box, "Back", "close_scratchpad")
+	var row = HBoxContainer.new()
+	box.add_child(row)
+	button(row, "Back", "close_scratchpad")
+	button(row, "Turn the scratchpad off", "turn_scratchpad_off")
 	if first != null:
 		first.grab_focus()
 	else:
@@ -855,11 +970,62 @@ func save_written_note(_text = ""):
 		show_scratchpad()
 
 func toggle_autosave():
-	var enabled = not config.get_value("saves", "autosave_enabled", true)
-	config.set_value("saves", "autosave_enabled", enabled)
-	config.save("user://settings.cfg")
-	send({"action": "autosave_enabled", "on": enabled})
+	set_autosave(not autosave_enabled())
 	show_setup()
+
+func autosave_enabled():
+	return config.get_value("saves", "autosave_enabled", true)
+
+# The helpers the original never had are asked about once, together; each
+# can be changed at any time in Settings, also during a voyage.
+func needs_helper_choice():
+	return not config.get_value("helpers", "chosen", false)
+
+func helper_label(key):
+	match key:
+		"scratchpad":
+			return "Scratchpad: %s" % scratchpad_summary()
+		"items":
+			return "New items: %s" % ("Into the bag, with a notice" if item_notices_enabled() else "In hand (original)")
+		"autosave":
+			return "Autosave checkpoints: %s" % ("On" if autosave_enabled() else "Off")
+	return key
+
+func show_helper_choice(save_path = ""):
+	helper_choice_save = save_path
+	var box = panel("Modern helpers")
+	helper_choice_dialog = modal
+	status.hide()
+	var hint = Label.new()
+	hint.text = "The original game had none of these. The scratchpad keeps your notes, and if you like, clues people mention, which make the game easier; new items go into the bag with a notice instead of waiting in hand; the game saves at checkpoints. Change them at any time in Settings."
+	hint.autowrap = true
+	hint.rect_min_size = Vector2(396, 92)
+	hint.add_font_override("font", get_font_for("13px Arial"))
+	box.add_child(hint)
+	for key in ["scratchpad", "items", "autosave"]:
+		var b = button(box, helper_label(key), "toggle_helper", [key])
+		b.name = "helper_" + key
+	button(box, "Start", "choose_helpers").grab_focus()
+
+func toggle_helper(key):
+	match key:
+		"scratchpad":
+			show_scratchpad_options("helpers")
+			return
+		"items":
+			set_item_notices(not item_notices_enabled())
+		"autosave":
+			set_autosave(not autosave_enabled())
+	var b = modal.find_node("helper_" + key, true, false)
+	if b != null:
+		b.text = helper_label(key)
+		b.grab_focus()
+
+func choose_helpers():
+	helper_choice_dialog = null
+	config.set_value("helpers", "chosen", true)
+	config.save("user://settings.cfg")
+	start_runtime(helper_choice_save)
 
 func create_runtime():
 	var runtime = null
@@ -1070,12 +1236,12 @@ func sync_adaptive_layout():
 		set_adaptive_active(false)
 		update_layout_switch()
 		return
-	# Five toolbar slots, and a sixth while an item waits in hand.
+	# Five toolbar slots, then one each for an item in hand and the Help button.
 	var atlas_width = 128 * int(metadata.get("atlas_slots", 5))
 	var resized = adaptive_atlas_image.get_width() != atlas_width * atlas_scale
 	if metadata.revision != adaptive_atlas_revision or atlas_scale != adaptive_atlas_scale or resized:
 		var bytes = runtime.buffer("adaptive_atlas")
-		if not atlas_width in [640, 768] or bytes.size() != atlas_width * 128 * 4 * atlas_scale * atlas_scale:
+		if atlas_width < 640 or atlas_width > 896 or bytes.size() != atlas_width * 128 * 4 * atlas_scale * atlas_scale:
 			adaptive_available = false
 			set_adaptive_active(false)
 			update_layout_switch()
@@ -1096,7 +1262,7 @@ func update_layout_switch():
 		return
 	layout_switch.visible = adaptive_available and modal == null and not touch_editing and adaptive_widescreen()
 	layout_switch.text = "Classic" if adaptive_active else "Side panels"
-	layout_switch.rect_position = Vector2(6,210) if adaptive_active else Vector2(6,24)
+	layout_switch.rect_position = Vector2(6,adaptive.SWITCH_Y) if adaptive_active else Vector2(6,24)
 	layout_switch.rect_size = Vector2(adaptive.rail-12 if adaptive_active else max(60,game_origin.x-12),26)
 
 func toggle_exploration_layout():
@@ -1421,7 +1587,7 @@ func handle_event(event):
 				if not is_instance_valid(item_notice):
 					show_next_item()
 		"clue":
-			if scratchpad_enabled() and scratchpad.learn(event.id, event.text):
+			if scratchpad_enabled() and scratchpad.learn(event.id, event.text, event.get("kind", "")):
 				scratchpad.popup(event.id)
 		"saved":
 			print("Saved: ", event.name)
@@ -1784,6 +1950,18 @@ func target_ids(surface):
 		ids.append(target.get("id", ""))
 	return ids
 
+# The notes button belongs to the side panels; in Classic it sits in the
+# margin below the layout switch, or on a 4:3 screen in the empty right end
+# of the original toolbar. It is not needed in a conversation.
+func notes_tray_rect():
+	if dialogue_active or adaptive_metadata is Dictionary and adaptive_metadata.get("reason", "") == "conversation" and not adaptive_active:
+		return Rect2()
+	if adaptive_active:
+		return adaptive.notes_display
+	if game_origin.x >= 52:
+		return Rect2(6, 56, min(84, game_origin.x - 12), 26)
+	return Rect2(game_origin + Vector2(422, 344), Vector2(62, 26))
+
 func notes_tray_shown():
 	return is_instance_valid(scratchpad) and scratchpad.tray.visible
 
@@ -1908,6 +2086,12 @@ func controller_ui_key(code, pressed):
 	Input.parse_input_event(event)
 
 func controller_back():
+	# A first-start question is answered with Start, not skipped.
+	if is_instance_valid(helper_choice_dialog) and modal == helper_choice_dialog:
+		return
+	if is_instance_valid(scratchpad_options_dialog) and modal == scratchpad_options_dialog:
+		close_scratchpad_options()
+		return
 	if is_instance_valid(dialogue_choice_dialog) and modal == dialogue_choice_dialog:
 		if not dialogue_choice_first:
 			finish_dialogue_options()
@@ -2101,7 +2285,7 @@ func show_first_layout():
 	var box = panel("Choose your layout")
 	add_layout_preview(box)
 	var hint = Label.new()
-	hint.text = "Side panels work on wide screens. Held items and special screens use Classic. Change your choice later in Menu > Settings > Controls / display."
+	hint.text = "Side panels work on wide screens. Full-screen movies and close-ups use Classic. Change your choice later in Menu > Settings > Controls / display."
 	hint.autowrap = true
 	hint.rect_min_size = Vector2(390,64)
 	hint.add_font_override("font",get_font_for("13px Arial"))
@@ -2131,7 +2315,7 @@ func show_control_options():
 		button(box,"Adaptive exploration: %s" % ("On" if adaptive_enabled() else "Off"),"toggle_adaptive_exploration").grab_focus()
 		button(box,"Panel size: " + ("Roomy" if adaptive_roomy() else "Compact"),"toggle_adaptive_size")
 		add_layout_preview(box)
-		text_scroller(box,"Side panels need a wide screen. Held items and special screens use Classic. Dialogue has its own layout setting.",40)
+		text_scroller(box,"Side panels need a wide screen. Full-screen movies and close-ups use Classic. Dialogue has its own layout setting.",40)
 	var row = HBoxContainer.new()
 	box.add_child(row)
 	var bindings = button(row,"Controller bindings","show_controller_settings")
@@ -2486,7 +2670,7 @@ func show_settings():
 	button(box, "Controls / display", "show_control_options")
 	button(box, "Game files / mods", "setup_from_menu")
 	button(box, "Achievements: %s" % ("On" if achievements_enabled() else "Off"), "show_achievement_choice")
-	button(box, "Scratchpad clues: %s" % ("On" if scratchpad_enabled() else "Off"), "toggle_scratchpad")
+	button(box, "Scratchpad: %s" % scratchpad_summary(), "toggle_scratchpad")
 	button(box, "New items: %s" % ("Into the bag, with a notice" if item_notices_enabled() else "In hand (original)"), "toggle_item_notices")
 	button(box, "Credits", "show_credits")
 	button(box, "Back", "controller_settings_back")
@@ -2723,12 +2907,12 @@ func data_selected(path, disc):
 func show_hd_settings():
 	var box = panel("HD artwork")
 	var hint = Label.new()
-	hint.text = "Keep hdpack beside your ISOs, or choose its folder.\nChanges take effect next time you start the game."
+	hint.text = "Keep hdpack beside your ISOs, or choose its folder.\nChanges apply at once, also in a running game."
 	hint.add_font_override("font", get_font_for("13px Arial"))
 	box.add_child(hint)
 	button(box, "Choose HD artwork folder", "choose_hd_folder").grab_focus()
 	button(box, "Use automatic folder detection", "reset_hd_folder")
-	button(box, "HD artwork: %s (next start)" % ("On" if config.get_value("graphics", "hd_enabled", true) else "Off"), "toggle_hd_artwork")
+	button(box, "HD artwork: %s" % ("On" if config.get_value("graphics", "hd_enabled", true) else "Off"), "toggle_hd_artwork")
 	button(box, "Redrawn interface: %s (compare)" % ("On" if config.get_value("graphics", "redrawn_ui", true) else "Off"), "show_artwork_choice")
 	if hd_pack_path.empty():
 		var missing = Label.new()
@@ -2808,7 +2992,7 @@ func show_artwork_choice(save_path = "", first_start = false):
 	var hint = Label.new()
 	hint.text = "Redraws change the toolbar icons and navigation hint. You can change this later in Game files / mods > HD artwork."
 	if not first_start:
-		hint.text = "Changes take effect next start. Your current game continues with its existing artwork."
+		hint.text = "Your choice applies at once, also in a running game."
 	if small_display():
 		# Redraws make the engine compose every frame at twice the size, which
 		# a screen this small cannot show and slower handhelds feel.
@@ -2829,12 +3013,14 @@ func choose_artwork(enabled):
 	if artwork_choice_first:
 		start_runtime(artwork_choice_save)
 	else:
+		apply_artwork()
 		show_hd_settings()
 
 func reset_hd_folder():
 	config.set_value("graphics", "hd_folder", "")
 	config.save("user://settings.cfg")
 	hd_pack_path = find_hd_pack()
+	apply_artwork()
 	show_hd_settings()
 
 func choose_hd_folder():
@@ -2850,6 +3036,7 @@ func hd_folder_selected(path):
 	config.set_value("graphics", "hd_folder", path)
 	config.save("user://settings.cfg")
 	hd_pack_path = find_hd_pack()
+	apply_artwork()
 	show_hd_settings()
 
 func android_hd_selected(path, error):
@@ -2859,6 +3046,7 @@ func android_hd_selected(path, error):
 		config.set_value("graphics", "hd_folder", path)
 		config.save("user://settings.cfg")
 		hd_pack_path = "saf-hd:" + path
+		apply_artwork()
 		show_hd_settings()
 
 func android_hd_detected(path, error):

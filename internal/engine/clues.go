@@ -11,10 +11,17 @@ import (
 // any of the dialogue lines that mention it, such as a cabin number, and
 // never changes the game.
 type Clue struct {
-	ID    string   `json:"id"`
+	ID string `json:"id"`
+	// Kind lets players choose how much help they get: "places" (cabins and
+	// directions), "story" (who is who, what happened), "errands" (what
+	// people want of Frank) or "puzzles" (how to get past an obstacle).
+	Kind  string   `json:"kind"`
 	Text  string   `json:"text"`
 	Lines []string `json:"lines"`
 }
+
+// ClueKinds lists the kinds from least to most revealing.
+var ClueKinds = []string{"places", "story", "errands", "puzzles"}
 
 //go:embed clues.json
 var clueData []byte
@@ -51,6 +58,30 @@ func (p *Player) noteClue(s *Session, line string) {
 		return
 	}
 	if c := byLine[strings.ToLower(line)]; c != nil {
-		p.emit("clue", map[string]any{"id": c.ID, "text": c.Text})
+		for _, waiting := range p.pendingClues {
+			if waiting == c {
+				return
+			}
+		}
+		p.pendingClues = append(p.pendingClues, c)
 	}
+}
+
+// serviceClues reports learned clues once the conversation is over, so a
+// note never gives away a line before the character has said it.
+func (p *Player) serviceClues() {
+	if len(p.pendingClues) == 0 {
+		return
+	}
+	if !p.clues {
+		p.pendingClues = nil
+		return
+	}
+	if d := p.Host.Director; d.Conversing() || d.Speaking() {
+		return
+	}
+	for _, c := range p.pendingClues {
+		p.emit("clue", map[string]any{"id": c.ID, "kind": c.Kind, "text": c.Text})
+	}
+	p.pendingClues = nil
 }

@@ -172,6 +172,34 @@ func begin():
 	player.scratchpad.set_collapsed(false)
 	player.scratchpad.finish_animations()
 
+	# A note can be pushed partly off the screen, and fetched back.
+	var paper_note = player.scratchpad.pinned.frank_cabin
+	start = paper_note.get_global_rect().position + Vector2(20, 24)
+	var edge = Vector2(player.layout_size.x + 200, start.y + 400)
+	screen_press(start, true)
+	for i in range(1, 11):
+		screen_move(start + (edge - start) * (i / 10.0))
+		yield(self, "idle_frame")
+	screen_press(edge, false)
+	yield(self, "idle_frame")
+	var hanging = Rect2(paper_note.get_position(), paper_note.get_size())
+	var screen = Rect2(Vector2.ZERO, player.layout_size)
+	check(hanging.end.x > screen.end.x and hanging.end.y > screen.end.y, "a note can hang off the screen's edge")
+	var top_left = Vector2(max(screen.position.x, hanging.position.x), max(screen.position.y, hanging.position.y))
+	var bottom_right = Vector2(min(screen.end.x, hanging.end.x), min(screen.end.y, hanging.end.y))
+	var showing = Rect2(top_left, bottom_right - top_left)
+	check(showing.size.x >= 39 and showing.size.y >= 27, "enough of it stays on screen to pick it up")
+	# Pick it up by its outer corner, clear of the notes button.
+	start = showing.end - Vector2(8, 6)
+	screen_press(start, true)
+	for i in range(1, 11):
+		screen_move(start + (Vector2(200, 160) - start) * (i / 10.0))
+		yield(self, "idle_frame")
+	screen_press(Vector2(200, 160), false)
+	yield(self, "idle_frame")
+	check(screen.encloses(Rect2(paper_note.get_position(), paper_note.get_size())), "the note can be fetched back")
+	player.scratchpad.set_pinned("frank_cabin", true, home)
+
 	# Dropping a note on the tray puts it away.
 	var lifted = player.scratchpad.pinned.frank_cabin
 	start = lifted.get_global_rect().position + Vector2(30, 24)
@@ -290,7 +318,10 @@ func begin():
 	check(not is_instance_valid(player.item_notice) and player.item_queue.empty(), "turning them off clears notices")
 	player.handle_event({"type": "item", "id": "ring", "name": "Willie's Ring", "bag": true, "icon": ICON})
 	check(player.item_notice == null, "no notice while off")
-	button_named(player.modal, "Scratchpad clues").emit_signal("pressed")
+	button_named(player.modal, "Scratchpad: ").emit_signal("pressed")
+	yield(self, "idle_frame")
+	check(player.modal == player.scratchpad_options_dialog, "Settings open the scratchpad options")
+	player.modal.find_node("mode_off", true, false).emit_signal("pressed")
 	yield(self, "idle_frame")
 	check(not player.scratchpad_enabled() and recorder.commands.back().action == "clues" and not recorder.commands.back().on, "the scratchpad can be turned off")
 	check(scraps().empty(), "no notes on screen while off")
@@ -301,9 +332,41 @@ func begin():
 	check(button_named(player.modal, "Scratchpad") == null, "the menu hides the scratchpad while off")
 	player.close_modal()
 	player.menu = null
-	player.config.set_value("scratchpad", "enabled", true)
-	player.scratchpad.refresh()
+	player.set_scratchpad_mode("clues")
 	check(player.scratchpad.pinned.has("frank_cabin"), "turning it back on restores pinned notes")
+
+	# My notes only: game clues are kept but hidden, and come back.
+	var mine = player.scratchpad.write("Remember the trunk")
+	player.show_scratchpad_options()
+	player.modal.find_node("mode_own", true, false).emit_signal("pressed")
+	yield(self, "idle_frame")
+	check(player.scratchpad_mode() == "own" and player.scratchpad_enabled(), "the scratchpad can hold only my notes")
+	check(recorder.commands.back().action == "clues" and recorder.commands.back().on, "the game keeps telling the scratchpad what was said")
+	check(player.scratchpad.pinned.has(mine) and not player.scratchpad.pinned.has("frank_cabin"), "my notes stay, game clues hide")
+	check(not player.scratchpad.listed().has("frank_cabin") and player.scratchpad.listed().has(mine), "the list shows only my notes")
+	check(player.modal.find_node("kind_places", true, false).disabled, "clue kinds only apply with game clues")
+	player.handle_event({"type": "clue", "id": "burns_cabin", "kind": "places", "text": "The Burnses: cabin C-78."})
+	check(player.scratchpad.popups.empty() and player.scratchpad.notes.has("burns_cabin"), "a clue heard meanwhile is kept, not shown")
+	player.modal.find_node("mode_clues", true, false).emit_signal("pressed")
+	yield(self, "idle_frame")
+	check(player.scratchpad.pinned.has("frank_cabin") and player.scratchpad.listed().has("burns_cabin"), "switching back shows every clue heard")
+
+	# Clue kinds: a kind switched off hides its clues, also pinned ones.
+	player.scratchpad.notes.frank_cabin["kind"] = "places"
+	player.modal.find_node("kind_places", true, false).emit_signal("pressed")
+	yield(self, "idle_frame")
+	check(not "places" in player.clue_kinds() and not player.scratchpad.pinned.has("frank_cabin"), "turning off a kind hides its pinned clues")
+	player.handle_event({"type": "clue", "id": "cafe_where", "kind": "places", "text": "Café Parisien: aft."})
+	check(player.scratchpad.popups.empty(), "no popup for a kind that is off")
+	player.handle_event({"type": "clue", "id": "pipe_humid", "kind": "puzzles", "text": "Trask: steam up the bath."})
+	check(player.scratchpad.popups.empty(), "puzzle hints are off by default")
+	player.modal.find_node("kind_places", true, false).emit_signal("pressed")
+	yield(self, "idle_frame")
+	check(player.scratchpad.pinned.has("frank_cabin") and player.scratchpad.listed().has("cafe_where"), "turning the kind back on brings its clues back")
+	check(Rect2(Vector2.ZERO, player.layout_size).encloses(player.modal.get_global_rect()), "the scratchpad options fit the screen")
+	player.controller_back()
+	check(button_named(player.modal, "Scratchpad: ") != null, "Back returns to Settings")
+	player.close_modal()
 	ConfigFile.new().save(path)
 	# The settings toggles saved settings.cfg; leave it as a fresh install.
 	player.config.clear()

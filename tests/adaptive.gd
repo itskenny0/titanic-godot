@@ -155,6 +155,42 @@ func begin():
 	player.adaptive_hold_ms = 1500
 	player.sync_adaptive_layout()
 	check(player.adaptive_active,"exploration restored after hold checks")
+	# A new voyage has only the life ring, the move arrow and the Help button;
+	# the bag, watch and map are not Frank's yet.
+	var voyage = steady.duplicate(true)
+	voyage["atlas_slots"] = 6
+	voyage["revision"] = steady.revision + 1
+	var kept = []
+	for c in voyage.controls:
+		if c.name in ["life","navarrow"]:
+			kept.append(c)
+	kept.append({"name":"invenhelp","label":"Help","x":39,"y":294,"w":95,"h":61,"aim_x":86,"aim_y":324,"slot":5})
+	voyage.controls = kept
+	recorder.metadata = voyage
+	for roomy in [false,true]:
+		player.config.set_value("graphics","adaptive_roomy",roomy)
+		player.sync_adaptive_layout()
+		player.update_touch_layout()
+		check(player.adaptive_active,"a new voyage keeps the side panels")
+		var help = null
+		for c in player.adaptive.controls:
+			if c.name == "invenhelp":
+				help = c
+		check(help != null and help.label == "Help","the Help button is a control")
+		if help == null:
+			continue
+		check(help.display.position == Vector2(6,player.adaptive.LOWER_Y),"Help takes the bag's place while Frank has no bag")
+		check(not player.layout_switch.get_rect().intersects(help.display),"Help clears the layout switch")
+		for c in player.adaptive.controls:
+			if c != help:
+				check(not c.display.intersects(help.display),"Help clears " + c.name)
+		for control in ["joystick","menu","space","escape","keyboard"]:
+			check(not player.touch_control_bounds(control).intersects(help.display),"Help clears touch control " + control)
+		var middle = help.display.position+help.display.size/2
+		check(player.adaptive.screen_to_game(middle) == Vector2(86,324),"pressing Help presses it in the game")
+	recorder.metadata = steady
+	player.config.set_value("graphics","adaptive_roomy",false)
+	player.sync_adaptive_layout()
 	# An item taken out of the bag waits beside the move arrow and is dragged
 	# from there, through the same game coordinates as the original toolbar.
 	var holding = steady.duplicate(true)

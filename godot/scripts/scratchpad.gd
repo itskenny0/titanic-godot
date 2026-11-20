@@ -18,6 +18,7 @@ const PIN = Color("b3261e")
 const WIDTH = 152.0
 const POPUP_SECONDS = 7.0
 const REST_ALPHA = 0.86
+const KEEP_VISIBLE = Vector2(40, 28)
 const TRAY_SIZE = Vector2(44, 38)
 
 var path = "user://scratchpad.cfg"
@@ -121,13 +122,20 @@ func begin_voyage(save_path = ""):
 func enabled():
 	return host != null and host.scratchpad_enabled()
 
+# Clues of a kind the player chose not to get, or every clue when the
+# scratchpad is for their own notes only, are kept but not shown, so
+# changing the choice later works both ways.
+func shown(id):
+	var note = notes[id]
+	return note.own or host != null and host.clue_kind_shown(note.get("kind", ""))
+
 # A clue is kept once per voyage; hearing the line again changes nothing.
-func learn(id, text):
+func learn(id, text, kind = ""):
 	if notes.has(id):
 		return false
-	notes[id] = {"text": text, "own": false, "pinned": false, "x": -1.0, "y": -1.0, "time": OS.get_unix_time()}
+	notes[id] = {"text": text, "kind": kind, "own": false, "pinned": false, "x": -1.0, "y": -1.0, "time": OS.get_unix_time()}
 	order.append(id)
-	return true
+	return shown(id)
 
 func write(text):
 	text = text.strip_edges()
@@ -183,13 +191,14 @@ func clear_clues():
 func listed():
 	var out = []
 	for i in range(order.size() - 1, -1, -1):
-		out.append(order[i])
+		if shown(order[i]):
+			out.append(order[i])
 	return out
 
 func pinned_count():
 	var count = 0
 	for id in order:
-		if notes[id].pinned:
+		if notes[id].pinned and shown(id):
 			count += 1
 	return count
 
@@ -202,19 +211,27 @@ func area():
 func screen_size():
 	return host.layout_size if host != null else rect_size
 
+# A note may hang off any edge of the screen, like paper pushed aside, as
+# long as enough of it stays on screen to pick it up again.
 func clamp_spot(spot, size):
 	var screen = screen_size()
-	return Vector2(clamp(spot.x, 0, max(0, screen.x - size.x)), clamp(spot.y, 0, max(0, screen.y - size.y)))
+	var keep = Vector2(min(KEEP_VISIBLE.x, size.x), min(KEEP_VISIBLE.y, size.y))
+	return Vector2(clamp(spot.x, keep.x - size.x, screen.x - keep.x), clamp(spot.y, keep.y - size.y, screen.y - keep.y))
 
 func tray_spot():
+	return tray_place().position
+
+func tray_place():
+	if host != null and host.has_method("notes_tray_rect"):
+		return host.notes_tray_rect()
 	var place = area()
-	return Vector2(place.end.x - TRAY_SIZE.x - 8, place.position.y + 8)
+	return Rect2(Vector2(place.end.x - TRAY_SIZE.x - 8, place.position.y + 8), TRAY_SIZE)
 
 func tray_centre():
-	return tray.rect_position + TRAY_SIZE / 2
+	return tray.rect_position + tray.rect_size / 2
 
 func tray_rect():
-	return Rect2(tray.rect_position, TRAY_SIZE).grow(6)
+	return Rect2(tray.rect_position, tray.rect_size).grow(6)
 
 func font(css):
 	return host.get_font_for(css)
@@ -398,7 +415,7 @@ func press_pin(scrap):
 
 # A new clue appears briefly at the picture's left, below other new ones.
 func popup(id):
-	if not enabled() or not notes.has(id):
+	if not enabled() or not notes.has(id) or not shown(id):
 		return null
 	var scrap = make_scrap(id, true)
 	popups.append(scrap)
@@ -470,7 +487,7 @@ func refresh():
 	var stack_y = place.position.y + 56
 	for id in order:
 		var note = notes[id]
-		if not note.pinned:
+		if not note.pinned or not shown(id):
 			continue
 		var scrap = make_scrap(id, false)
 		var spot = Vector2(note.x, note.y)
@@ -498,8 +515,10 @@ func relayout():
 func update_tray():
 	if tray == null:
 		return
-	tray.visible = enabled() and not order.empty()
-	tray.rect_position = tray_spot()
+	var place = tray_place()
+	tray.visible = enabled() and not listed().empty() and place.size.x > 0
+	tray.rect_position = place.position
+	tray.rect_size = place.size
 	var count = pinned_count()
 	if collapsed and count > 0:
 		tray.hint_tooltip = "Lay out your %d pinned note%s again" % [count, "" if count == 1 else "s"]
@@ -515,35 +534,42 @@ func hover_tray(on):
 
 func draw_tray():
 	var hovered = tray.has_meta("hover") and tray.get_meta("hover")
+	var size = tray.rect_size
+	# A button of the side panels, like the layout switch beside it.
+	if host != null and "adaptive_button_style" in host:
+		tray.draw_style_box(host.adaptive_hover_style if hovered else host.adaptive_button_style, Rect2(Vector2.ZERO, size))
 	# A little stack of scraps; it fills up while notes are gathered.
-	var sheets = [[Vector2(9, 12), -9.0], [Vector2(8, 10), 6.0], [Vector2(9, 8), -1.5]]
+	var stack = Vector2(5, (size.y - 15) / 2)
+	var sheets = [[Vector2(1, 2), -9.0], [Vector2(0, 1), 6.0], [Vector2(1, 0), -1.5]]
 	for sheet in sheets:
-		var size = Vector2(26, 19)
-		var centre = sheet[0] + size / 2
+		var sheet_size = Vector2(17, 12)
+		var centre = stack + sheet[0] + sheet_size / 2
 		var angle = deg2rad(sheet[1])
 		var corners = PoolVector2Array()
 		for c in [Vector2(-1, -1), Vector2(1, -1), Vector2(1, 1), Vector2(-1, 1)]:
-			corners.append(centre + (c * size / 2).rotated(angle))
+			corners.append(centre + (c * sheet_size / 2).rotated(angle))
 		var shadow = PoolVector2Array()
 		for p in corners:
-			shadow.append(p + Vector2(1, 1.5))
+			shadow.append(p + Vector2(0.8, 1.2))
 		tray.draw_colored_polygon(shadow, Color(0, 0, 0, 0.35))
 		tray.draw_colored_polygon(corners, PAPER if hovered else PAPER.darkened(0.08))
 		var rim = PoolVector2Array(corners)
 		rim.append(corners[0])
 		tray.draw_polyline(rim, PAPER_EDGE, 1.0, true)
 	for i in range(3):
-		var y = 13.5 + i * 4.0
-		tray.draw_line(Vector2(13, y), Vector2(29 - i * 3, y), Color(PEN.r, PEN.g, PEN.b, 0.45), 1.0)
+		var y = stack.y + 4.5 + i * 3.0
+		tray.draw_line(Vector2(stack.x + 4, y), Vector2(stack.x + 14 - i * 2, y), Color(PEN.r, PEN.g, PEN.b, 0.45), 1.0)
 	# A pin on the stack while notes are laid out on the screen.
 	if not collapsed and pinned_count() > 0:
-		tray.draw_circle(Vector2(31, 9), 3, PIN)
+		tray.draw_circle(stack + Vector2(16, 1), 2.5, PIN)
+	var label = "Notes"
 	if collapsed and pinned_count() > 0:
-		var f = font("9px Arial")
-		var label = str(pinned_count())
-		tray.draw_string(f, Vector2(22 - f.get_string_size(label).x / 2, 35), label, Color(1, 1, 1, 0.9))
+		label = "Notes %d" % pinned_count()
+	var f = font("11px Arial")
+	var x = stack.x + 22
+	tray.draw_string(f, Vector2(x, size.y / 2 + 4), label, Color("e8dcc0"))
 	if unseen > 0:
-		var centre = Vector2(TRAY_SIZE.x - 6, 6)
+		var centre = Vector2(size.x - 4, 4)
 		tray.draw_circle(centre, 6.5, PIN)
 		var badge = font("9px Arial")
 		var count = str(min(unseen, 9))
@@ -603,6 +629,9 @@ func animate(node, from, to, alpha_from, alpha_to, seconds, finish = ""):
 	set_process(true)
 
 func _process(delta):
+	# The notes button follows the layout: side panels, Classic, conversations.
+	if tray != null and (tray.rect_position != tray_spot() or tray.rect_size != tray_place().size):
+		update_tray()
 	for node in animations.keys():
 		if not is_instance_valid(node):
 			animations.erase(node)

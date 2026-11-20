@@ -328,6 +328,64 @@ func begin():
 	check(player.achievements_enabled() and recorder.commands.back().on, "achievements turn back on")
 	player.close_modal()
 
+	# The helpers the original never had are asked about together on first
+	# start, and each switches at once in the running game.
+	for pair in [["helpers", "chosen"], ["scratchpad", "enabled"], ["scratchpad", "mode"], ["scratchpad", "kinds"], ["items", "notices"], ["saves", "autosave_enabled"]]:
+		if not saved.has(pair):
+			saved[pair] = player.config.get_value(pair[0], pair[1]) if player.config.has_section_key(pair[0], pair[1]) else null
+		if player.config.has_section_key(pair[0], pair[1]):
+			player.config.erase_section_key(pair[0], pair[1])
+	check(player.needs_helper_choice() and player.scratchpad_enabled() and player.item_notices_enabled() and player.autosave_enabled(), "first start asks about helpers, all on by default")
+	player.show_helper_choice()
+	yield(self, "idle_frame")
+	fits(player, "helper choice")
+	check(player.get_focus_owner() == button_named(player, "Start"), "Start is focused")
+	recorder.commands.clear()
+	check(player.scratchpad_mode() == "clues" and not "puzzles" in player.clue_kinds(), "game clues are on by default, without puzzle hints")
+	button_named(player, "Scratchpad: ").emit_signal("pressed")
+	yield(self, "idle_frame")
+	check(player.modal == player.scratchpad_options_dialog, "the question opens the scratchpad options")
+	fits(player, "scratchpad options")
+	player.modal.find_node("mode_own", true, false).emit_signal("pressed")
+	check(player.scratchpad_mode() == "own" and recorder.commands.back().action == "clues" and recorder.commands.back().on, "my notes only, at once")
+	player.modal.find_node("mode_off", true, false).emit_signal("pressed")
+	check(not player.scratchpad_enabled() and recorder.commands.back().action == "clues" and not recorder.commands.back().on, "the scratchpad turns off at once")
+	player.controller_back()
+	check(player.modal == player.helper_choice_dialog and button_named(player, "Scratchpad: Off") != null, "Back returns to the question, showing the choice")
+	button_named(player, "New items: Into the bag, with a notice").emit_signal("pressed")
+	check(not player.item_notices_enabled() and recorder.commands.back().action == "item_notices", "new items stay in hand")
+	button_named(player, "Autosave checkpoints: On").emit_signal("pressed")
+	check(not player.autosave_enabled() and recorder.commands.back().action == "autosave_enabled" and not recorder.commands.back().on, "autosave turns off")
+	player.controller_back()
+	check(player.modal == player.helper_choice_dialog, "Back does not skip the first-start question")
+	check(player.needs_helper_choice(), "only Start answers it")
+	player.close_modal()
+	player.helper_choice_dialog = null
+	# Switched back on in Settings, during a voyage.
+	player.show_settings()
+	button_named(player, "Scratchpad: Off").emit_signal("pressed")
+	player.modal.find_node("mode_clues", true, false).emit_signal("pressed")
+	player.show_settings()
+	button_named(player, "New items: In hand (original)").emit_signal("pressed")
+	check(player.scratchpad_enabled() and player.item_notices_enabled(), "Settings turn them back on")
+	player.close_modal()
+	# The scratchpad itself can be turned off from its window.
+	player.open_scratchpad_from_menu()
+	yield(self, "idle_frame")
+	fits(player, "scratchpad with its off switch")
+	recorder.commands.clear()
+	button_named(player, "Turn the scratchpad off").emit_signal("pressed")
+	var told = false
+	for c in recorder.commands:
+		told = told or c.action == "clues" and not c.on
+	check(not player.scratchpad_enabled() and told, "the scratchpad window turns it off")
+	player.close_modal()
+	player.menu = null
+	player.show_menu()
+	check(button_named(player, "Scratchpad") == null, "the menu hides the scratchpad while off")
+	player.close_modal()
+	player.menu = null
+
 	for pair in saved:
 		if saved[pair] == null:
 			if player.config.has_section_key(pair[0], pair[1]):

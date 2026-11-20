@@ -84,7 +84,7 @@ for path in (out/'scripts').glob('*.gd'):
   # Godot 4 fonts carry no size; the paper notes need theirs.
   text=re.sub(r'(\w+)\.add_theme_font_override\("font", font\("(\d+)px([^"]*)"\)\)', r'\1.add_theme_font_override("font", font("\2px\3"))\n\t\1.add_theme_font_size_override("font_size", \2)', text)
   text=text.replace('f.get_string_size(label).x', 'f.get_string_size(label, HORIZONTAL_ALIGNMENT_LEFT, -1, 9).x').replace('badge.get_string_size(count).x', 'badge.get_string_size(count, HORIZONTAL_ALIGNMENT_LEFT, -1, 9).x')
-  text=text.replace(', label, Color(1, 1, 1, 0.9))', ', label, HORIZONTAL_ALIGNMENT_LEFT, -1, 9, Color(1, 1, 1, 0.9))').replace(', count, Color(1, 1, 1))', ', count, HORIZONTAL_ALIGNMENT_LEFT, -1, 9, Color(1, 1, 1))')
+  text=text.replace(', label, Color(1, 1, 1, 0.9))', ', label, HORIZONTAL_ALIGNMENT_LEFT, -1, 9, Color(1, 1, 1, 0.9))').replace(', count, Color(1, 1, 1))', ', count, HORIZONTAL_ALIGNMENT_LEFT, -1, 9, Color(1, 1, 1))').replace(', label, Color("e8dcc0"))', ', label, HORIZONTAL_ALIGNMENT_LEFT, -1, 11, Color("e8dcc0"))')
  text=text.replace('caption,Style.INK)', 'caption,HORIZONTAL_ALIGNMENT_LEFT,-1,11,Style.INK)')
  text=re.sub(r'(?<![a-z_])update\(\)', 'queue_redraw()', text)
  path.write_text(text)

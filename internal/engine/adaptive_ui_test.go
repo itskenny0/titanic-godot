@@ -39,6 +39,8 @@ func adaptiveTestPlayer(t *testing.T) *Player {
 		prop.Visible = true
 		prop.ScreenPlaced = true
 		prop.StateName = "lightclosed"
+		// Frank owns his toolbar items, as in the game.
+		prop.Owner = script.Str("frank")
 		prop.AnchorX = float64(100 + i*30)
 		prop.AnchorY = 300
 	}

@@ -6,6 +6,7 @@ import (
 	"image/png"
 	"os"
 	"path/filepath"
+	"slices"
 	"testing"
 
 	"github.com/itskenny0/titanic-godot/internal/script"
@@ -123,6 +124,9 @@ func TestCluesAreSpokenByScripts(t *testing.T) {
 		if c.ID == "" || seen[c.ID] || c.Text == "" || len(c.Lines) == 0 {
 			t.Errorf("clue %q needs a unique id, text and lines", c.ID)
 		}
+		if !slices.Contains(ClueKinds, c.Kind) {
+			t.Errorf("clue %q has kind %q, not one of %v", c.ID, c.Kind, ClueKinds)
+		}
 		seen[c.ID] = true
 		for _, line := range c.Lines {
 			if !e.speak[line] {
@@ -132,7 +136,8 @@ func TestCluesAreSpokenByScripts(t *testing.T) {
 	}
 }
 
-// Speaking a clue line in a real game reports the clue once per line.
+// Speaking a clue line in a real game reports the clue once, after the
+// conversation, so it never gives the line away before it is heard.
 func TestClueLineIsReported(t *testing.T) {
 	r, notices := startItemRun(t, explorationSave(t), false)
 	s := r.p.Host.Session
@@ -141,11 +146,24 @@ func TestClueLineIsReported(t *testing.T) {
 		if _, err := b["openpuppetfile"](s.Interp, achStrs("purs1.pup"), nil, nil); err != nil {
 			return err
 		}
-		_, err := b["puppetspeak"](s.Interp, achStrs("purs1.73"), nil, nil)
+		if _, err := b["puppetspeak"](s.Interp, achStrs("purs1.73"), nil, nil); err != nil {
+			return err
+		}
+		// The conversation ends as the game's own scripts end it.
+		_, err := b["closepuppetfile"](s.Interp, nil, nil, nil)
 		return err
 	})
-	r.play(100, func() bool { return len(*notices) > 0 })
-	if len(*notices) != 1 || (*notices)[0]["id"] != "barbicon_cabin" {
+	d := r.p.Host.Director
+	spoke, early := false, false
+	r.play(3000, func() bool {
+		spoke = spoke || d.Speaking()
+		early = early || len(*notices) > 0 && (d.Speaking() || d.Conversing())
+		return len(*notices) > 0
+	})
+	if !spoke || early {
+		t.Fatalf("the clue should appear only after the line is spoken: spoke %v, during speech %v", spoke, early)
+	}
+	if len(*notices) != 1 || (*notices)[0]["id"] != "barbicon_cabin" || (*notices)[0]["kind"] != "errands" {
 		t.Fatalf("notices = %v", *notices)
 	}
 }

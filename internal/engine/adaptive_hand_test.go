@@ -140,3 +140,60 @@ func TestHeldItemReturnsToBagFromSidePanels(t *testing.T) {
 		t.Fatalf("after putting the item away: %+v", l)
 	}
 }
+
+// A new voyage starts in the bedsit with only the life ring, the move arrow
+// and a Help button in the toolbar; the bag and watch still lie in the room.
+// The side panels show what Frank has, and the intro's ocean movie keeps
+// them too. Only the full-screen title card needs the original screen.
+func TestNewVoyageKeepsSidePanels(t *testing.T) {
+	save := filepath.Join("..", "..", "originalgame", "bedsit1 2026-09-12-20-27-50.ti")
+	if _, err := os.Stat(save); err != nil {
+		t.Skip("no bedsit save in originalgame/")
+	}
+	r, _ := startItemRun(t, save, false)
+	s := r.p.Host.Session
+	if l := r.p.AdaptiveLayout(); !l.Eligible {
+		t.Fatalf("the intro's ocean movie should keep the side panels: %s", l)
+	}
+	sawTitle := false
+	r.play(6000, func() bool {
+		l := r.p.AdaptiveLayout()
+		if !l.Eligible {
+			if l.Reason != "full-screen movie" {
+				t.Fatalf("the bedsit intro left the side panels: %s", l)
+			}
+			sawTitle = true
+		}
+		return sawTitle && l.Eligible && s.ViewShowing()
+	})
+	l := r.p.AdaptiveLayout()
+	names := map[string]AdaptiveControl{}
+	for _, c := range l.Controls {
+		names[c.Name] = c
+	}
+	help, ok := names["invenhelp"]
+	if !sawTitle || !l.Eligible || !ok || help.Label != "Help" || help.Slot != handSlot || l.AtlasSlots != handSlot+1 {
+		t.Fatalf("the bedsit should show the side panels with Help: title %v, %+v", sawTitle, l)
+	}
+	for _, name := range []string{"bag", "watch", "map"} {
+		if _, ok := names[name]; ok {
+			t.Fatalf("%s is not Frank's yet and has no control: %+v", name, l)
+		}
+	}
+	if hit, err := r.p.Host.Director.HitTestAt(help.AimX, help.AimY); err != nil || hit.Name != "invenhelp" {
+		t.Fatalf("pressing Help should press the original button: %+v %v", hit, err)
+	}
+	s.Track("addbag", false, func(*Task) error {
+		_, err := s.SendEvent("sendtoprop", "bag", "addbag", nil, "", nil)
+		return err
+	})
+	r.play(60, nil)
+	l = r.p.AdaptiveLayout()
+	bag := false
+	for _, c := range l.Controls {
+		bag = bag || c.Name == "bag"
+	}
+	if !l.Eligible || !bag {
+		t.Fatalf("once Frank picks up the bag it joins the side panels: %+v", l)
+	}
+}

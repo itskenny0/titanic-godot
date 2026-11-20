@@ -54,12 +54,15 @@ type playerDialog struct {
 	value any
 }
 type Player struct {
-	Bridge                                               PlayerBridge
-	Host                                                 *GameHost
-	Audio                                                *HostAudio
-	Context                                              *DrawContext
-	Ready, Paused                                        bool
-	Testing                                              bool
+	Bridge        PlayerBridge
+	Host          *GameHost
+	Audio         *HostAudio
+	Context       *DrawContext
+	Ready, Paused bool
+	Testing       bool
+	// artworkKey names the HD pack and redrawn interface on screen.
+	artworkKey                                           string
+	artworkAsync                                         bool
 	Now                                                  func() time.Time
 	pauseOwned, busy                                     bool
 	pointerOffsetX, pointerOffsetY                       float64
@@ -77,6 +80,7 @@ type Player struct {
 	achievementPoll                                      int
 	items                                                itemWatch
 	clues                                                bool
+	pendingClues                                         []*Clue
 }
 
 func NewPlayer(bridge PlayerBridge) *Player {
@@ -148,6 +152,47 @@ func (p *Player) svgRenderer() hdpack.SVGRenderer {
 	}
 }
 
+// attachArtwork shows the HD pack and the redrawn interface, or the original
+// artwork when both are empty. It is used at boot and whenever the player
+// changes either setting: scripts, saves and hit testing only ever see the
+// original screen, so swapping the display artwork is always safe.
+func (p *Player) attachArtwork(hdPack, vectorUI string) {
+	screen := p.Host.Screen()
+	var surface *HDSurface
+	renderSVG := p.svgRenderer()
+	if hdPack != "" {
+		pack, err := hdpack.Open(hdPack, p.read, func(text string) { p.emit("log", map[string]any{"text": text}) })
+		if err != nil {
+			p.emit("log", map[string]any{"text": fmt.Sprintf("HD pack unavailable: %v; using original artwork", err)})
+		} else {
+			pack.SVG = renderSVG
+			// Play decodes artwork off the game thread and shows the original
+			// until it is ready. Scripted test runs keep the immediate result.
+			pack.Async = p.artworkAsync
+			surface = NewHDSurface(pack, ScreenWidth, ScreenHeight)
+			p.emit("log", map[string]any{"text": fmt.Sprintf("HD pack: %d images, 2x display, 24 MiB image cache", len(pack.Manifest.Images))})
+		}
+	}
+	if vectorUI != "" && renderSVG != nil {
+		pack, err := hdpack.Open(vectorUI, p.read, func(text string) { p.emit("log", map[string]any{"text": text}) })
+		if err != nil {
+			p.emit("log", map[string]any{"text": fmt.Sprintf("SVG interface unavailable: %v; using existing artwork", err)})
+		} else {
+			pack.SVG = renderSVG
+			if surface != nil {
+				pack.Fallback = surface.Pack
+			}
+			surface = NewHDSurface(pack, ScreenWidth, ScreenHeight)
+			p.emit("log", map[string]any{"text": fmt.Sprintf("SVG interface: %d source-matched controls", len(pack.Manifest.Images))})
+		}
+	}
+	screen.HD = surface
+	if p.Host.Viewer != nil {
+		p.Host.Viewer.Art = surface
+	}
+	p.artworkKey = hdPack + "\x00" + vectorUI
+}
+
 func (p *Player) Boot(config PlayerConfig) error {
 	if p.Host != nil {
 		return fmt.Errorf("player already booted")
@@ -156,33 +201,8 @@ func (p *Player) Boot(config PlayerConfig) error {
 	p.autosaveDisabled = config.DisableAutosave
 	files := NewFiles(config.Index, p.read)
 	p.Host = NewGameHost(files, p.Audio, HostUI{Log: func(text string) { p.emit("log", map[string]any{"text": text}) }, HUD: func(text string) { p.emit("status", map[string]any{"text": text}) }, ShowStage: func() { p.emit("stage", nil) }})
-	renderSVG := p.svgRenderer()
-	if config.HDPack != "" {
-		pack, err := hdpack.Open(config.HDPack, p.read, func(text string) { p.emit("log", map[string]any{"text": text}) })
-		if err != nil {
-			p.emit("log", map[string]any{"text": fmt.Sprintf("HD pack unavailable: %v; using original artwork", err)})
-		} else {
-			pack.SVG = renderSVG
-			// Play decodes artwork off the game thread and shows the original
-			// until it is ready. Scripted test runs keep the immediate result.
-			pack.Async = !config.Testing && !config.HDSync
-			p.Host.Screen().HD = NewHDSurface(pack, ScreenWidth, ScreenHeight)
-			p.emit("log", map[string]any{"text": fmt.Sprintf("HD pack: %d images, 2x display, 24 MiB image cache", len(pack.Manifest.Images))})
-		}
-	}
-	if config.VectorUI != "" && renderSVG != nil {
-		pack, err := hdpack.Open(config.VectorUI, p.read, func(text string) { p.emit("log", map[string]any{"text": text}) })
-		if err != nil {
-			p.emit("log", map[string]any{"text": fmt.Sprintf("SVG interface unavailable: %v; using existing artwork", err)})
-		} else {
-			pack.SVG = renderSVG
-			if hd := p.Host.Screen().HD; hd != nil {
-				pack.Fallback = hd.Pack
-			}
-			p.Host.Screen().HD = NewHDSurface(pack, ScreenWidth, ScreenHeight)
-			p.emit("log", map[string]any{"text": fmt.Sprintf("SVG interface: %d source-matched controls", len(pack.Manifest.Images))})
-		}
-	}
+	p.artworkAsync = !config.Testing && !config.HDSync
+	p.attachArtwork(config.HDPack, config.VectorUI)
 
 	s := p.Host.Session
 	s.PuppetCtrl.TimedSubtitles = config.TimedSubtitles
@@ -296,6 +316,7 @@ func (p *Player) Tick(dt float64) error {
 	}
 	if p.Ready && p.achievementPoll%5 == 0 {
 		p.serviceItems()
+		p.serviceClues()
 	}
 	if p.profiling {
 		p.profileTick += renderStart.Sub(began)
@@ -427,6 +448,21 @@ func (p *Player) Command(c PlayerCommand) error {
 		return nil
 	case "clues":
 		p.clues = c.On
+		return nil
+	case "artwork":
+		// The HD pack and the redrawn interface change at once, mid-game.
+		paths, _ := c.Value.(map[string]any)
+		hd, _ := paths["hd_pack"].(string)
+		vector, _ := paths["vector_ui"].(string)
+		if hd+"\x00"+vector != p.artworkKey {
+			p.attachArtwork(hd, vector)
+			// Repaint everything with the new artwork, also while paused.
+			p.Host.Screen().Invalidate()
+			p.Context.Version++
+			if err := d.Render(p.Context); err != nil {
+				return err
+			}
+		}
 		return nil
 	}
 	if c.Action == "autosave_enabled" {

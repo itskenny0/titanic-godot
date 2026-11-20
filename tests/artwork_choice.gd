@@ -11,7 +11,10 @@ class Recorder:
 	var examples = []
 	func query(_method, _args = "{}"):
 		return JSON.print(examples)
-	func execute(_method, _args = "{}"):
+	var commands = []
+	func execute(method, args = "{}"):
+		if method == "command":
+			commands.append(JSON.parse(args).result)
 		return ""
 
 var failed = false
@@ -62,9 +65,32 @@ func begin():
 		check(not player.needs_artwork_choice(), "choice is not repeated on next launch")
 		check(player.config.get_value("graphics","redrawn_ui") == enabled, "both opt-in and opt-out persist")
 	player.started_save = null
+	recorder.commands.clear()
 	player.show_artwork_choice()
 	player.choose_artwork(false)
 	check(player.started_save == null, "settings change does not restart ongoing gameplay")
 	check(not player.config.get_value("graphics","redrawn_ui"), "settings can disable redraws later")
+	var applied = null
+	for c in recorder.commands:
+		if c.get("action") == "artwork":
+			applied = c
+	check(applied != null and applied.value.vector_ui == "", "turning redraws off applies to the running game at once")
+	recorder.commands.clear()
+	player.choose_artwork(true)
+	applied = null
+	for c in recorder.commands:
+		if c.get("action") == "artwork":
+			applied = c
+	check(applied != null and applied.value.vector_ui == "res://artwork/ui", "turning redraws on applies to the running game at once")
+	recorder.commands.clear()
+	player.hd_pack_path = "res://hdpack-test"
+	var hd_before = player.config.get_value("graphics","hd_enabled",true)
+	player.toggle_hd_artwork()
+	applied = null
+	for c in recorder.commands:
+		if c.get("action") == "artwork":
+			applied = c
+	check(applied != null and applied.value.hd_pack == ("" if hd_before else "res://hdpack-test"), "the HD pack switch applies at once")
+	player.toggle_hd_artwork()
 	print("ARTWORK CHOICE ","FAIL" if failed else "PASS")
 	quit(1 if failed else 0)

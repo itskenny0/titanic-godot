@@ -71,6 +71,17 @@ func (p *Player) handControl(name string) (AdaptiveControl, bool) {
 		control.AimX, control.AimY = math.Floor(r.X+float64(r.W)/2), math.Floor(r.Y+float64(r.H)/2)
 		return control, true
 	}
+	if x, y, ok := aimAt(d, name, r); ok {
+		control.AimX, control.AimY = x, y
+		return control, true
+	}
+	return AdaptiveControl{}, false
+}
+
+// aimAt finds a point of a screen sprite the real hit tester resolves to that
+// prop, so pressing the panel control does exactly what the original does.
+// A visible sprite can overlap another control; no new action is invented.
+func aimAt(d *ScreenDirector, name string, r *SpriteRect) (float64, float64, bool) {
 	for i := 0; i < 50; i++ {
 		x, y := r.X+math.Floor(float64(r.W)/2), r.Y+math.Floor(float64(r.H)/2)
 		if i > 0 {
@@ -81,11 +92,10 @@ func (p *Player) handControl(name string) (AdaptiveControl, bool) {
 			continue
 		}
 		if hit, e := d.HitTestAt(x, y); e == nil && hit.Type == "prop" && hit.Name == name {
-			control.AimX, control.AimY = x, y
-			return control, true
+			return x, y, true
 		}
 	}
-	return AdaptiveControl{}, false
+	return 0, 0, false
 }
 
 func (p *Player) AdaptiveLayout() AdaptiveLayout {
@@ -151,7 +161,7 @@ func (p *Player) AdaptiveLayout() AdaptiveLayout {
 		}
 		hand = &c
 	}
-	allowed := map[string]bool{"life": true, "bag": true, "map": true, "watch": true, "light": true, "navarrow": true}
+	allowed := map[string]bool{"invenhelp": true, "life": true, "bag": true, "map": true, "watch": true, "light": true, "navarrow": true}
 	for _, prop := range s.Props.ScreenDrawList(true) {
 		// The shared shop also contains open doors and location signs. These
 		// remain in the world image and retain its coordinate mapping. They are
@@ -175,6 +185,11 @@ func (p *Player) AdaptiveLayout() AdaptiveLayout {
 	// acquiring an item or a mod adding another interface object restores 4:3.
 	for slot, spec := range [][2]string{{"life", "Voyage"}, {"bag", "Bag"}, {"watch", "Watch"}, {"map", "Map"}, {"navarrow", "Move"}} {
 		prop := s.Props.Get(spec[0])
+		// The bag, watch and map lie in the bedsit until Frank picks them up;
+		// until then they are no toolbar controls.
+		if prop != nil && spec[0] != "life" && spec[0] != "navarrow" && prop.Owner.Text != "frank" {
+			continue
+		}
 		if prop == nil || !prop.Visible || prop.Hidden {
 			if spec[0] == "navarrow" || worldMovie || transition {
 				continue
@@ -192,34 +207,37 @@ func (p *Player) AdaptiveLayout() AdaptiveLayout {
 			return out
 		}
 		target := AdaptiveControl{Name: spec[0], Label: spec[1], X: r.X, Y: r.Y, W: float64(r.W), H: float64(r.H), Slot: slot}
-		found := false
-		// A visible sprite can overlap another original control. Pick a point the
-		// real hit tester resolves to this control; do not invent a new action.
-		for i := 0; i < 50; i++ {
-			x, y := r.X+math.Floor(float64(r.W)/2), r.Y+math.Floor(float64(r.H)/2)
-			if i > 0 {
-				x = r.X + math.Floor((float64((i-1)%7)+.5)*float64(r.W)/7)
-				y = r.Y + math.Floor((float64((i-1)/7)+.5)*float64(r.H)/7)
-			}
-			if r.sample(x, y) < 0 {
-				continue
-			}
-			hit, e := d.HitTestAt(x, y)
-			if e == nil && hit.Type == "prop" && hit.Name == spec[0] {
-				target.AimX, target.AimY = x, y
-				found = true
-				break
-			}
-		}
+		x, y, found := aimAt(d, spec[0], r)
 		if !found {
 			out.Reason = "interface covered"
 			return out
 		}
+		target.AimX, target.AimY = x, y
 		out.Controls = append(out.Controls, target)
 	}
+	// Controls that come and go take the slots after the toolbar's five.
+	extra := func(c AdaptiveControl) {
+		c.Slot = out.AtlasSlots
+		out.AtlasSlots++
+		out.Controls = append(out.Controls, c)
+	}
 	if hand != nil {
-		out.Controls = append(out.Controls, *hand)
-		out.AtlasSlots = handSlot + 1
+		extra(*hand)
+	}
+	// A new voyage shows a Help button in the toolbar until Frank is given
+	// his first item. It plays the original help movie.
+	if help := s.Props.Get("invenhelp"); help != nil && help.Visible && !help.Hidden && help.Shop != nil && help.Shop.Name == "house.shp" {
+		r, err := help.ScreenRect()
+		if err != nil || r == nil || r.K != 1 || r.W > 128 || r.H > 128 || r.X < 0 || r.X+float64(r.W) > 512 || r.Y < 250 || r.Y+float64(r.H) > 384 {
+			out.Reason = "interface moved"
+			return out
+		}
+		x, y, found := aimAt(d, "invenhelp", r)
+		if !found {
+			out.Reason = "interface covered"
+			return out
+		}
+		extra(AdaptiveControl{Name: "invenhelp", Label: "Help", X: r.X, Y: r.Y, W: float64(r.W), H: float64(r.H), AimX: x, AimY: y})
 	}
 	out.Eligible, out.Reason, out.Hold = true, "exploration", false
 	return out
