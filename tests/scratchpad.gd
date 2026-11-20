@@ -110,6 +110,8 @@ func begin():
 	check(player.scratchpad.notes.has("frank_cabin") and not player.scratchpad.notes.frank_cabin.pinned, "the clue is kept in the scratchpad")
 
 	# Dragging moves the scrap, pins it where it is dropped, and never clicks the game.
+	player.scratchpad.finish_animations()
+	var before = scrap.get_position()
 	var start = scrap.get_global_rect().position + Vector2(30, 24)
 	screen_press(start, true)
 	for i in range(1, 11):
@@ -119,32 +121,123 @@ func begin():
 	yield(self, "idle_frame")
 	var note = player.scratchpad.notes.frank_cabin
 	check(note.pinned, "dragging a new clue pins it")
-	check(abs(note.x - (start.x - 30 + 160)) < 2 and abs(note.y - (start.y - 24 + 90)) < 2, "the clue stays where it was dropped")
+	check(Vector2(note.x, note.y).distance_to(before + Vector2(160, 90)) < 2, "the clue stays where it was dropped")
 	check(pointer_presses(recorder) == 0, "touching a note never clicks the game behind it")
 	check(player.scratchpad.pinned.has("frank_cabin") and player.scratchpad.popups.empty(), "the pinned note replaces the popup")
 
-	# Pinned notes survive a restart, at their place.
-	var reloaded = load("res://scripts/scratchpad.gd").new()
-	reloaded.path = path
-	reloaded.load_store()
-	check(reloaded.notes.has("frank_cabin") and reloaded.notes.frank_cabin.pinned and abs(reloaded.notes.frank_cabin.x - note.x) < 0.5, "pinned notes are saved")
-	reloaded.free()
+	# Move the mouse off the note: hovering makes it opaque to read it.
+	screen_mouse(Vector2(4, player.layout_size.y - 4))
+	yield(self, "idle_frame")
+	var paper = player.scratchpad.pinned.frank_cabin
+	check(paper.modulate.a < 1.0 and paper.modulate.a > 0.7, "notes are slightly see-through paper")
+	check(abs(paper.get_rotation_degrees()) <= 2.7, "notes sit at a slight angle, like scraps")
+	check(player.scratchpad.tray.visible, "the notes tray appears once there are notes")
+	var tray_box = player.scratchpad.tray.get_global_rect()
+	check(tray_box.position.x >= player.note_area().position.x and tray_box.end.x <= player.note_area().end.x, "the tray sits on the picture, clear of the side panels")
 
-	# A popup's Pin button keeps it on screen; unpinned popups fade away.
+	# A popup's pin keeps it on screen; a pinned note's pin puts it away.
 	player.handle_event({"type": "clue", "id": "penny_cabin", "text": "Penny Pringle: cabin F-34."})
 	yield(self, "idle_frame")
 	var popup = player.scratchpad.popups[0]
-	popup.find_node("Pin", true, false).emit_signal("pressed")
+	check(popup.find_node("Heading", true, false).text.find("pin") >= 0, "a new clue says how to keep it")
+	check(popup.find_node("Pin", true, false) != null, "a new clue has a pin")
+	player.scratchpad.press_pin(popup)
 	yield(self, "idle_frame")
-	check(player.scratchpad.notes.penny_cabin.pinned and player.scratchpad.pinned.has("penny_cabin"), "Pin keeps a clue on screen")
-	player.scratchpad.pinned.penny_cabin.find_node("Unpin", true, false).emit_signal("pressed")
+	check(player.scratchpad.notes.penny_cabin.pinned and player.scratchpad.pinned.has("penny_cabin"), "the pin keeps a clue on screen")
+	player.scratchpad.press_pin(player.scratchpad.pinned.penny_cabin)
+	player.scratchpad.finish_animations()
 	yield(self, "idle_frame")
-	check(not player.scratchpad.notes.penny_cabin.pinned and not player.scratchpad.pinned.has("penny_cabin"), "a pinned note can be taken off the screen")
+	check(not player.scratchpad.notes.penny_cabin.pinned and not player.scratchpad.pinned.has("penny_cabin"), "a pinned note can be put away")
 	player.handle_event({"type": "clue", "id": "smokestack_man", "text": "Willie was seen on the last smokestack."})
 	check(player.scratchpad.popups.size() == 1, "another clue pops up")
 	player.scratchpad.expire_popup(player.scratchpad.popups[0])
+	player.scratchpad.finish_animations()
 	yield(self, "idle_frame")
-	check(player.scratchpad.popups.empty() and player.scratchpad.notes.has("smokestack_man"), "an unpinned clue leaves the screen but stays in the scratchpad")
+	check(player.scratchpad.popups.empty() and player.scratchpad.notes.has("smokestack_man"), "an unpinned clue flies into the tray and stays in the scratchpad")
+	check(player.scratchpad.unseen == 1, "the tray counts clues not looked at yet")
+
+	# The tray gathers pinned notes into itself and lays them out again.
+	var home = player.scratchpad.pinned.frank_cabin.get_position()
+	player.scratchpad.activate_tray()
+	player.scratchpad.finish_animations()
+	check(player.scratchpad.collapsed and not player.scratchpad.pinned.frank_cabin.visible, "the tray gathers the notes")
+	player.scratchpad.activate_tray()
+	player.scratchpad.finish_animations()
+	check(not player.scratchpad.collapsed and player.scratchpad.pinned.frank_cabin.visible and player.scratchpad.pinned.frank_cabin.get_position().distance_to(home) < 0.5, "the notes come back where they were")
+	player.scratchpad.set_collapsed(true)
+	player.scratchpad.finish_animations()
+	var settings = ConfigFile.new()
+	settings.load(path)
+	check(settings.get_value("scratchpad", "collapsed", false), "a gathered tray stays gathered")
+	player.scratchpad.set_collapsed(false)
+	player.scratchpad.finish_animations()
+
+	# Dropping a note on the tray puts it away.
+	var lifted = player.scratchpad.pinned.frank_cabin
+	start = lifted.get_global_rect().position + Vector2(30, 24)
+	var target = player.scratchpad.tray_centre()
+	screen_press(start, true)
+	for i in range(1, 11):
+		screen_move(start + (target - start) * (i / 10.0))
+		yield(self, "idle_frame")
+	screen_press(target, false)
+	player.scratchpad.finish_animations()
+	yield(self, "idle_frame")
+	check(not player.scratchpad.notes.frank_cabin.pinned, "dropping a note on the tray puts it away")
+	player.scratchpad.set_pinned("frank_cabin", true, home)
+
+	# With nothing pinned, the tray opens the scratchpad, and Back returns to the game.
+	for id in player.scratchpad.order:
+		player.scratchpad.notes[id].pinned = false
+	player.scratchpad.refresh()
+	player.scratchpad.activate_tray()
+	yield(self, "idle_frame")
+	check(player.modal != null and player.scratchpad.unseen == 0, "the tray opens the scratchpad and clears its count")
+	button_named(player.modal, "Back").emit_signal("pressed")
+	yield(self, "idle_frame")
+	check(player.modal == null and player.menu == null and not player.manual_pause, "Back from the tray returns to the game")
+	player.scratchpad.set_pinned("frank_cabin", true, home)
+
+	# Clues belong to the save they were heard in.
+	var save_path = "user://scratchpad-test-voyage.ti"
+	check(player.scratchpad.save_voyage(save_path), "clues are written beside a save")
+	player.scratchpad.write("Remember the lifeboats")
+	player.scratchpad.begin_voyage("")
+	var only_own = true
+	for id in player.scratchpad.notes:
+		only_own = only_own and player.scratchpad.notes[id].own
+	check(only_own and player.scratchpad.notes.size() == 1, "a new game starts without clues but keeps your own notes")
+	player.scratchpad.begin_voyage(save_path)
+	check(player.scratchpad.notes.has("frank_cabin") and player.scratchpad.notes.frank_cabin.pinned and player.scratchpad.pinned.frank_cabin.get_position().distance_to(home) < 1, "loading the save brings its clues back, pinned where they were")
+	check(player.scratchpad.notes.has("smokestack_man") and not player.scratchpad.notes.smokestack_man.pinned, "unpinned clues come back into the tray")
+	var reloaded = load("res://scripts/scratchpad.gd").new()
+	reloaded.path = path
+	reloaded.load_store()
+	var stored_clue = false
+	for id in reloaded.notes:
+		stored_clue = stored_clue or not reloaded.notes[id].own
+	check(not stored_clue and reloaded.notes.size() == 1, "only your own notes are kept outside the saves")
+	reloaded.free()
+	for id in player.scratchpad.order.duplicate():
+		if player.scratchpad.notes[id].own:
+			player.scratchpad.remove(id)
+	# Every save the engine writes carries the voyage's clues.
+	player.bridge_call("write", JSON.print({"path": "save:Scratchpad Test"}), PoolByteArray([1, 2, 3]))
+	var written = player.saves.last_written
+	var stored = ConfigFile.new()
+	check(stored.load(written + ".notes") == OK and stored.get_value("voyage", "order", []).has("frank_cabin"), "a game save stores its clues beside it")
+	check(player.save_file_path("save:Scratchpad Test") == written, "loading a save finds its clues")
+	for leftover in [written, written + ".notes", written + ".png", save_path + ".notes"]:
+		Directory.new().remove(leftover)
+
+	# A controller can reach the tray.
+	recorder.surface = {"context": "room", "key": "room", "targets": [{"id": "prop:door", "label": "door", "x": 100, "y": 100, "w": 40, "h": 40, "aim_x": 120, "aim_y": 120}]}
+	player.refresh_controller_surface(true)
+	var ids = []
+	for t in player.controller_surface.targets:
+		ids.append(t.id)
+	check(ids.has("ui:notes"), "controllers can select the notes tray")
+	recorder.surface = {"context": "room", "key": "room", "targets": []}
 
 	# The scratchpad menu lists everything and takes the player's own notes.
 	player.show_menu()
@@ -152,6 +245,7 @@ func begin():
 	yield(self, "idle_frame")
 	var listed = player.modal.find_node("Notes", true, false)
 	check(listed != null and listed.get_child_count() == 3, "the scratchpad lists every clue")
+	check(button_named(player.modal, "Gather pinned notes") != null, "the list can gather the notes, for keyboards and controllers")
 	check(player.modal.get_global_rect().end.y <= player.layout_size.y + 1, "the scratchpad fits the screen")
 	button_named(player.modal, "Write a note").emit_signal("pressed")
 	yield(self, "idle_frame")

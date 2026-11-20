@@ -14,8 +14,12 @@ func configure(size, metadata, roomy = false):
 	world = Rect2(Vector2.ZERO, size)
 	controls.clear()
 	navigation = {}
+	var hand = null
 	for original in metadata.get("controls", []):
 		var c = original.duplicate()
+		if c.get("hand", false):
+			hand = c
+			continue
 		if c.name == "navarrow":
 			navigation = c
 			var arrow_size = Vector2(c.w,c.h)*world_scale()
@@ -25,6 +29,14 @@ func configure(size, metadata, roomy = false):
 		var upper = c.name in ["life", "watch"]
 		c.display = Rect2(6 if left else size.x - rail + 6, 32 if upper else 124, rail-12, 80)
 		controls.append(c)
+	# An item taken out of the bag waits beside the move arrow, as it waited
+	# beside the bag in the original, clear of the panels and touch controls.
+	if hand != null:
+		var x = (size.x - (rail - 12)) / 2
+		if not navigation.empty():
+			x = navigation_display.end.x + 12
+		hand.display = Rect2(x, size.y - 86, rail - 12, 80)
+		controls.append(hand)
 
 func world_scale():
 	return world.size / Vector2(512,264)

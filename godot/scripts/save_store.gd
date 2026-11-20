@@ -183,6 +183,7 @@ func service_autosaves(now = -1):
 		if Directory.new().remove(folder.plus_file(entries[0].name)) != OK:
 			return "Checkpoint saved, but an old autosave could not be removed."
 		Directory.new().remove(thumbnail_path(folder.plus_file(entries[0].name)))
+		Directory.new().remove(folder.plus_file(entries[0].name) + ".notes")
 		entries.pop_front()
 	return ""
 

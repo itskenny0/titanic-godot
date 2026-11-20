@@ -304,9 +304,15 @@ func checkOwnedAdaptiveBag(t *testing.T, p *Player) {
 		}
 		wait("leave inventory", func() bool { return s.StageCtrl.Name == "main.stg" && !p.Host.Director.InputLocked() })
 	}
-	if p.AdaptiveLayout().Eligible {
-		t.Fatal("selected item must keep original bottom bar")
-	}
+	// Once the bag has closed, the item waits in hand in the side panels.
+	wait("side panels with the item in hand", func() bool {
+		for _, c := range p.AdaptiveLayout().Controls {
+			if c.Hand && c.Name == item {
+				return true
+			}
+		}
+		return false
+	})
 	// Drag the actual item back onto the original bag using script coordinates.
 	r, err := s.Props.Get(item).ScreenRect()
 	if err != nil || r == nil {

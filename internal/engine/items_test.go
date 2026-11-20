@@ -98,8 +98,12 @@ func TestOriginalItemsStayInHand(t *testing.T) {
 	if hand.Text != "cufflink" || len(*notices) != 0 {
 		t.Fatalf("hand %q, notices %v: the original keeps the item in hand", hand.Text, *notices)
 	}
-	if l := r.p.AdaptiveLayout(); l.Eligible || !l.Hold || l.Reason != "held inventory item" {
-		t.Fatalf("an item in hand is a short hold, not a special screen: %+v", l)
+	held := false
+	for _, c := range r.p.AdaptiveLayout().Controls {
+		held = held || c.Hand && c.Name == "cufflink"
+	}
+	if !held {
+		t.Fatalf("the item in hand should be offered in the side panels: %+v", r.p.AdaptiveLayout())
 	}
 }
 
@@ -192,5 +196,35 @@ func TestSettingsApplyWhilePaused(t *testing.T) {
 	r.play(200, nil)
 	if hand, _ := r.p.Host.Session.Interp.Globals.Get("handitem"); hand.Text != "cufflink" || len(*notices) != 0 {
 		t.Fatalf("hand %q, notices %v: turning item notices off keeps the original", hand.Text, *notices)
+	}
+}
+
+// Frank carries the baby in his arms, drawn in the picture above the
+// toolbar like an open door; the side panels stay while he does.
+func TestCarriedBabyKeepsSidePanels(t *testing.T) {
+	r, _ := startItemRun(t, explorationSave(t), false)
+	s := r.p.Host.Session
+	send := func(handler string, args []script.Value) {
+		s.Track(handler, false, func(*Task) error {
+			_, err := s.SendEvent("sendtoprop", "baby", handler, args, "", nil)
+			return err
+		})
+		r.play(60, nil)
+	}
+	send("addbaby", nil)
+	baby := s.Props.Get("baby")
+	rect, err := baby.ScreenRect()
+	if err != nil || rect == nil || !baby.Visible || baby.Owner.Text != "frank" {
+		t.Fatalf("the baby should be carried: visible %v owner %v rect %v err %v", baby.Visible, baby.Owner, rect, err)
+	}
+	if rect.Y+float64(rect.H) > 264 {
+		t.Fatalf("the carried baby reaches into the toolbar: %+v", rect)
+	}
+	if l := r.p.AdaptiveLayout(); !l.Eligible {
+		t.Fatalf("carrying the baby should keep the side panels, got %s", l)
+	}
+	send("givebaby", achStrs("shay"))
+	if l := r.p.AdaptiveLayout(); !l.Eligible || baby.Visible {
+		t.Fatalf("after handing the baby over: %s, visible %v", l, baby.Visible)
 	}
 }

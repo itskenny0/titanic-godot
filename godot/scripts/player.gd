@@ -371,6 +371,9 @@ func start_runtime(save_path = ""):
 	queued_dialogs.clear()
 	current_dialog = -1
 	close_modal()
+	# Clues belong to the voyage: those stored beside the save, or none.
+	if is_instance_valid(scratchpad):
+		scratchpad.begin_voyage(save_file_path(save_path))
 	hd_pack_path = find_hd_pack()
 	runtime = create_runtime()
 	if runtime == null:
@@ -729,17 +732,43 @@ func finish_item_notice(notice):
 		show_next_item()
 
 var note_editor = null
+# The list opened from the notes tray returns to the game, not the menu.
+var scratchpad_from_tray = false
+
+func open_scratchpad():
+	if modal != null or runtime == null:
+		return
+	send({"action": "pause", "on": true})
+	manual_pause = true
+	scratchpad_from_tray = true
+	show_scratchpad()
+
+func open_scratchpad_from_menu():
+	scratchpad_from_tray = false
+	show_scratchpad()
+
+func close_scratchpad():
+	if scratchpad_from_tray:
+		scratchpad_from_tray = false
+		resume_game()
+	else:
+		controller_settings_back()
+
+func toggle_notes_shown():
+	scratchpad.set_collapsed(not scratchpad.collapsed)
+	scratchpad.finish_animations()
+	show_scratchpad()
 
 func show_scratchpad():
 	var box = panel("Scratchpad")
 	var hint = Label.new()
-	hint.text = "Clues from conversations collect here. Pinned notes stay on screen; drag them anywhere."
+	hint.text = "Clues from this voyage and your own notes. Drag pinned notes anywhere, or onto the notes tray to put them away."
 	hint.autowrap = true
 	hint.rect_min_size = Vector2(396, 30)
 	hint.add_font_override("font", get_font_for("12px Arial"))
 	box.add_child(hint)
 	var scroll = ScrollContainer.new()
-	scroll.rect_min_size = Vector2(396, 170)
+	scroll.rect_min_size = Vector2(396, 128)
 	scroll.follow_focus = true
 	scroll.scroll_horizontal_enabled = false
 	box.add_child(scroll)
@@ -758,9 +787,14 @@ func show_scratchpad():
 		none.add_font_override("font", get_font_for("12px Arial"))
 		list.add_child(none)
 	var write = button(box, "Write a note", "show_note_writer")
-	if scratchpad.order.size() > 0:
-		button(box, "Remove all clues", "clear_scratchpad_clues")
-	button(box, "Back", "controller_settings_back")
+	if scratchpad.pinned_count() > 0:
+		button(box, "Lay out pinned notes" if scratchpad.collapsed else "Gather pinned notes into the tray", "toggle_notes_shown")
+	var clues = false
+	for id in scratchpad.order:
+		clues = clues or not scratchpad.notes[id].own
+	if clues:
+		button(box, "Remove this voyage's clues", "confirm_clear_scratchpad_clues")
+	button(box, "Back", "close_scratchpad")
 	if first != null:
 		first.grab_focus()
 	else:
@@ -793,6 +827,12 @@ func toggle_note_pin(id):
 func delete_note(id):
 	scratchpad.remove(id)
 	show_scratchpad()
+
+func confirm_clear_scratchpad_clues():
+	var box = panel("Remove this voyage's clues?")
+	text_scroller(box, "Your own notes are kept. Clues stored with your saves come back when you load them.", 60)
+	button(box, "Remove clues", "clear_scratchpad_clues")
+	button(box, "Cancel", "show_scratchpad").grab_focus()
 
 func clear_scratchpad_clues():
 	scratchpad.clear_clues()
@@ -888,6 +928,8 @@ func bridge_call(method, args_json, bytes):
 				var saved = saves.write_autosave(args.path.substr(9), bytes)
 				if saved and has_frame:
 					saves.write_thumbnail(saves.last_written, frame_image)
+				if saved:
+					scratchpad.save_voyage(saves.last_written)
 				return JSON.print({"ok": true} if saved else {"error": saves.error})
 			if not args.path.begins_with("save:"):
 				return JSON.print({"error": "Invalid save destination"})
@@ -899,6 +941,11 @@ func bridge_call(method, args_json, bytes):
 					Directory.new().remove(saves.thumbnail_path(saves.last_written))
 				else:
 					saves.write_thumbnail(saves.last_written, frame_image)
+				# An imported save brings no clues; this voyage's are not its.
+				if importing_save:
+					Directory.new().remove(scratchpad.voyage_path(saves.last_written))
+				else:
+					scratchpad.save_voyage(saves.last_written)
 			return JSON.print({"error": saves.error} if not ok else {"ok": true})
 		"measure":
 			return JSON.print(get_font_for(args.font).get_string_size(args.text).x)
@@ -911,9 +958,18 @@ func get_font_for(css):
 	if not fonts.has(key):
 		var font = DynamicFont.new()
 		font.size = int(key.split("px")[0])
-		font.font_data = load("res://fonts/LiberationMono-Regular.ttf" if "Courier" in key else "res://fonts/LiberationSans-Regular.ttf")
+		font.font_data = load(font_file(key))
 		fonts[key] = font
 	return fonts[key]
+
+func font_file(key):
+	if "Courier" in key:
+		return "res://fonts/LiberationMono-Regular.ttf"
+	if "Serif Italic" in key:
+		return "res://fonts/LiberationSerif-Italic.ttf"
+	if "Serif" in key:
+		return "res://fonts/LiberationSerif-Regular.ttf"
+	return "res://fonts/LiberationSans-Regular.ttf"
 
 func ink(text):
 	if text.begins_with("rgb"):
@@ -1014,15 +1070,18 @@ func sync_adaptive_layout():
 		set_adaptive_active(false)
 		update_layout_switch()
 		return
-	if metadata.revision != adaptive_atlas_revision or atlas_scale != adaptive_atlas_scale:
+	# Five toolbar slots, and a sixth while an item waits in hand.
+	var atlas_width = 128 * int(metadata.get("atlas_slots", 5))
+	var resized = adaptive_atlas_image.get_width() != atlas_width * atlas_scale
+	if metadata.revision != adaptive_atlas_revision or atlas_scale != adaptive_atlas_scale or resized:
 		var bytes = runtime.buffer("adaptive_atlas")
-		if bytes.size() != 640 * 128 * 4 * atlas_scale * atlas_scale:
+		if not atlas_width in [640, 768] or bytes.size() != atlas_width * 128 * 4 * atlas_scale * atlas_scale:
 			adaptive_available = false
 			set_adaptive_active(false)
 			update_layout_switch()
 			return
-		adaptive_atlas_image.create_from_data(640*atlas_scale,128*atlas_scale,false,Image.FORMAT_RGBA8,bytes)
-		if adaptive_atlas_revision < 0 or atlas_scale != adaptive_atlas_scale:
+		adaptive_atlas_image.create_from_data(atlas_width*atlas_scale,128*atlas_scale,false,Image.FORMAT_RGBA8,bytes)
+		if adaptive_atlas_revision < 0 or atlas_scale != adaptive_atlas_scale or resized:
 			adaptive_atlas_texture.create_from_image(adaptive_atlas_image,0)
 		else:
 			adaptive_atlas_texture.set_data(adaptive_atlas_image)
@@ -1066,6 +1125,8 @@ func selection_circle(target):
 		return {"center":r.position+Vector2(-12,12), "radius":7}
 	if target.id == "ui:layout":
 		return {"center":layout_switch.rect_position+layout_switch.rect_size/2-(Vector2.ZERO if adaptive_active or dialogue_active else game_origin),"radius":16}
+	if target.id == "ui:notes":
+		return {"center":scratchpad.tray_centre()-(Vector2.ZERO if adaptive_active or dialogue_active else game_origin),"radius":22}
 	if adaptive_active:
 		return adaptive.target_circle(target)
 	return {"center": Vector2(target.aim_x,target.aim_y), "radius": clamp(min(target.w,target.h) / 2.0 + 5, 12, 30)}
@@ -1663,7 +1724,7 @@ func refresh_controller_surface(include_room = false):
 		return
 	# Polled ten times a second; the answer is almost always the same text.
 	var text = runtime.query("targets" if include_room else "controls")
-	var cache = text + ("A" if adaptive_available else "a") + ("V" if adaptive_active else "v")
+	var cache = text + ("A" if adaptive_available else "a") + ("V" if adaptive_active else "v") + ("N" if notes_tray_shown() else "n")
 	if cache == surface_cache:
 		return
 	var surface = JSON.parse(text).result
@@ -1677,6 +1738,9 @@ func set_controller_surface(surface):
 	if adaptive_available and surface.context == "room" and not surface.targets.empty():
 		surface.targets = surface.targets.duplicate()
 		surface.targets.append({"id":"ui:layout","aim_x":-1,"aim_y":-1,"w":32,"h":26})
+	if notes_tray_shown() and surface.context == "room" and not surface.targets.empty():
+		surface.targets = surface.targets.duplicate()
+		surface.targets.append({"id":"ui:notes","aim_x":-1,"aim_y":-1,"w":44,"h":38})
 	if adaptive_active:
 		var visible_targets = []
 		for target in surface.targets:
@@ -1720,9 +1784,14 @@ func target_ids(surface):
 		ids.append(target.get("id", ""))
 	return ids
 
+func notes_tray_shown():
+	return is_instance_valid(scratchpad) and scratchpad.tray.visible
+
 func controller_target_position(target):
 	if target.id == "ui:layout":
 		return layout_switch.rect_position+layout_switch.rect_size/2
+	if target.id == "ui:notes":
+		return scratchpad.tray_centre()
 	return game_to_display(Vector2(target.aim_x,target.aim_y),target.id)
 
 func controller_target_before(a,b):
@@ -1768,8 +1837,8 @@ func focus_controller_target(index):
 	dialogue_preselected = false
 	set_pointer_visible(false)
 	var target = controller_surface.targets[index]
-	if target.id == "ui:layout":
-		display_pointer = layout_switch.rect_position+layout_switch.rect_size/2
+	if target.id in ["ui:layout", "ui:notes"]:
+		display_pointer = controller_target_position(target)
 		pointer = display_pointer-game_origin
 		cursor_layer.update()
 		return
@@ -1821,6 +1890,9 @@ func controller_confirm(pressed):
 		set_pointer_visible(controller_selection < 0)
 		if controller_selection >= 0 and controller_surface.targets[controller_selection].id == "ui:layout":
 			toggle_exploration_layout()
+			return
+		if controller_selection >= 0 and controller_surface.targets[controller_selection].id == "ui:notes":
+			scratchpad.activate_tray()
 			return
 	mouse_button(pressed)
 
@@ -2402,7 +2474,7 @@ func show_menu():
 	if achievements_enabled():
 		button(box, "Achievements", "show_achievements")
 	if scratchpad_enabled():
-		button(box, "Scratchpad", "show_scratchpad")
+		button(box, "Scratchpad", "open_scratchpad_from_menu")
 	button(box, "Import / export .ti saves", "save_tools")
 	button(box, "Settings", "show_settings")
 	button(box, "Main menu", "menu_command", ["new"])
@@ -2664,6 +2736,11 @@ func show_hd_settings():
 		missing.add_font_override("font", get_font_for("13px Arial"))
 		box.add_child(missing)
 	button(box, "Back", "show_setup")
+
+func save_file_path(save_path):
+	if save_path.begins_with("save:"):
+		return saves.path_for(save_path.substr(5))
+	return save_path
 
 func achievements_enabled():
 	return config.get_value("achievements", "enabled", true)

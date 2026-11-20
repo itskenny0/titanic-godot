@@ -22,6 +22,10 @@ type AdaptiveControl struct {
 	AimX  float64 `json:"aim_x"`
 	AimY  float64 `json:"aim_y"`
 	Slot  int     `json:"slot"`
+	// Hand marks an item taken out of the bag; it has no fixed panel place.
+	Hand bool `json:"hand,omitempty"`
+	// Dragged marks the item while it follows the pointer through the world.
+	Dragged bool `json:"dragged,omitempty"`
 }
 type AdaptiveLayout struct {
 	Eligible bool   `json:"eligible"`
@@ -31,14 +35,61 @@ type AdaptiveLayout struct {
 	// The frontend may keep the side panels through it instead of flashing
 	// the classic layout for a few frames. Without Hold the original
 	// screen is needed now: a full-screen movie, a close-up, a conversation.
-	Hold       bool              `json:"hold"`
-	Revision   uint64            `json:"revision"`
-	AtlasScale int               `json:"atlas_scale"`
+	Hold       bool   `json:"hold"`
+	Revision   uint64 `json:"revision"`
+	AtlasScale int    `json:"atlas_scale"`
+	// AtlasSlots is the atlas width in 128-pixel control slots.
+	AtlasSlots int               `json:"atlas_slots"`
 	Controls   []AdaptiveControl `json:"controls"`
 }
 
+// handSlot is the atlas slot after the five toolbar controls.
+const handSlot = 5
+
+// handControl describes an item taken out of the bag. The original keeps it
+// beside the bag; the player drags it onto someone or something, or back into
+// the bag, and the item's own script does the rest. The side panels show it
+// as one more control, pressed at a point the hit tester resolves to the
+// item. While it is dragged the item is drawn in the world and its place in
+// hand stays empty until the button is released.
+func (p *Player) handControl(name string) (AdaptiveControl, bool) {
+	s, d := p.Host.Session, p.Host.Director
+	prop := s.Props.Get(name)
+	if prop == nil || !prop.Visible || prop.Hidden || prop.StateName != "large" || prop.Shop == nil || prop.Shop.Name != "inven.shp" {
+		return AdaptiveControl{}, false
+	}
+	r, err := prop.ScreenRect()
+	if err != nil || r == nil || r.K != 1 || r.W > 128 || r.H > 128 {
+		return AdaptiveControl{}, false
+	}
+	control := AdaptiveControl{Name: name, Label: "In hand", X: r.X, Y: r.Y, W: float64(r.W), H: float64(r.H), Slot: handSlot, Hand: true}
+	if r.X < 0 || r.X+float64(r.W) > 512 || r.Y < 250 || r.Y+float64(r.H) > 384 {
+		if !s.PointerDown {
+			return AdaptiveControl{}, false
+		}
+		control.Dragged = true
+		control.AimX, control.AimY = math.Floor(r.X+float64(r.W)/2), math.Floor(r.Y+float64(r.H)/2)
+		return control, true
+	}
+	for i := 0; i < 50; i++ {
+		x, y := r.X+math.Floor(float64(r.W)/2), r.Y+math.Floor(float64(r.H)/2)
+		if i > 0 {
+			x = r.X + math.Floor((float64((i-1)%7)+.5)*float64(r.W)/7)
+			y = r.Y + math.Floor((float64((i-1)/7)+.5)*float64(r.H)/7)
+		}
+		if r.sample(x, y) < 0 {
+			continue
+		}
+		if hit, e := d.HitTestAt(x, y); e == nil && hit.Type == "prop" && hit.Name == name {
+			control.AimX, control.AimY = x, y
+			return control, true
+		}
+	}
+	return AdaptiveControl{}, false
+}
+
 func (p *Player) AdaptiveLayout() AdaptiveLayout {
-	out := AdaptiveLayout{Reason: "special screen", Controls: []AdaptiveControl{}, Revision: p.Context.Version, AtlasScale: 1}
+	out := AdaptiveLayout{Reason: "special screen", Controls: []AdaptiveControl{}, Revision: p.Context.Version, AtlasScale: 1, AtlasSlots: handSlot}
 	if p.Host == nil || !p.Ready {
 		return out
 	}
@@ -91,20 +142,29 @@ func (p *Player) AdaptiveLayout() AdaptiveLayout {
 		out.Reason = "room not showing"
 		return out
 	}
-	if hand, _ := s.Interp.Globals.Get("handitem"); hand.IsString && hand.Text != "" {
-		out.Reason = "held inventory item"
-		return out
+	var hand *AdaptiveControl
+	if held, _ := s.Interp.Globals.Get("handitem"); held.IsString && held.Text != "" {
+		c, ok := p.handControl(held.Text)
+		if !ok {
+			out.Reason = "held inventory item"
+			return out
+		}
+		hand = &c
 	}
 	allowed := map[string]bool{"life": true, "bag": true, "map": true, "watch": true, "light": true, "navarrow": true}
 	for _, prop := range s.Props.ScreenDrawList(true) {
 		// The shared shop also contains open doors and location signs. These
 		// remain in the world image and retain its coordinate mapping. They are
 		// not toolbar controls, despite being persistent screen-space sprites.
-		if prop.Shop.Name == "house.shp" && (prop.Name == "door" || prop.Name == "signs") {
+		// The baby Frank carries is drawn the same way, in the picture.
+		if prop.Shop.Name == "house.shp" && (prop.Name == "door" || prop.Name == "signs" || prop.Name == "baby") {
 			r, err := prop.ScreenRect()
 			if err == nil && r != nil && r.K == 1 && r.Y < 264 && r.Y+float64(r.H) <= 264 {
 				continue
 			}
+		}
+		if hand != nil && prop.Name == hand.Name {
+			continue
 		}
 		if !allowed[prop.Name] || prop.Shop.Name != "house.shp" || prop.Animating {
 			out.Reason = "unrecognized or animated interface"
@@ -157,6 +217,10 @@ func (p *Player) AdaptiveLayout() AdaptiveLayout {
 		}
 		out.Controls = append(out.Controls, target)
 	}
+	if hand != nil {
+		out.Controls = append(out.Controls, *hand)
+		out.AtlasSlots = handSlot + 1
+	}
 	out.Eligible, out.Reason, out.Hold = true, "exploration", false
 	return out
 }
@@ -176,13 +240,17 @@ func (p *Player) AdaptiveAtlas() []byte {
 		palette = d.room.BandPropPalette(flat.Palette)
 	}
 	scale := layout.AtlasScale
-	width, height := 640*scale, 128*scale
+	width, height := layout.AtlasSlots*128*scale, 128*scale
 	out := make([]byte, width*height*4)
 	for _, control := range layout.Controls {
 		prop := p.Host.Session.Props.Get(control.Name)
 		r, err := prop.ScreenRect()
 		if err != nil || r == nil {
 			return nil
+		}
+		// A dragged item is drawn in the world; its place in hand stays empty.
+		if control.Dragged {
+			continue
 		}
 		var replacement *image.NRGBA
 		artworkAlpha := false

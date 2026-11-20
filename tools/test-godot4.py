@@ -5,7 +5,7 @@ import argparse, re, subprocess, sys
 p=argparse.ArgumentParser();p.add_argument('--godot',required=True);p.add_argument('--test',choices=['ui','integration','controller','idle','patches','game_files','window_close','hd_autodetect','autosave','interruptions','adaptive','svg_ui','runtime','artwork_choice','dialogue','modern','scratchpad'],required=True);p.add_argument('--game-data');p.add_argument('--hd-pack');p.add_argument('--resolution',default='640x480');p.add_argument('--touch',action='store_true');p.add_argument('--patches',default='none');p.add_argument('--expect-isos',action='store_true');p.add_argument('--classic-device',action='store_true');p.add_argument('--headless',action='store_true');a=p.parse_args()
 root=Path(__file__).resolve().parents[1];project=root/'.build/godot4-project'
 s=(root/'tests'/f'{a.test}.gd').read_text()
-if a.test in ['game_files','autosave','svg_ui','runtime','artwork_choice','dialogue','modern']:
+if a.test in ['game_files','autosave','svg_ui','runtime','artwork_choice','dialogue','modern','scratchpad']:
  s=s.replace('extends SceneTree', 'extends SceneTree\nconst File = preload("res://scripts/file_compat.gd")\nconst Directory = preload("res://scripts/directory_compat.gd")')
  s=s.replace('PoolByteArray', 'PackedByteArray').replace('OS.get_ticks_usec()', 'Time.get_ticks_usec()').replace('.plus_file(', '.path_join(').replace('.get_len()', '.get_length()')
 s=re.sub(r'JSON.parse\(([^\n]+)\).result',r'JSON.parse_string(\1)',s)

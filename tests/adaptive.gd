@@ -13,7 +13,7 @@ class Recorder:
 	func buffer(_method):
 		var data = PoolByteArray()
 		var scale = metadata.get("atlas_scale",1)
-		data.resize(640*128*4*scale*scale)
+		data.resize(128*metadata.get("atlas_slots",5)*128*4*scale*scale)
 		return data
 var player
 var failed = false
@@ -155,6 +155,73 @@ func begin():
 	player.adaptive_hold_ms = 1500
 	player.sync_adaptive_layout()
 	check(player.adaptive_active,"exploration restored after hold checks")
+	# An item taken out of the bag waits beside the move arrow and is dragged
+	# from there, through the same game coordinates as the original toolbar.
+	var holding = steady.duplicate(true)
+	holding["atlas_slots"] = 6
+	holding["revision"] = steady.revision + 1
+	holding.controls.append({"name":"notebook","label":"In hand","x":40,"y":294,"w":87,"h":59,"aim_x":83,"aim_y":323,"slot":5,"hand":true})
+	recorder.metadata = holding
+	for roomy in [false,true]:
+		player.config.set_value("graphics","adaptive_roomy",roomy)
+		player.sync_adaptive_layout()
+		player.update_touch_layout()
+		check(player.adaptive_active and player.adaptive_atlas_texture.get_width() == 768*player.adaptive_atlas_scale,"an item in hand keeps the side panels with its artwork")
+		var held = null
+		for c in player.adaptive.controls:
+			if c.get("hand",false):
+				held = c
+		check(held != null,"the item in hand is a control")
+		if held == null:
+			continue
+		check(Rect2(Vector2.ZERO,player.layout_size).encloses(held.display),"the item in hand is on screen")
+		for c in player.adaptive.controls:
+			if c != held:
+				check(not c.display.intersects(held.display),"the item in hand clears " + c.name)
+		check(not player.adaptive.navigation_display.intersects(held.display),"the item in hand clears the move arrow")
+		for bounds in player.adaptive.panels:
+			check(not bounds.intersects(held.display),"the item in hand clears the side panels")
+		for control in ["joystick","menu","space","escape","keyboard"]:
+			check(not player.touch_control_bounds(control).intersects(held.display),"the item in hand clears touch control " + control)
+		var center = held.display.position+held.display.size/2
+		check(player.adaptive.screen_to_game(center) == Vector2(83,323),"pressing the item presses it in the game")
+		check(player.adaptive.game_to_screen(Vector2(83,323),"prop:notebook").distance_to(center) < 0.01,"controller selection finds the item")
+	player.config.set_value("graphics","adaptive_roomy",false)
+	player.sync_adaptive_layout()
+	player.update_touch_layout()
+	var held_display = Rect2()
+	var bag_display = Rect2()
+	for c in player.adaptive.controls:
+		if c.get("hand",false):
+			held_display = c.display
+		if c.name == "bag":
+			bag_display = c.display
+	recorder.commands.clear()
+	screen_mouse(held_display.position+held_display.size/2,true)
+	var world_point = Vector2(player.layout_size.x/2,120)
+	screen_mouse(world_point)
+	holding = holding.duplicate(true)
+	holding.controls.back()["dragged"] = true
+	holding["revision"] += 1
+	recorder.metadata = holding
+	player.sync_adaptive_layout()
+	check(player.adaptive_active,"dragging the item keeps the side panels")
+	screen_mouse(bag_display.position+bag_display.size/2)
+	screen_mouse(bag_display.position+bag_display.size/2,false)
+	var sent = []
+	for command in recorder.commands:
+		if command.action == "pointer":
+			sent.append(command)
+	check(sent.size() >= 3 and sent.front().kind == "press" and Vector2(sent.front().x,sent.front().y) == Vector2(83,323),"the drag starts on the item in the game")
+	var through_world = false
+	for command in sent:
+		if command.kind == "move" and Vector2(command.x,command.y).distance_to(player.adaptive.screen_to_game(world_point)) < 1.0:
+			through_world = command.y < 264
+	check(through_world,"the item follows the pointer through the world")
+	check(sent.back().kind == "release" and Vector2(sent.back().x,sent.back().y) == Vector2(110+30,290),"dropping on the bag panel drops on the bag")
+	recorder.metadata = steady
+	player.sync_adaptive_layout()
+	check(player.adaptive_active,"exploration restored after the item went away")
 	for roomy in [false,true]:
 		player.config.set_value("graphics","adaptive_roomy",roomy)
 		player.sync_adaptive_layout()

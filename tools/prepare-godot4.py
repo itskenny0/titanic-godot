@@ -23,7 +23,7 @@ subprocess.run([args.godot,'--headless','--path',str(out),'--convert-3to4','--ma
 p=out/'scripts/player.gd';s=p.read_text();a=s.index('\telse:\n\t\tvar library = GDNativeLibrary');b=s.index('\tif runtime == null:',a)
 s=s[:a]+'\telse:\n\t\tshow_note("This build needs the Titanic engine module.")\n\t\treturn\n'+s[b:]
 a=s.index('\t\tvar font = ');b=s.index('\treturn fonts[key]',a)
-s=s[:a]+'''\t\tvar font = load("res://fonts/LiberationMono-Regular.ttf" if "Courier" in key else "res://fonts/LiberationSans-Regular.ttf").duplicate()
+s=s[:a]+'''\t\tvar font = load(font_file(key)).duplicate()
 \t\tfont.set_meta("size", int(key.split("px")[0]))
 \t\tfonts[key] = font
 '''+s[b:]
@@ -78,6 +78,13 @@ for path in (out/'scripts').glob('*.gd'):
  text=text.replace('OS.get_time_zone_info()', 'Time.get_time_zone_from_system()').replace('Time.get_datetime_dict_from_system_from_unix_time(', 'Time.get_datetime_dict_from_unix_time(')
  text=text.replace('self, "update"', 'self, "queue_redraw"')
  text=text.replace('.autowrap = true', '.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART')
+ if path.name == 'scratchpad.gd':
+  # The converter maps rect_rotation (degrees) to rotation (radians).
+  text=text.replace('scrap.rotation = ', 'scrap.rotation_degrees = ')
+  # Godot 4 fonts carry no size; the paper notes need theirs.
+  text=re.sub(r'(\w+)\.add_theme_font_override\("font", font\("(\d+)px([^"]*)"\)\)', r'\1.add_theme_font_override("font", font("\2px\3"))\n\t\1.add_theme_font_size_override("font_size", \2)', text)
+  text=text.replace('f.get_string_size(label).x', 'f.get_string_size(label, HORIZONTAL_ALIGNMENT_LEFT, -1, 9).x').replace('badge.get_string_size(count).x', 'badge.get_string_size(count, HORIZONTAL_ALIGNMENT_LEFT, -1, 9).x')
+  text=text.replace(', label, Color(1, 1, 1, 0.9))', ', label, HORIZONTAL_ALIGNMENT_LEFT, -1, 9, Color(1, 1, 1, 0.9))').replace(', count, Color(1, 1, 1))', ', count, HORIZONTAL_ALIGNMENT_LEFT, -1, 9, Color(1, 1, 1))')
  text=text.replace('caption,Style.INK)', 'caption,HORIZONTAL_ALIGNMENT_LEFT,-1,11,Style.INK)')
  text=re.sub(r'(?<![a-z_])update\(\)', 'queue_redraw()', text)
  path.write_text(text)
