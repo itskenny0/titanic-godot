@@ -250,3 +250,48 @@ func TestHDMovementUsesOnlyDecodedArtworkAndWarmsAhead(t *testing.T) {
 		t.Fatal("landing artwork must stay enabled")
 	}
 }
+
+// HD room pictures keep their artwork after F2/F3 changed the brightness,
+// drawn at the new brightness (issue #3).
+func TestHDRoomArtworkSurvivesBrightness(t *testing.T) {
+	gamma := NewScreenGamma()
+	pixels := []byte{1, 2, 3, 4}
+	clut := make([]byte, 256*4)
+	for i := 1; i <= 4; i++ {
+		clut[i*4], clut[i*4+1], clut[i*4+2], clut[i*4+3] = byte(40*i), byte(30*i), byte(20*i), 255
+	}
+	render := func(pal []byte) []byte {
+		out := make([]byte, 16)
+		if err := df.IndexedRGBA(pixels, pal, out); err != nil {
+			t.Fatal(err)
+		}
+		return out
+	}
+	screen := NewScreenPresenter(2, 2)
+	screen.HD = hdFixture(t, render(gamma.DisplayPalette(clut)), 2, 2)
+	screen.HD.Gamma = gamma
+	draw := func() {
+		screen.ClearFrame()
+		screen.HD.Clear()
+		pal := gamma.DisplayPalette(clut)
+		screen.BlitIndexed(render(pal), pixels, pal, 2, 2, 0, 0)
+	}
+	draw()
+	if screen.HD.Pixels[0] != 30 || screen.HD.Pixels[1] != 80 {
+		t.Fatalf("the HD room should show at the default brightness: %v", screen.HD.Pixels[:4])
+	}
+	for _, up := range []bool{true, true, false, false, false} {
+		gamma.Step(up, AllGammaChannels)
+		draw()
+		ramp := gamma.ArtworkRamp()
+		if ramp == nil {
+			continue
+		}
+		if got, want := screen.HD.Pixels[:3], []byte{ramp[0][30], ramp[1][80], ramp[2][120]}; !bytes.Equal(got, want) {
+			t.Fatalf("at gamma %.3f the HD room artwork was lost or not brightened: got %v, want %v", gamma.Average(), got, want)
+		}
+		if !bytes.Equal(screen.Frame, render(gamma.DisplayPalette(clut))) {
+			t.Fatal("the logical picture must stay the original at the current brightness")
+		}
+	}
+}

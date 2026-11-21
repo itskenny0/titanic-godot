@@ -400,7 +400,7 @@ func start_runtime(save_path = ""):
 		return
 	var error = ""
 	runtime.execute("profile", JSON.print({"on": OS.is_debug_build()}))
-	error = runtime.execute("boot", JSON.print({"index": game_index, "save": save_path, "hd_pack": active_hd_pack(), "vector_ui": active_vector_ui(), "timed_subtitles": config.get_value("dialogue", "timed_subtitles", false), "disable_autosave": not config.get_value("saves", "autosave_enabled", true), "testing": "--integration-test" in OS.get_cmdline_args(), "achievements": achievements.ids(), "disable_achievements": not achievements_enabled(), "clues": scratchpad_enabled(), "original_items": not item_notices_enabled()}))
+	error = runtime.execute("boot", JSON.print({"index": game_index, "save": save_path, "hd_pack": active_hd_pack(), "vector_ui": active_vector_ui(), "timed_subtitles": config.get_value("dialogue", "timed_subtitles", false), "disable_autosave": not config.get_value("saves", "autosave_enabled", true), "testing": "--integration-test" in OS.get_cmdline_args(), "achievements": achievements.ids(), "disable_achievements": not achievements_enabled(), "clues": scratchpad_enabled(), "original_items": not item_notices_enabled(), "gamma": config.get_value("display", "gamma", [])}))
 	if not error.empty():
 		show_note(error)
 		return
@@ -1576,6 +1576,10 @@ func handle_event(event):
 		"autosave_failed":
 			show_checkpoint_toast("Autosave failed: " + event.text)
 			print("AUTOSAVE ERROR: ", event.text)
+		"gamma":
+			# Brightness chosen with F1-F9 lasts across loads and starts.
+			config.set_value("display", "gamma", event.channels)
+			config.save("user://settings.cfg")
 		"achievement":
 			if achievements_enabled() and achievements.unlock(event.id):
 				achievement_queue.append(event)

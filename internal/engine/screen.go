@@ -73,6 +73,18 @@ func (s *ScreenPresenter) BlitAt(src []byte, w, h, x, y int) {
 	}
 }
 func (s *ScreenPresenter) BlitTop(src []byte, w, h int) { s.BlitAt(src, w, h, 0, 0) }
+
+// BlitIndexed is BlitAt for a picture src converted from pixels with
+// palette; HD artwork then finds it at any brightness.
+func (s *ScreenPresenter) BlitIndexed(src, pixels, palette []byte, w, h, x, y int) {
+	hd := s.HD
+	if hd != nil {
+		hd.BlitIndexed(src, pixels, palette, w, h, x, y)
+		s.HD = nil
+		defer func() { s.HD = hd }()
+	}
+	s.BlitAt(src, w, h, x, y)
+}
 func (s *ScreenPresenter) Blit(c *DrawContext) {
 	c.Width, c.Height = s.Width, s.Height
 	c.Commands = nil

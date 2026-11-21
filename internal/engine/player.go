@@ -37,6 +37,9 @@ type PlayerConfig struct {
 	OriginalItems bool `json:"original_items"`
 	// Clues reports dialogue lines that carry a detail worth noting down.
 	Clues bool `json:"clues"`
+	// Gamma is the red, green and blue brightness last chosen with F1-F9;
+	// empty keeps the default.
+	Gamma []float64 `json:"gamma"`
 }
 type PlayerCommand struct {
 	Action             string `json:"action"`
@@ -186,6 +189,9 @@ func (p *Player) attachArtwork(hdPack, vectorUI string) {
 			p.emit("log", map[string]any{"text": fmt.Sprintf("SVG interface: %d source-matched controls", len(pack.Manifest.Images))})
 		}
 	}
+	if surface != nil {
+		surface.Gamma = p.Host.Director.Gamma
+	}
 	screen.HD = surface
 	if p.Host.Viewer != nil {
 		p.Host.Viewer.Art = surface
@@ -239,6 +245,13 @@ func (p *Player) Boot(config PlayerConfig) error {
 	}
 	p.items = itemWatch{ToBag: !config.OriginalItems, Off: config.OriginalItems}
 	p.clues = config.Clues
+	if len(config.Gamma) == 3 {
+		for ch, value := range config.Gamma {
+			on := [3]bool{}
+			on[ch] = true
+			p.Host.Director.Gamma.Set(value, on)
+		}
+	}
 	p.achievements = tracker
 	s.OnSpeak = func(id string) {
 		p.achievements.Event(s, "speak", id)
@@ -547,6 +560,9 @@ func (p *Player) Command(c PlayerCommand) error {
 			}
 			d.Gamma.Step(key%2 == 0, channels)
 		}
+		// The frontend keeps the brightness for the next load and start.
+		ch := d.Gamma.Channels
+		p.emit("gamma", map[string]any{"channels": []float64{ch[0], ch[1], ch[2]}})
 	default:
 		if p.busy {
 			return nil

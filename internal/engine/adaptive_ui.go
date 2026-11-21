@@ -271,12 +271,25 @@ func (p *Player) AdaptiveAtlas() []byte {
 			continue
 		}
 		var replacement *image.NRGBA
+		var ramp *[3][256]byte
 		artworkAlpha := false
 		if hd := p.Host.Screen().HD; hd != nil {
-			rgba := spriteRGBA(r.F, palette)
+			// Artwork is keyed at the default brightness, like the classic frame.
+			rgba := spriteRGBA(r.F, d.Gamma.DefaultPalette(palette))
 			key := hdpack.Key(r.F.Width, r.F.Height, rgba)
 			replacement = hd.Pack.Get(key, r.F.Width, r.F.Height)
 			artworkAlpha = replacement != nil && hd.Pack.SpriteAlpha(key, r.F.Width, r.F.Height)
+			if replacement != nil {
+				ramp = d.Gamma.ArtworkRamp()
+			}
+		}
+		shade := func(dst, from []byte) {
+			copy(dst, from)
+			if ramp != nil {
+				for c := 0; c < 3; c++ {
+					dst[c] = ramp[c][dst[c]]
+				}
+			}
 		}
 		for y := 0; y < r.H*scale; y++ {
 			for x := 0; x < r.W*scale; x++ {
@@ -287,7 +300,7 @@ func (p *Player) AdaptiveAtlas() []byte {
 				dst := (y*width + control.Slot*128*scale + x) * 4
 				if artworkAlpha {
 					from := y*replacement.Stride + x*4
-					copy(out[dst:dst+4], replacement.Pix[from:from+4])
+					shade(out[dst:dst+4], replacement.Pix[from:from+4])
 					continue
 				}
 				pal := int(r.F.Indexed[i]) * 4
@@ -296,7 +309,7 @@ func (p *Player) AdaptiveAtlas() []byte {
 				}
 				if replacement != nil {
 					from := y*replacement.Stride + x*4
-					copy(out[dst:dst+3], replacement.Pix[from:from+3])
+					shade(out[dst:dst+3], replacement.Pix[from:from+3])
 				} else {
 					copy(out[dst:dst+3], palette[pal:pal+3])
 				}

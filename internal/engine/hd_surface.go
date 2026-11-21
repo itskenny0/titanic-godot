@@ -32,6 +32,10 @@ type HDSurface struct {
 	keep              string
 	keepW, keepH      int
 	convert           []byte
+	// Gamma lets artwork keyed at the default brightness be found and drawn
+	// at any other, as the F2/F3 brightness keys change it.
+	Gamma  *ScreenGamma
+	keyBuf []byte
 }
 type pixelKeyID struct {
 	w, h int
@@ -93,6 +97,7 @@ func (s *HDSurface) endMovement() {
 	s.late, s.shown = 0, 0
 }
 func (s *HDSurface) frameKey(f *CachedFrame, palette []byte) (string, bool) {
+	palette = s.Gamma.DefaultPalette(palette)
 	if f == nil || f.Width < 1 || f.Height < 1 || f.Width > 512 || f.Height > 384 || len(f.Pixels) < f.Width*f.Height || !s.Pack.HasSize(f.Width, f.Height) {
 		return "", false
 	}
@@ -241,11 +246,33 @@ func (s *HDSurface) MaskedArtwork(source *image.NRGBA, clipY int) {
 		}
 	}
 }
-func (s *HDSurface) Blit(src []byte, w, h, x, y int) {
+func (s *HDSurface) Blit(src []byte, w, h, x, y int) { s.blit(src, src, nil, w, h, x, y) }
+
+// BlitIndexed draws a picture converted from palette colours. Its artwork is
+// looked up as the picture looks at the default brightness and drawn at the
+// current one, so HD rooms keep their artwork after F2/F3.
+func (s *HDSurface) BlitIndexed(src, pixels, palette []byte, w, h, x, y int) {
+	keyPal := s.Gamma.DefaultPalette(palette)
+	if len(keyPal) == 0 || len(palette) == 0 || &keyPal[0] == &palette[0] || len(pixels) < w*h {
+		s.blit(src, src, nil, w, h, x, y)
+		return
+	}
+	n := w * h * 4
+	if len(s.keyBuf) < n {
+		s.keyBuf = make([]byte, n)
+	}
+	if err := df.IndexedRGBA(pixels[:w*h], keyPal, s.keyBuf[:n]); err != nil {
+		s.blit(src, src, nil, w, h, x, y)
+		return
+	}
+	s.blit(src, s.keyBuf[:n], s.Gamma.ArtworkRamp(), w, h, x, y)
+}
+
+func (s *HDSurface) blit(src, keySrc []byte, ramp *[3][256]byte, w, h, x, y int) {
 	if !s.Valid || w <= 0 || h <= 0 || len(src) < w*h*4 {
 		return
 	}
-	img := s.lookup(src, w, h)
+	img := s.lookup(keySrc, w, h)
 	x0, y0 := max(0, x)*2, max(0, y)*2
 	x1, y1 := min(s.Width, x+w)*2, min(s.Height, y+h)*2
 	if x1 <= x0 || y1 <= y0 {
@@ -257,6 +284,12 @@ func (s *HDSurface) Blit(src []byte, w, h, x, y int) {
 		if img != nil {
 			from := (dy-y*2)*img.Stride + (x0-x*2)*4
 			copy(s.Pixels[to:to+rowBytes], img.Pix[from:from+rowBytes])
+			if ramp != nil {
+				row := s.Pixels[to : to+rowBytes]
+				for i := 0; i+3 < len(row); i += 4 {
+					row[i], row[i+1], row[i+2] = ramp[0][row[i]], ramp[1][row[i+1]], ramp[2][row[i+2]]
+				}
+			}
 		} else if dy%2 == 1 {
 			previous := to - s.Width*2*4
 			copy(s.Pixels[to:to+rowBytes], s.Pixels[previous:previous+rowBytes])
@@ -285,12 +318,16 @@ func (s *HDSurface) Sprite(r *SpriteRect, palette []byte, clipW, clipH int, occ 
 	var img *image.NRGBA
 	artworkAlpha := false
 	if r.F.Width > 0 && r.F.Height > 0 && r.F.Width <= 512 && r.F.Height <= 384 && s.Pack.HasSize(r.F.Width, r.F.Height) {
-		key := s.spriteKey(r.F, palette)
+		key := s.spriteKey(r.F, s.Gamma.DefaultPalette(palette))
 		img = s.Pack.Get(key, r.F.Width, r.F.Height)
 		if img != nil {
 			s.Hits++
 			artworkAlpha = r.screen && s.Pack.SpriteAlpha(key, r.F.Width, r.F.Height)
 		}
+	}
+	var ramp *[3][256]byte
+	if img != nil {
+		ramp = s.Gamma.ArtworkRamp()
 	}
 	x0, y0 := max(0, int(r.X)), max(0, int(r.Y))
 	x1, y1 := min(s.Width, clipW, int(math.Ceil(r.X+float64(r.W)))), min(s.Height, clipH, int(math.Ceil(r.Y+float64(r.H))))
@@ -338,7 +375,15 @@ func (s *HDSurface) Sprite(r *SpriteRect, palette []byte, clipW, clipH int, occ 
 						// the original mask. Blend over the already drawn background.
 						a := int(img.Pix[from+3])
 						for c := 0; c < 3; c++ {
-							s.Pixels[at+c] = byte((int(img.Pix[from+c])*a + int(s.Pixels[at+c])*(255-a) + 127) / 255)
+							v := img.Pix[from+c]
+							if ramp != nil {
+								v = ramp[c][v]
+							}
+							s.Pixels[at+c] = byte((int(v)*a + int(s.Pixels[at+c])*(255-a) + 127) / 255)
+						}
+					} else if ramp != nil {
+						for c := 0; c < 3; c++ {
+							s.Pixels[at+c] = ramp[c][img.Pix[from+c]]
 						}
 					} else {
 						copy(s.Pixels[at:at+3], img.Pix[from:from+3])

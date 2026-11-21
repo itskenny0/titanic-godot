@@ -44,6 +44,8 @@ Use the arrow keys to move or select dialogue replies, and Enter to confirm the 
 
 **Touch controls** offers a translucent joystick, ring-and-knob, knob-only or invisible styles, and an opacity preview. Use **Edit positions and size** to move controls and drag the joystick's corner handle to resize it, then **Done / lock**. Each layout keeps its own positions and joystick size. Reset layout restores the current layout.
 
+**Brightness** keys work as in the original: F1 brightens and F2 darkens, F3 to F8 adjust red, green and blue in pairs, and F9 resets. The redrawn and HD artwork follow them. The chosen brightness is kept across loads and starts.
+
 **Quick save** in the menu, or Ctrl+Shift+S, saves at once without asking for a name. Quick saves join the rotating autosaves, so they never replace a save you named. Ctrl+Shift+O loads the newest save after asking. **Load game** shows a picture of each save and when it was made. The pictures are separate files beside the saves; the `.ti` files keep the original format.
 
 Hold the right mouse button, the Home key, or the left stick button (L3) on a controller, to mark everything in the room that responds to a click. **Settings > Picture / sound** can keep the marks on permanently, which suits touchscreens, or turn them off. The same page has fullscreen, sharp or smooth scaling, a 30 fps battery saver and the overall volume.

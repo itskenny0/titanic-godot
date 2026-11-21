@@ -62,7 +62,7 @@ func (d *ScreenDirector) CompositePuppetScreen() error {
 		if err := df.IndexedRGBA(flat.Pixels, pal, buf[:flat.Width*flat.Height*4]); err != nil {
 			return err
 		}
-		screen.BlitTop(buf, flat.Width, flat.Height)
+		screen.BlitIndexed(buf, flat.Pixels, pal, flat.Width, flat.Height, 0, 0)
 		if err := d.compositeWorld(screen.Frame, pal, nil); err != nil {
 			return err
 		}
@@ -112,7 +112,7 @@ func (d *ScreenDirector) paint(ctx *DrawContext) error {
 			if err := df.IndexedRGBA(f.Pixels, f.Palette, buf[:f.Width*f.Height*4]); err != nil {
 				return err
 			}
-			screen.BlitAt(buf, f.Width, f.Height, f.OriginX, f.OriginY)
+			screen.BlitIndexed(buf, f.Pixels, f.Palette, f.Width, f.Height, f.OriginX, f.OriginY)
 			screen.FrameValid = true
 			screen.Blit(ctx)
 			if !covers {
@@ -183,13 +183,13 @@ func (d *ScreenDirector) PaintWorldInto() (string, error) {
 		if err := df.IndexedRGBA(flat.Pixels, flatPal, buf[:flat.Width*flat.Height*4]); err != nil {
 			return "", err
 		}
-		screen.BlitTop(buf, flat.Width, flat.Height)
+		screen.BlitIndexed(buf, flat.Pixels, flatPal, flat.Width, flat.Height, 0, 0)
 		if s.ViewShowing() && cur != nil {
 			buf = screen.ScratchFor(cur.Width * cur.Height * 4)
 			if err := df.IndexedRGBA(cur.Pixels, d.room.RoomPalette(), buf[:cur.Width*cur.Height*4]); err != nil {
 				return "", err
 			}
-			screen.BlitTop(buf, cur.Width, cur.Height)
+			screen.BlitIndexed(buf, cur.Pixels, d.room.RoomPalette(), cur.Width, cur.Height, 0, 0)
 		}
 		if err := d.compositeXRay(flatPal); err != nil {
 			return "", err
@@ -215,7 +215,7 @@ func (d *ScreenDirector) PaintWorldInto() (string, error) {
 	if err := df.IndexedRGBA(cur.Pixels, d.room.RoomPalette(), buf[:cur.Width*cur.Height*4]); err != nil {
 		return "", err
 	}
-	screen.BlitTop(buf, cur.Width, cur.Height)
+	screen.BlitIndexed(buf, cur.Pixels, d.room.RoomPalette(), cur.Width, cur.Height, 0, 0)
 	if err := d.compositeWorld(screen.Frame, d.room.RoomPropPalette(), d.room.RoomCamera()); err != nil {
 		return "", err
 	}

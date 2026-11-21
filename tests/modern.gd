@@ -328,6 +328,13 @@ func begin():
 	check(player.achievements_enabled() and recorder.commands.back().on, "achievements turn back on")
 	player.close_modal()
 
+	# Brightness chosen with F1-F9 is kept for the next load and start.
+	saved[["display", "gamma"]] = player.config.get_value("display", "gamma") if player.config.has_section_key("display", "gamma") else null
+	player.handle_event({"type": "gamma", "channels": [0.7, 0.65, 0.6]})
+	var kept = ConfigFile.new()
+	kept.load("user://settings.cfg")
+	check(kept.get_value("display", "gamma", []) == [0.7, 0.65, 0.6], "the brightness is saved for the next start")
+
 	# The helpers the original never had are asked about together on first
 	# start, and each switches at once in the running game.
 	for pair in [["helpers", "chosen"], ["scratchpad", "enabled"], ["scratchpad", "mode"], ["scratchpad", "kinds"], ["items", "notices"], ["saves", "autosave_enabled"]]:
