@@ -8,20 +8,20 @@ Perfectly playable with original assets.
 
 ## Play quickly (Windows, Linux, macOS)
 
-Download and extract [the release](https://github.com/itskenny0/titanic-godot/releases/tag/v0.7.5) for your platform, then use either source:
+Download and extract [the release](https://github.com/itskenny0/titanic-godot/releases/tag/v0.8.0) for your platform, then use either source:
 
 - **ISOs:** Drop both images beside the executable, or beside `Titanic.app` on macOS. Their filenames just need to contain `cd1` and `cd2`, for example `Titanic_CD1.iso` and `Titanic_CD2.iso`. Run Titanic; it finds them automatically. No mounting or extraction needed.
 - **GOG / Steam:** Run Titanic and choose your installed game folder or its `LOCAL` folder. No conversion needed. You can also place a copy of `LOCAL` beside the player for automatic detection (on Windows, you can literally unzip the release into the installed game directory and launch titanic.exe).
 
 ## Play quickly (Android)
 
-Install the [APK](https://github.com/itskenny0/titanic-godot/releases/tag/v0.7.5) and choose the folder containing both ISOs or your GOG/Steam game files. For ISOs, use filenames containing `cd1` and `cd2`. For GOG/Steam, select the game folder or `LOCAL` directly. Put the files somewhere selectable, such as a subfolder of Downloads.
+Install the [APK](https://github.com/itskenny0/titanic-godot/releases/tag/v0.8.0) and choose the folder containing both ISOs or your GOG/Steam game files. For ISOs, use filenames containing `cd1` and `cd2`. For GOG/Steam, select the game folder or `LOCAL` directly. Put the files somewhere selectable, such as a subfolder of Downloads.
 
 Android imports the files into app storage. Keep the app open until it finishes. Both gamepad and touchscreen play are supported.
 
 ## Play quickly (PortMaster)
 
-Extract the [PortMaster ZIP](https://github.com/itskenny0/titanic-godot/releases/tag/v0.7.5) into your handheld's ports folder, then add your game files:
+Extract the [PortMaster ZIP](https://github.com/itskenny0/titanic-godot/releases/tag/v0.8.0) into your handheld's ports folder, then add your game files:
 
 - **ISOs:** Put both images inside `titanic`, with `cd1` and `cd2` in their filenames. They also work in `titanic/gamedata` or beside `Titanic.sh`.
 - **GOG / Steam:** Copy the game's `LOCAL` folder into `titanic/gamedata`, keeping the folder name.
@@ -54,11 +54,13 @@ Hold the right mouse button, the Home key, or the left stick button (L3) on a co
 
 **Scratchpad** holds your own notes and, if you like, the details characters mention, such as cabin numbers, where to find someone or what they want in exchange, as torn paper notes like the ones Willie leaves. A new clue appears briefly on the picture once the conversation is over, so it never gives away a line before you hear it; press its pin, or drag it anywhere with the mouse or a finger, to keep it on screen. A note can be pushed partly off the edge of the screen, as long as a corner stays in reach. Notes are slightly see-through, and a mouse over one makes it easy to read. Clues you don't pin go into the **Notes** button, which counts the new ones. It sits in the right side panel, opposite the layout switch; in Classic it takes the empty right end of the original toolbar, and it steps aside during conversations. Press it to gather all pinned notes into it and again to lay them out where they were; drop a note on it to put it away. With nothing pinned, or with a right-click, it opens the scratchpad list, where you can write, pin and delete notes, with an on-screen keyboard for controllers and touch screens. Controllers reach the Notes button with L2/R2. Clues belong to the voyage: each save keeps its clues in a `.notes` file beside it, loading the save brings them back, and a new game starts without any. Your own notes stay across games in `scratchpad.cfg` in the user data folder. **Settings > Scratchpad** chooses between Off, My notes only, and My notes and game clues. Game clues are hints and make the game easier, so their kinds can be chosen one by one: places (cabins and directions), people and story, errands (what people want of you) and puzzle hints, which give solutions away and start off. Clues of a kind you turned off, or heard while the scratchpad held only your notes, are kept out of sight and appear when you turn them on. **Turn the scratchpad off** in its window does the same as Off; it hides the notes, the button and the menu entry and keeps your notes for later.
 
-**Modern helpers** the original never had — the scratchpad, new items going into the bag and autosave checkpoints — are asked about together the first time you start, alongside the layout, artwork, dialogue and achievement choices. Each can be switched at any time in Settings, also in the middle of a voyage.
+**Modern helpers** the original never had — the scratchpad, new items going into the bag, autosave checkpoints and hints — are asked about together the first time you start, alongside the layout, artwork, dialogue and achievement choices. Each can be switched at any time in Settings, also in the middle of a voyage.
+
+**What should I do next?** If you are stuck, open Help, either with the game's Help button or from the voyage menu, and pick **What should I do next?**. It gives a short nudge for where you are in the story and in the ship, such as where to head or whom to look for, without giving away puzzle answers or what happens next. **How to play** in the same menu plays the original help. With hints off in Settings, the Help button works as in the original.
 
 In conversations, every new set of answers starts with the first answer selected, without showing it. Enter or A picks it, and the arrow keys or D-pad move from there, never from where the cursor was in the previous answers.
 
-**Achievements** in the menu lists 244 achievements for the story's turning points, conversations, puzzles, rooms, endings and deaths, plus milestones. Secret ones stay hidden until you earn them. An unlock shows a short notice in the top right corner. Achievements belong to you, not to a saved game: loading an older save never removes one, and loading a later save awards what it has already reached. They are stored in `achievements.cfg` in the user data folder and never touch the `.ti` saves or the game's scripts. The guided tour counts only towards its own achievements. The first start asks whether to play with achievements; **Settings > Achievements** turns them off or back on at any time, and switching off hides the menu entry and the notices while keeping what you have earned.
+**Achievements** in the menu lists 262 achievements for the story's turning points, conversations, puzzles, rooms, endings and deaths, plus milestones. Secret ones stay hidden until you earn them. An unlock shows a short notice in the top right corner. Achievements belong to you, not to a saved game: loading an older save never removes one, and loading a later save awards what it has already reached. They are stored in `achievements.cfg` in the user data folder and never touch the `.ti` saves or the game's scripts. The guided tour counts only towards its own achievements. The first start asks whether to play with achievements; **Settings > Achievements** turns them off or back on at any time, and switching off hides the menu entry and the notices while keeping what you have earned.
 
 Cutscenes during play queue a checkpoint, saved once normal gameplay returns and manual saving is allowed. The newest 25 autosaves appear in **Load game**, marked in blue and labelled **Autosave**. They use separate storage and never replace or rotate your manual saves. **Settings > Game files / mods** lets you turn checkpoints off. Manual saves are still useful between cutscenes.
 

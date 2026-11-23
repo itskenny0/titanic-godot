@@ -122,15 +122,22 @@ func (p *MoviePlayer) Play(task *Task, file string, start int) error {
 	return nil
 }
 
+// A cutscene takes over the screen and earns a checkpoint afterwards. Movies
+// that leave the toolbar showing are movement: climbing a ladder section,
+// riding a lift, walking through a corridor. The smokestack alone plays
+// dozens of them, and each would otherwise write an autosave.
 func movieIsCutscene(mov *df.Movie) bool {
 	frames := 0
+	inWorld := true
 	for i := range mov.Segments {
-		if df.MovieHasRegions(&mov.Segments[i]) {
+		seg := &mov.Segments[i]
+		if df.MovieHasRegions(seg) {
 			return false
 		}
-		frames += len(mov.Segments[i].Frames)
+		frames += len(seg.Frames)
+		inWorld = inWorld && seg.OriginY+seg.Height <= 264
 	}
-	return frames > 1
+	return frames > 1 && !inWorld
 }
 
 func (p *MoviePlayer) load(name string, start int) (bool, error) {

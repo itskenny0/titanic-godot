@@ -169,6 +169,15 @@ func (d *ScreenDirector) clickProp(x, y float64) (bool, error) {
 	if err != nil || prop == nil {
 		return false, err
 	}
+	name := prop.Name
+	if name == "" {
+		name = prop.Group.Name
+	}
+	return d.RunPropMousedown(prop)
+}
+
+// RunPropMousedown runs a prop's own click script, as a click on it would.
+func (d *ScreenDirector) RunPropMousedown(prop *PropInstance) (bool, error) {
 	s := d.Session
 	name := prop.Name
 	if name == "" {

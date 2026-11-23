@@ -158,8 +158,11 @@ func TestAchievementEndingsPlay(t *testing.T) {
 		// ending.
 		playMore []float64
 	}{
-		{"good", map[string]string{"rubaiyat": "frank", "realneck": "frank", "painting": "frank", "notebook": "frank"}, map[string]string{"ga": "rescued", "shay": "rescued"},
-			[]string{"leave_ship", "leave_with_rescues", "leave_with_all_three", "debris_field", "history_judged", "ww1_averted", "hitler_painter", "revolution_aborted", "good_ending"}, nil},
+		// Georgia and Shailagh are only marked rescued after the last way off
+		// the ship has gone; what the player does is cure one and reunite the
+		// other with her baby.
+		{"good", map[string]string{"rubaiyat": "frank", "realneck": "frank", "painting": "frank", "notebook": "frank", "antidote": "ga", "baby": "shay"}, nil,
+			[]string{"leave_ship", "leave_with_rescues", "georgia_rescued", "shailagh_rescued", "leave_with_all_three", "debris_field", "history_judged", "ww1_averted", "hitler_painter", "revolution_aborted", "good_ending"}, nil},
 		{"unchanged", map[string]string{"rubaiyat": "vlad", "realneck": "vlad", "painting": "zeit", "notebook": "vlad"}, nil,
 			[]string{"ww1_vlad_both", "ww1_sarajevo", "painting_to_germans", "revolution_continues", "ending_unchanged", "second_chance"}, []float64{266, 254}},
 		{"berlin", map[string]string{"rubaiyat": "frank", "realneck": "vlad", "painting": "frank", "notebook": "frank"}, nil,
@@ -464,4 +467,35 @@ func TestAchievementTriggersReplay(t *testing.T) {
 			}
 		}
 	})
+}
+
+// Sasha invites Frank into A-14 when he comes for Vlad's package; only
+// slipping in while the fuse blackout draws Sasha out is sneaking in.
+func TestInvitedIntoSashasCabinIsNotSneaking(t *testing.T) {
+	if os.Getenv("TAOOT_GAME_DATA") == "" {
+		t.Skip("set TAOOT_GAME_DATA to enter Sasha's cabin")
+	}
+	r := startAchRun(t, filepath.Join("..", "..", "originalgame", "deckbd 2026-09-12-21-27-43.ti"))
+	s := r.p.Host.Session
+	enter := func(neckphase float64) {
+		s.Interp.Globals.Set("neckphase", script.Num(neckphase))
+		s.Track("enter a14", false, func(*Task) error {
+			_, err := s.RunGlobal("changeset", achStrs("a14", "scene2", "view20"))
+			return err
+		})
+		r.play(300, func() bool {
+			return strings.EqualFold(s.CurrentSetFile, "a14") && s.ViewShowing() && r.seen["sasha_cabin"]
+		})
+	}
+	enter(0)
+	if !strings.EqualFold(s.CurrentSetFile, "a14") || !s.ViewShowing() {
+		t.Fatalf("never entered A-14: %q", s.CurrentSetFile)
+	}
+	if r.seen["sasha_cabin"] {
+		t.Fatal("being invited in unlocked the sneaking achievement")
+	}
+	enter(7)
+	if !r.seen["sasha_cabin"] {
+		t.Fatal("slipping in during the blackout did not unlock it")
+	}
 }

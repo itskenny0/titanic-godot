@@ -2,6 +2,7 @@ package engine
 
 import (
 	"fmt"
+	"os"
 	"strings"
 	"testing"
 
@@ -141,6 +142,8 @@ func TestCutsceneCompletionSignalOnceAndNotOnAbandon(t *testing.T) {
 		count := 0
 		p.OnCutsceneFinished = func() { count++ }
 		mov := movieFixture()
+		// A cutscene covers the toolbar too.
+		mov.Segments[0].Height = 480
 		startMovieTest(t, p, mov)
 		p.sequence = &movieSequence{cutscene: movieIsCutscene(mov)}
 		if abandon {
@@ -161,5 +164,40 @@ func TestCutsceneCompletionSignalOnceAndNotOnAbandon(t *testing.T) {
 	mov.Segments[0].Frames[0].Regions = []df.MovieRegion{{Type: 2}}
 	if movieIsCutscene(mov) {
 		t.Fatal("interactive menu classified as cutscene")
+	}
+}
+
+// Ladder sections, lift rides and corridor moves leave the toolbar showing;
+// they are movement, not cutscenes, and earn no checkpoint. The smokestack
+// climb alone plays dozens of them.
+func TestMovementMoviesAreNoCheckpoints(t *testing.T) {
+	files := ownedFiles(t)
+	read := func(name string) *df.Movie {
+		data, err := os.ReadFile(files.Index[name])
+		if err != nil {
+			t.Fatal(err)
+		}
+		mov, err := df.ReadMovie(data)
+		if err != nil {
+			t.Fatal(err)
+		}
+		return mov
+	}
+	for _, name := range []string{"2/stackup.mov", "2/stackdn.mov", "2/topup.mov", "2/topdn.mov", "2/stackin.mov", "2/stackout.mov", "2/elevgs.mov", "2/scot1.mov"} {
+		if movieIsCutscene(read(name)) {
+			t.Errorf("%s leaves the toolbar showing and must not write an autosave", name)
+		}
+	}
+	full := 0
+	for name := range files.Index {
+		if !strings.HasSuffix(name, ".mov") {
+			continue
+		}
+		if mov := read(name); len(mov.Segments) > 0 && mov.Segments[0].Height > 264 && movieIsCutscene(mov) {
+			full++
+		}
+	}
+	if full < 20 {
+		t.Fatalf("only %d full-screen cutscenes still earn a checkpoint", full)
 	}
 }

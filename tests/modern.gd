@@ -337,7 +337,7 @@ func begin():
 
 	# The helpers the original never had are asked about together on first
 	# start, and each switches at once in the running game.
-	for pair in [["helpers", "chosen"], ["scratchpad", "enabled"], ["scratchpad", "mode"], ["scratchpad", "kinds"], ["items", "notices"], ["saves", "autosave_enabled"]]:
+	for pair in [["helpers", "chosen"], ["scratchpad", "enabled"], ["scratchpad", "mode"], ["scratchpad", "kinds"], ["items", "notices"], ["saves", "autosave_enabled"], ["hints", "enabled"]]:
 		if not saved.has(pair):
 			saved[pair] = player.config.get_value(pair[0], pair[1]) if player.config.has_section_key(pair[0], pair[1]) else null
 		if player.config.has_section_key(pair[0], pair[1]):
@@ -363,6 +363,8 @@ func begin():
 	check(not player.item_notices_enabled() and recorder.commands.back().action == "item_notices", "new items stay in hand")
 	button_named(player, "Autosave checkpoints: On").emit_signal("pressed")
 	check(not player.autosave_enabled() and recorder.commands.back().action == "autosave_enabled" and not recorder.commands.back().on, "autosave turns off")
+	button_named(player, "Help button: Hints and how to play").emit_signal("pressed")
+	check(not player.hints_enabled() and recorder.commands.back().action == "hints" and not recorder.commands.back().on, "the Help button goes back to the original")
 	player.controller_back()
 	check(player.modal == player.helper_choice_dialog, "Back does not skip the first-start question")
 	check(player.needs_helper_choice(), "only Start answers it")
@@ -376,6 +378,38 @@ func begin():
 	button_named(player, "New items: In hand (original)").emit_signal("pressed")
 	check(player.scratchpad_enabled() and player.item_notices_enabled(), "Settings turn them back on")
 	player.close_modal()
+	player.show_settings()
+	button_named(player, "Help button: How to play (original)").emit_signal("pressed")
+	check(player.hints_enabled() and recorder.commands.back().action == "hints" and recorder.commands.back().on, "Settings turn hints back on")
+	player.close_modal()
+	# Players who chose their helpers before hints existed are asked again.
+	player.config.set_value("helpers", "chosen", true)
+	player.config.erase_section_key("hints", "enabled")
+	check(player.needs_helper_choice(), "the new hints helper is asked about once")
+	player.config.set_value("hints", "enabled", true)
+	check(not player.needs_helper_choice(), "and not again")
+	# The game's Help button opens a small Help menu; so does the voyage menu.
+	recorder.commands.clear()
+	player.handle_event({"type": "help_menu"})
+	yield(self, "idle_frame")
+	fits(player, "help menu")
+	check(player.menu == player.modal and recorder.commands.back().action == "pause" and recorder.commands.back().on, "the Help menu pauses like the voyage menu")
+	check(player.get_focus_owner() == button_named(player, "What should I do next?"), "the hint is offered first")
+	button_named(player, "What should I do next?").emit_signal("pressed")
+	check(recorder.commands.back().action == "hint", "asks the game for a hint")
+	player.handle_event({"type": "hint", "id": "x", "text": "Someone in the gymnasium would like a word with you."})
+	yield(self, "idle_frame")
+	fits(player, "hint")
+	check(player.modal.find_node("*", true, false) != null and button_named(player, "Back to the game") != null, "the hint is shown")
+	player.controller_back()
+	check(player.modal == null and recorder.commands.back().action == "pause" and not recorder.commands.back().on, "Back returns to the game")
+	player.handle_event({"type": "help_menu"})
+	button_named(player, "How to play (original help)").emit_signal("pressed")
+	check(player.modal == null and recorder.commands.back().action == "original_help", "How to play plays the original help")
+	player.show_menu()
+	button_named(player, "Help").emit_signal("pressed")
+	check(button_named(player, "What should I do next?") != null, "the voyage menu opens the Help menu too")
+	player.resume_game()
 	# The scratchpad itself can be turned off from its window.
 	player.open_scratchpad_from_menu()
 	yield(self, "idle_frame")

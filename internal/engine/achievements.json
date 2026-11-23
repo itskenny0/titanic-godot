@@ -109,15 +109,15 @@
   "description": "Leave the ship after you have saved both Lady Georgia and Shailagh.",
   "category": "story",
   "hidden": true,
-  "trigger": "movie:leave.mov & actor:ga=rescued & actor:shay=rescued"
+  "trigger": "movie:leave.mov & prop:antidote=ga & prop:baby=shay"
  },
  {
   "id": "leave_boatpass_asea",
   "title": "The Devil Himself",
-  "description": "Show your boat pass to the seaman and board early.",
+  "description": "Show your boat pass to the seaman and board a lifeboat.",
   "category": "story",
   "hidden": true,
-  "trigger": "speak:asea02.01"
+  "trigger": "prop:boatpass=asea"
  },
  {
   "id": "leave_boatpass_bsea",
@@ -166,14 +166,6 @@
   "category": "story",
   "hidden": true,
   "trigger": "prop:rubaiyat=vlad"
- },
- {
-  "id": "diamonds_for_passage",
-  "title": "Bet the Diamonds",
-  "description": "Lose the real necklace to Buick at the blackjack table.",
-  "category": "story",
-  "hidden": true,
-  "trigger": "prop:realneck=buick"
  },
  {
   "id": "carter_keys_cargo",
@@ -381,7 +373,7 @@
   "description": "Arrive at the cargo crate to find the painting already gone.",
   "category": "story",
   "hidden": false,
-  "trigger": "speak:penny1.098"
+  "trigger": "stage:cargo.stg & prop:painting=hack & global:mission<=3"
  },
  {
   "id": "bolshevik_notebook_briefing",
@@ -442,10 +434,10 @@
  {
   "id": "all_evidence_secured",
   "title": "Mission Complete, Now Swim",
-  "description": "Report to Penny during the sinking with the Rubaiyat, the painting and the notebook all in hand.",
+  "description": "Find Penny on the boat deck in the last hour with the Rubaiyat, the painting and the notebook all in hand.",
   "category": "story",
   "hidden": true,
-  "trigger": "speak:penny2.50"
+  "trigger": "speak:penny2.44 & prop:rubaiyat=frank & prop:painting=frank & prop:notebook=frank"
  },
  {
   "id": "zeitel_bomb_c59",
@@ -578,18 +570,18 @@
  {
   "id": "georgia_rescued",
   "title": "Lady Georgia Saved",
-  "description": "Make sure Georgia, cured of the poison, gets into a lifeboat.",
+  "description": "Cure Lady Georgia of Zeitel's poison so she can reach the lifeboats.",
   "category": "character",
   "hidden": true,
-  "trigger": "actor:ga=rescued"
+  "trigger": "prop:antidote=ga"
  },
  {
   "id": "shailagh_rescued",
   "title": "Up Top, Safe and Sound",
-  "description": "Get Shailagh and her baby off the ship in a lifeboat.",
+  "description": "Reunite Shailagh with her baby so they can reach the lifeboats together.",
   "category": "character",
   "hidden": true,
-  "trigger": "actor:shay=rescued"
+  "trigger": "prop:baby=shay"
  },
  {
   "id": "alex_fusebox_errand",
@@ -626,10 +618,10 @@
  {
   "id": "burns_door_slam",
   "title": "Pain in the Neck",
-  "description": "Annoy Eric Burns so much that he slams the door on you.",
+  "description": "Give Eric Burns such bad marital advice that he slams the door on you.",
   "category": "character",
   "hidden": false,
-  "trigger": "speak:burns1.23"
+  "trigger": "speak:burns1.30"
  },
  {
   "id": "burns_marriage_advice",
@@ -665,11 +657,11 @@
  },
  {
   "id": "meet_claris",
-  "title": "A Rose from a German Boy",
+  "title": "Willie's Sweetheart",
   "description": "Meet Claris Limehouse, Willie's sweetheart.",
   "category": "character",
   "hidden": false,
-  "trigger": "speak:claris01.14"
+  "trigger": "global:clarisvalue>=1"
  },
  {
   "id": "meet_conkling",
@@ -730,7 +722,7 @@
  {
   "id": "meet_max",
   "title": "Sharpie of Spruce Street",
-  "description": "Meet Max Seidlemann, sulking after Riviera cleaned him out at cards.",
+  "description": "Before your meeting with Penny, find Max Seidlemann sulking on A deck after Riviera cleaned him out at cards.",
   "category": "character",
   "hidden": false,
   "trigger": "speak:max1.37"
@@ -781,7 +773,7 @@
   "description": "Meet Jack and Shailagh Hacker and hear their price for Conkling's letter.",
   "category": "character",
   "hidden": false,
-  "trigger": "speak:shahack1.05b"
+  "trigger": "speak:shahack1.06a"
  },
  {
   "id": "meet_smethells",
@@ -797,7 +789,7 @@
   "description": "Meet Leyland Trask, the spiritualist, during the mission.",
   "category": "character",
   "hidden": false,
-  "trigger": "speak:trask1.051"
+  "trigger": "speak:trask1.052"
  },
  {
   "id": "troutt_donation_pledge",
@@ -805,7 +797,7 @@
   "description": "Promise Reverend Troutt a donation to his Nyasaland mission.",
   "category": "character",
   "hidden": false,
-  "trigger": "speak:trout1.25"
+  "trigger": "global:troutmoney=1"
  },
  {
   "id": "cafe_with_zeitel_willie",
@@ -832,20 +824,12 @@
   "trigger": "speak:vlad2.33"
  },
  {
-  "id": "stephanie_boat_pass",
-  "title": "Only Twenty-One",
-  "description": "Give your boat pass to Eric Burns so his wife Stephanie gets a seat.",
-  "category": "character",
-  "hidden": true,
-  "trigger": "speak:burns2.11"
- },
- {
   "id": "buick_souls_stakes",
   "title": "We Play for Souls",
-  "description": "Learn that Buick Riviera is staking a lifeboat pass on a hand of blackjack.",
+  "description": "Ask Buick Riviera his stakes during the sinking and learn that tonight he plays for souls.",
   "category": "character",
   "hidden": true,
-  "trigger": "movie:buick.mov"
+  "trigger": "speak:blkjack2.09"
  },
  {
   "id": "leave_with_all_three",
@@ -882,7 +866,7 @@
  {
   "id": "got_real_diamonds",
   "title": "The Real Lambeth Diamonds",
-  "description": "Get the genuine diamond necklace back from Vlad.",
+  "description": "Get your hands on the genuine Lambeth diamonds.",
   "category": "item",
   "hidden": false,
   "trigger": "prop:realneck=frank"
@@ -1073,8 +1057,8 @@
  },
  {
   "id": "necklace_swap",
-  "title": "Paste for a Bolshevik",
-  "description": "Plant the fake necklace in Vlad's bag in place of the real one.",
+  "title": "Paste for Patty",
+  "description": "Plant the fake necklace in the doll in Sasha's cabin in place of the real one.",
   "category": "puzzle",
   "hidden": true,
   "trigger": "prop:fakeneck=vlad"
@@ -1209,8 +1193,8 @@
  },
  {
   "id": "bomb_defused",
-  "title": "Clockwork Disarmed",
-  "description": "Disarm Zeitel's time bomb in cabin C-59 and take its key.",
+  "title": "The Key to the Matter",
+  "description": "Get the key out of Zeitel's time bomb in cabin C-59, one way or another.",
   "category": "puzzle",
   "hidden": true,
   "trigger": "prop:bombkey=frank"
@@ -1269,7 +1253,7 @@
   "description": "Switch on the car's headlamps in the dark cargo hold.",
   "category": "puzzle",
   "hidden": false,
-  "trigger": "movie:lightson.mov"
+  "trigger": "global:carlights=true"
  },
  {
   "id": "fuse_blackout",
@@ -1298,7 +1282,7 @@
  {
   "id": "all_photos",
   "title": "Full Contact Sheet",
-  "description": "Develop and collect all three photographs.",
+  "description": "Bag all three prints in a single session in the darkroom.",
   "category": "puzzle",
   "hidden": false,
   "trigger": "prop:photo1=frank & prop:photo2=frank & prop:photo3=frank"
@@ -1306,7 +1290,7 @@
  {
   "id": "photo_ruined",
   "title": "Let There Be Light",
-  "description": "Ruin a print by working under white light.",
+  "description": "Ruin the first print in the darkroom.",
   "category": "puzzle",
   "hidden": false,
   "trigger": "prop:pic1=bad"
@@ -1373,7 +1357,7 @@
   "description": "Slip into Sasha's cabin A-14 while he's out.",
   "category": "exploration",
   "hidden": true,
-  "trigger": "set:a14"
+  "trigger": "set:a14 & global:neckphase>=7 & global:neckphase<=8"
  },
  {
   "id": "funnel_climb",
@@ -1944,11 +1928,171 @@
   "trigger": "count:death>=5"
  },
  {
+  "id": "refuse_morrow_seat",
+  "title": "Not While There's Work",
+  "description": "Turn down the last seat in Morrow's boat because your mission isn't finished.",
+  "category": "story",
+  "hidden": true,
+  "trigger": "speak:morrow2.57"
+ },
+ {
+  "id": "ww1_vlad_diamonds",
+  "title": "Diamonds for Sarajevo",
+  "description": "Vlad escapes with the real Lambeth diamonds, though not the Rubaiyat.",
+  "category": "ending",
+  "hidden": true,
+  "trigger": "flat:narend.stg/02"
+ },
+ {
+  "id": "morrow_wireless_toy",
+  "title": "Certainly Not a Toy!",
+  "description": "Call the wireless a toy and get Officer Morrow's back up.",
+  "category": "character",
+  "hidden": false,
+  "trigger": "speak:morrow1.040"
+ },
+ {
+  "id": "strauses_together",
+  "title": "Together to the End",
+  "description": "Hear from Max at the very end that Mrs. Straus refused to leave her husband.",
+  "category": "story",
+  "hidden": false,
+  "trigger": "speak:max2.10"
+ },
+ {
+  "id": "charles_last_drink",
+  "title": "Going to the Devil Full of Gin",
+  "description": "Find Lord Lambeth still drinking in the smoking room while the ship goes down.",
+  "category": "character",
+  "hidden": false,
+  "trigger": "speak:charl2.05"
+ },
+ {
+  "id": "penny_baby",
+  "title": "Glory Be, a Baby!",
+  "description": "Turn up at Penny's side during the sinking carrying a baby.",
+  "category": "character",
+  "hidden": true,
+  "trigger": "speak:penny2.51"
+ },
+ {
+  "id": "trask_reads_garden_verse",
+  "title": "A Garden by the Water",
+  "description": "Show Trask the verse Jack Hacker passed on and hear his reading of it.",
+  "category": "puzzle",
+  "hidden": false,
+  "trigger": "speak:trask1.018"
+ },
+ {
+  "id": "jack_pays_in_oils",
+  "title": "Payment in Oils",
+  "description": "Bring Shailagh's baby back and receive the painting from a grateful Jack Hacker.",
+  "category": "item",
+  "hidden": true,
+  "trigger": "speak:shahack2.09b"
+ },
+ {
+  "id": "purser_safekeeping_necklace",
+  "title": "All Jewels in the Safe",
+  "description": "Hand the Lambeth necklace to the Purser to keep in the ship's safe.",
+  "category": "item",
+  "hidden": false,
+  "trigger": "speak:purs1.05"
+ },
+ {
+  "id": "trask_reads_rubaiyat",
+  "title": "Coveted and Cursed",
+  "description": "Show Trask the Rubaiyat and hear that bloodshed surrounds it.",
+  "category": "secret",
+  "hidden": false,
+  "trigger": "speak:trask1.026"
+ },
+ {
+  "id": "conkling_forget_letter",
+  "title": "Forget the Letter!",
+  "description": "During the sinking, ask a panicking Conkling about his precious letter.",
+  "category": "secret",
+  "hidden": true,
+  "trigger": "speak:conk2.11"
+ },
+ {
+  "id": "berg_from_funnel",
+  "title": "A Grandstand Seat",
+  "description": "Watch the Titanic strike the iceberg from the top of the funnel, with Colonel Zeitel beside you.",
+  "category": "story",
+  "hidden": true,
+  "trigger": "movie:berg.mov"
+ },
+ {
+  "id": "zeitel_reception_warning",
+  "title": "Curiosity Kills the Cat",
+  "description": "Meet Colonel Zeitel at the Reception late at night and be warned off German business.",
+  "category": "character",
+  "hidden": false,
+  "trigger": "speak:zeit1.44"
+ },
+ {
+  "id": "willie_art_slip",
+  "title": "Art, Not Paintings",
+  "description": "Catch Willie Haderlitz letting slip that the Colonel's business involves paintings.",
+  "category": "secret",
+  "hidden": false,
+  "trigger": "speak:wilfenc1.35"
+ },
+ {
+  "id": "shailagh_baby_plot",
+  "title": "A Child for the Conklings",
+  "description": "Hear from Shailagh that Mrs. Conkling meant to take her baby Eddie for her own.",
+  "category": "secret",
+  "hidden": true,
+  "trigger": "speak:shay1.14"
+ },
+ {
+  "id": "beatrix_keeps_baby",
+  "title": "No One Will Know",
+  "description": "Let Beatrix Conkling keep Shailagh's baby instead of trading the letter for him.",
+  "category": "story",
+  "hidden": true,
+  "trigger": "speak:bx2.18"
+ },
+ {
+  "id": "turbine_manual",
+  "title": "Consult the Manual",
+  "description": "Ask the engine-room seaman for advice and study the turbine instruction manual.",
+  "category": "puzzle",
+  "hidden": false,
+  "trigger": "movie:turbman.mov"
+ },
+ {
+  "id": "heavy_bag",
+  "title": "Pounding the Bag",
+  "description": "Have a go at the punching bag in the first-class gymnasium.",
+  "category": "exploration",
+  "hidden": false,
+  "trigger": "stage:punchbag.stg"
+ },
+ {
+  "id": "bedsit_radio",
+  "title": "Twiddling the Dial",
+  "description": "Tune the wireless in your bedsit to another station.",
+  "category": "exploration",
+  "hidden": false,
+  "trigger": "stage:radio.stg & global:currentrad>=2"
+ },
+ {
+  "id": "room_grand_staircase",
+  "title": "Under the Glass Dome",
+  "description": "Climb to the top of the Grand Staircase.",
+  "category": "exploration",
+  "hidden": false,
+  "trigger": "set:gstair1"
+ },
+ {
   "id": "completionist",
   "title": "Out of Time",
   "description": "Unlock every other achievement.",
   "category": "meta",
   "hidden": false,
-  "trigger": "count:*>=243"
+  "trigger": "count:*>=261"
  }
 ]

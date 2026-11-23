@@ -3,6 +3,7 @@ package engine
 import (
 	_ "embed"
 	"encoding/json"
+	"slices"
 	"strings"
 	"sync"
 )
@@ -29,20 +30,22 @@ var clueData []byte
 var clueCatalog struct {
 	once   sync.Once
 	list   []Clue
-	byLine map[string]*Clue
+	byLine map[string][]*Clue
 	err    error
 }
 
-func loadClues() ([]Clue, map[string]*Clue, error) {
+func loadClues() ([]Clue, map[string][]*Clue, error) {
 	c := &clueCatalog
 	c.once.Do(func() {
 		if c.err = json.Unmarshal(clueData, &c.list); c.err != nil {
 			return
 		}
-		c.byLine = map[string]*Clue{}
+		c.byLine = map[string][]*Clue{}
 		for i := range c.list {
 			for _, line := range c.list[i].Lines {
-				c.byLine[strings.ToLower(line)] = &c.list[i]
+				key := strings.ToLower(line)
+				// One line may carry several facts, each its own note.
+				c.byLine[key] = append(c.byLine[key], &c.list[i])
 			}
 		}
 	})
@@ -57,13 +60,10 @@ func (p *Player) noteClue(s *Session, line string) {
 	if err != nil {
 		return
 	}
-	if c := byLine[strings.ToLower(line)]; c != nil {
-		for _, waiting := range p.pendingClues {
-			if waiting == c {
-				return
-			}
+	for _, c := range byLine[strings.ToLower(line)] {
+		if !slices.Contains(p.pendingClues, c) {
+			p.pendingClues = append(p.pendingClues, c)
 		}
-		p.pendingClues = append(p.pendingClues, c)
 	}
 }
 

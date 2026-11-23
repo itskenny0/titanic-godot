@@ -246,3 +246,29 @@ func TestCarriedBabyKeepsSidePanels(t *testing.T) {
 		t.Fatalf("after handing the baby over: %s, visible %v", l, baby.Visible)
 	}
 }
+
+// One line can carry two facts: Vlad names Barbicon's cabin and the
+// password in the same breath, and both become notes.
+func TestOneLineCanGiveSeveralClues(t *testing.T) {
+	r, notices := startItemRun(t, explorationSave(t), false)
+	s := r.p.Host.Session
+	s.Track("speak", false, func(*Task) error {
+		b := s.Interp.Builtins
+		if _, err := b["openpuppetfile"](s.Interp, achStrs("vlad1.pup"), nil, nil); err != nil {
+			return err
+		}
+		if _, err := b["puppetspeak"](s.Interp, achStrs("vlad1.36"), nil, nil); err != nil {
+			return err
+		}
+		_, err := b["closepuppetfile"](s.Interp, nil, nil, nil)
+		return err
+	})
+	r.play(3000, func() bool { return len(*notices) >= 2 })
+	got := map[any]bool{}
+	for _, n := range *notices {
+		got[n["id"]] = true
+	}
+	if len(*notices) != 2 || !got["barbicon_cabin"] || !got["vlad_password"] {
+		t.Fatalf("notices = %v", *notices)
+	}
+}

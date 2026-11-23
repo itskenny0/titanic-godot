@@ -83,7 +83,9 @@ type Session struct {
 	OnQuit                            func() error
 	// OnSpeak and OnVoice observe dialogue lines and voice clips as they
 	// start, for achievements. They must not change game state.
-	OnSpeak, OnVoice       func(string)
+	OnSpeak, OnVoice func(string)
+	// InterceptClick may take over a click the scripts send to a prop.
+	InterceptClick         func(prop string) bool
 	OnSaveGame             func([]byte, string) error
 	OnLoadGame             func(string) ([]byte, error)
 	MovieActions           map[int]bool

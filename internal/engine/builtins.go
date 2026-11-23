@@ -147,6 +147,9 @@ func registerDispatchBuiltins(c builtinContext) {
 			if err != nil {
 				return script.Value{}, err
 			}
+			if cmd == "sendtoprop" && strings.EqualFold(deferred.Text, "mousedown") && s.InterceptClick != nil && s.InterceptClick(target) {
+				return script.Num(0), nil
+			}
 			return s.SendEvent(cmd, target, deferred.Text, values, f.Context.Me, f)
 		}
 	}

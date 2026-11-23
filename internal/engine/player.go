@@ -37,6 +37,9 @@ type PlayerConfig struct {
 	OriginalItems bool `json:"original_items"`
 	// Clues reports dialogue lines that carry a detail worth noting down.
 	Clues bool `json:"clues"`
+	// Hints turns the Help button into a small menu offering a hint about
+	// what to do next besides the original help.
+	Hints bool `json:"hints"`
 	// Gamma is the red, green and blue brightness last chosen with F1-F9;
 	// empty keeps the default.
 	Gamma []float64 `json:"gamma"`
@@ -82,7 +85,7 @@ type Player struct {
 	achievements                                         *AchievementTracker
 	achievementPoll                                      int
 	items                                                itemWatch
-	clues                                                bool
+	clues, hints                                         bool
 	pendingClues                                         []*Clue
 }
 
@@ -245,6 +248,8 @@ func (p *Player) Boot(config PlayerConfig) error {
 	}
 	p.items = itemWatch{ToBag: !config.OriginalItems, Off: config.OriginalItems}
 	p.clues = config.Clues
+	p.hints = config.Hints
+	p.Host.Session.InterceptClick = p.interceptHelp
 	if len(config.Gamma) == 3 {
 		for ch, value := range config.Gamma {
 			on := [3]bool{}
@@ -462,6 +467,15 @@ func (p *Player) Command(c PlayerCommand) error {
 	case "clues":
 		p.clues = c.On
 		return nil
+	case "hints":
+		p.hints = c.On
+		return nil
+	case "hint":
+		id, text := p.NextHint()
+		p.emit("hint", map[string]any{"id": id, "text": text})
+		return nil
+	case "original_help":
+		return p.originalHelp()
 	case "artwork":
 		// The HD pack and the redrawn interface change at once, mid-game.
 		paths, _ := c.Value.(map[string]any)

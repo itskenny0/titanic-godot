@@ -400,7 +400,7 @@ func start_runtime(save_path = ""):
 		return
 	var error = ""
 	runtime.execute("profile", JSON.print({"on": OS.is_debug_build()}))
-	error = runtime.execute("boot", JSON.print({"index": game_index, "save": save_path, "hd_pack": active_hd_pack(), "vector_ui": active_vector_ui(), "timed_subtitles": config.get_value("dialogue", "timed_subtitles", false), "disable_autosave": not config.get_value("saves", "autosave_enabled", true), "testing": "--integration-test" in OS.get_cmdline_args(), "achievements": achievements.ids(), "disable_achievements": not achievements_enabled(), "clues": scratchpad_enabled(), "original_items": not item_notices_enabled(), "gamma": config.get_value("display", "gamma", [])}))
+	error = runtime.execute("boot", JSON.print({"index": game_index, "save": save_path, "hd_pack": active_hd_pack(), "vector_ui": active_vector_ui(), "timed_subtitles": config.get_value("dialogue", "timed_subtitles", false), "disable_autosave": not config.get_value("saves", "autosave_enabled", true), "testing": "--integration-test" in OS.get_cmdline_args(), "achievements": achievements.ids(), "disable_achievements": not achievements_enabled(), "clues": scratchpad_enabled(), "original_items": not item_notices_enabled(), "hints": hints_enabled(), "gamma": config.get_value("display", "gamma", [])}))
 	if not error.empty():
 		show_note(error)
 		return
@@ -979,7 +979,59 @@ func autosave_enabled():
 # The helpers the original never had are asked about once, together; each
 # can be changed at any time in Settings, also during a voyage.
 func needs_helper_choice():
-	return not config.get_value("helpers", "chosen", false)
+	# Players who chose before hints existed are asked once more.
+	return not config.get_value("helpers", "chosen", false) or not config.has_section_key("hints", "enabled")
+
+# With hints on, the game's Help button opens a small menu: a nudge about
+# what to do next, or the original help. Off keeps the original button.
+func hints_enabled():
+	return config.get_value("hints", "enabled", true)
+
+func set_hints(enabled):
+	config.set_value("hints", "enabled", enabled)
+	config.save("user://settings.cfg")
+	send({"action": "hints", "on": enabled})
+
+func toggle_hints():
+	set_hints(not hints_enabled())
+	show_settings()
+
+func show_help_menu():
+	if modal != null:
+		return
+	send({"action": "pause", "on": true})
+	manual_pause = true
+	var box = panel("Help")
+	menu = modal
+	button(box, "What should I do next?", "request_hint").grab_focus()
+	button(box, "How to play (original help)", "play_original_help")
+	button(box, "Back", "resume_game")
+
+func show_help_menu_from_menu():
+	close_modal()
+	menu = null
+	show_help_menu()
+
+func request_hint():
+	send({"action": "hint"})
+
+func show_hint(text):
+	if text.empty():
+		text = "Look around and talk to the people you meet; someone usually knows where you are needed."
+	var box = panel("What should I do next?")
+	menu = modal
+	text_scroller(box, text, 150)
+	button(box, "Back to the game", "resume_game").grab_focus()
+	button(box, "Help menu", "reopen_help_menu")
+
+func reopen_help_menu():
+	close_modal()
+	menu = null
+	show_help_menu()
+
+func play_original_help():
+	resume_game()
+	send({"action": "original_help"})
 
 func helper_label(key):
 	match key:
@@ -989,6 +1041,8 @@ func helper_label(key):
 			return "New items: %s" % ("Into the bag, with a notice" if item_notices_enabled() else "In hand (original)")
 		"autosave":
 			return "Autosave checkpoints: %s" % ("On" if autosave_enabled() else "Off")
+		"hints":
+			return "Help button: %s" % ("Hints and how to play" if hints_enabled() else "How to play (original)")
 	return key
 
 func show_helper_choice(save_path = ""):
@@ -997,12 +1051,12 @@ func show_helper_choice(save_path = ""):
 	helper_choice_dialog = modal
 	status.hide()
 	var hint = Label.new()
-	hint.text = "The original game had none of these. The scratchpad keeps your notes, and if you like, clues people mention, which make the game easier; new items go into the bag with a notice instead of waiting in hand; the game saves at checkpoints. Change them at any time in Settings."
+	hint.text = "The original game had none of these. The scratchpad keeps your notes, and if you like, clues people mention, which make the game easier; new items go into the bag with a notice instead of waiting in hand; the game saves at checkpoints; the Help button can also hint at what to do next. Change them at any time in Settings."
 	hint.autowrap = true
 	hint.rect_min_size = Vector2(396, 92)
 	hint.add_font_override("font", get_font_for("13px Arial"))
 	box.add_child(hint)
-	for key in ["scratchpad", "items", "autosave"]:
+	for key in ["scratchpad", "items", "autosave", "hints"]:
 		var b = button(box, helper_label(key), "toggle_helper", [key])
 		b.name = "helper_" + key
 	button(box, "Start", "choose_helpers").grab_focus()
@@ -1016,6 +1070,8 @@ func toggle_helper(key):
 			set_item_notices(not item_notices_enabled())
 		"autosave":
 			set_autosave(not autosave_enabled())
+		"hints":
+			set_hints(not hints_enabled())
 	var b = modal.find_node("helper_" + key, true, false)
 	if b != null:
 		b.text = helper_label(key)
@@ -1024,6 +1080,7 @@ func toggle_helper(key):
 func choose_helpers():
 	helper_choice_dialog = null
 	config.set_value("helpers", "chosen", true)
+	config.set_value("hints", "enabled", hints_enabled())
 	config.save("user://settings.cfg")
 	start_runtime(helper_choice_save)
 
@@ -1590,6 +1647,10 @@ func handle_event(event):
 				item_queue.append(event)
 				if not is_instance_valid(item_notice):
 					show_next_item()
+		"help_menu":
+			show_help_menu()
+		"hint":
+			show_hint(event.get("text", ""))
 		"clue":
 			if scratchpad_enabled() and scratchpad.learn(event.id, event.text, event.get("kind", "")):
 				scratchpad.popup(event.id)
@@ -2656,8 +2717,15 @@ func show_menu():
 	var box = panel("Titanic — Voyage menu")
 	menu = modal
 	button(box, "Resume", "resume_game").grab_focus()
-	button(box, "Quick save", "menu_command", ["quicksave"])
-	button(box, "Save game", "menu_command", ["save"])
+	if hints_enabled():
+		# The toolbar's Help button is gone once Frank carries anything.
+		button(box, "Help", "show_help_menu_from_menu")
+	# Saving shares a row, so the menu still fits a 640x480 screen.
+	var saving = HBoxContainer.new()
+	saving.add_constant_override("separation", 7)
+	box.add_child(saving)
+	for entry in [["Quick save", "quicksave"], ["Save game", "save"]]:
+		button(saving, entry[0], "menu_command", [entry[1]]).size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	button(box, "Load game", "menu_command", ["load"])
 	if achievements_enabled():
 		button(box, "Achievements", "show_achievements")
@@ -2676,6 +2744,7 @@ func show_settings():
 	button(box, "Achievements: %s" % ("On" if achievements_enabled() else "Off"), "show_achievement_choice")
 	button(box, "Scratchpad: %s" % scratchpad_summary(), "toggle_scratchpad")
 	button(box, "New items: %s" % ("Into the bag, with a notice" if item_notices_enabled() else "In hand (original)"), "toggle_item_notices")
+	button(box, helper_label("hints"), "toggle_hints")
 	button(box, "Credits", "show_credits")
 	button(box, "Back", "controller_settings_back")
 
